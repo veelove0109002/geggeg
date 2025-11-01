@@ -62,20 +62,24 @@ function action_search_files()
 			if st and st:match('installed') and cur then installed[#installed+1] = cur end
 		end
 	end
-	-- 2) 尝试基于 opkg files 查询（有限次数，避免阻塞）
-	local matches, limit = {}, 2000
+	-- 2) 仅检查 luci-app-* 包，且限制扫描与匹配数量，避免卡顿
+	local matches = {}
+	local scanned = 0
 	for _, name in ipairs(installed) do
-		local out = sys.exec(string.format("opkg files '%s' 2>/dev/null", name)) or ''
-		local hit
-		for line in out:gmatch('[^\n]+') do
-			if line:match('^/[^%s]+') then
-				if line:lower():find(q, 1, true) then hit = true; break end
+		if name:match('^luci%-app%-') then
+			scanned = scanned + 1
+			local out = sys.exec(string.format("opkg files '%s' 2>/dev/null", name)) or ''
+			local hit
+			for line in out:gmatch('[^\n]+') do
+				if line:match('^/[^%s]+') then
+					if line:lower():find(q, 1, true) then hit = true; break end
+				end
 			end
+			if hit then matches[#matches+1] = name end
+			if #matches >= 100 or scanned >= 400 then break end
 		end
-		if hit then matches[#matches+1] = name end
-		if #matches >= 200 then break end
 	end
-	return json_response({ packages = matches })
+	return json_response({ packages = matches, scanned = scanned })
 end
 
 function action_list()

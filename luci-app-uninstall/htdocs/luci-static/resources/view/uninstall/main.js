@@ -347,8 +347,12 @@ return view.extend({
 			grid.appendChild(section);
 		}
 
+		var FILE_SEARCH_CACHE = {};
+		var searchSeq = 0;
 		function refresh() {
+			var curSeq = (++searchSeq);
 			self.pollList().then(function(data){
+				if (curSeq !== searchSeq) return; // 已过期
 				var pkgs = (data && data.packages) || [];
 				var q = (document.getElementById('filter').value || '').toLowerCase();
 				var base = pkgs.filter(function(p){ return p.name && p.name.indexOf('luci-app-') === 0; });
@@ -357,6 +361,7 @@ return view.extend({
 					return byName;
 				});
 				function renderWith(listFinal){
+					if (curSeq !== searchSeq) return; // 已过期
 					while (grid.firstChild) grid.removeChild(grid.firstChild);
 					var g_vum = [], g_istore = [], g_default = [], g_manual = [];
 					listFinal.forEach(function(p){
@@ -372,22 +377,30 @@ return view.extend({
 					renderSection(_('其他插件类'), g_manual);
 					renderSection(_('系统默认插件类'), g_default);
 				}
-				if (!q) { renderWith(list); return; }
-				// 文件名匹配：后端返回包含该文件的已安装包名列表
+				if (!q || q.length < 3) { renderWith(list); return; }
+				// 文件名匹配（>=3字符才触发），结果缓存
+				if (FILE_SEARCH_CACHE[q]) {
+					var matchNames = FILE_SEARCH_CACHE[q];
+					var nameSet = {};
+					list.forEach(function(p){ nameSet[p.name] = true; });
+					base.forEach(function(p){ if (matchNames.indexOf(p.name) !== -1) nameSet[p.name] = true; });
+					var merged = base.filter(function(p){ return nameSet[p.name]; });
+					renderWith(merged);
+					return;
+				}
 				var url = L.url('admin/vum/uninstall/search_files') + '?q=' + encodeURIComponent(q);
 				self._httpJson(url, { headers: { 'Accept': 'application/json' } }).then(function(res){
+					if (curSeq !== searchSeq) return; // 已过期
 					var matchNames = (res && res.packages) || [];
-					if (matchNames.length > 0) {
-						var nameSet = {};
-						list.forEach(function(p){ nameSet[p.name] = true; });
-						base.forEach(function(p){ if (matchNames.indexOf(p.name) !== -1) nameSet[p.name] = true; });
-						var merged = base.filter(function(p){ return nameSet[p.name]; });
-						renderWith(merged);
-					} else {
-						renderWith(list);
-					}
-				}).catch(function(){ renderWith(list); });
+					FILE_SEARCH_CACHE[q] = matchNames;
+					var nameSet = {};
+					list.forEach(function(p){ nameSet[p.name] = true; });
+					base.forEach(function(p){ if (matchNames.indexOf(p.name) !== -1) nameSet[p.name] = true; });
+					var merged = base.filter(function(p){ return nameSet[p.name]; });
+					renderWith(merged);
+				}).catch(function(){ if (curSeq === searchSeq) renderWith(list); });
 			}).catch(function(err){
+				if (curSeq !== searchSeq) return;
 				ui.addNotification(null, E('p', {}, _('加载软件包列表失败: ') + String(err)), 'danger');
 			});
 		}
@@ -570,10 +583,14 @@ return view.extend({
 			});
 		}
 
+		var searchTimer;
 		root.addEventListener('input', function(ev) {
-			if (ev.target && ev.target.id === 'filter') refresh();
+			if (ev.target && ev.target.id === 'filter') {
+				if (searchTimer) clearTimeout(searchTimer);
+				searchTimer = setTimeout(refresh, 250);
+			}
 		});
-		root.addEventListener('click', function(ev){ if (ev.target && ev.target.id === 'filter-clear') refresh(); });
+		root.addEventListener('click', function(ev){ if (ev.target && ev.target.id === 'filter-clear') { if (searchTimer) clearTimeout(searchTimer); searchTimer = setTimeout(refresh, 10); } });
 
 		refresh();
 		return root;
