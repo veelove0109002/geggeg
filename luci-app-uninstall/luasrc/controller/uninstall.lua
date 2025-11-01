@@ -212,8 +212,10 @@ function action_list()
 						cat = 'VUM插件类'
 					elseif istore_list[name] or name:match('^app%-meta%-.+') then
 						cat = 'iStoreOS插件类'
+					elseif default_apps[name] then
+						cat = '系统默认插件类'
 					elseif name:match('^luci%-app%-') then
-						cat = '手动安装插件类'
+						cat = '其他插件类'
 					end
 					local vp = false
 					if vum_tag then
@@ -221,7 +223,13 @@ function action_list()
 						vp = (v == '1' or v == 'yes' or v == 'true')
 					end
 					if name == 'luci-app-uninstall' then vp = true end
-					pkgs[#pkgs+1] = { name = name, version = ver or '', install_time = install_time, category = cat, vum_plugin = vp }
+					-- 追加中文显示名：若来自 iStoreOS 页面解析，带入中文字段
+					local display_name
+					if cat == 'iStoreOS插件类' then
+						local zh = istore_list[name .. '|zh']
+						if zh and #zh > 0 then display_name = zh end
+					end
+					pkgs[#pkgs+1] = { name = name, version = ver or '', install_time = install_time, category = cat, vum_plugin = vp, display_name = display_name }
 				end
 				name, ver, is_installed, install_time, vum_tag = n, nil, false, nil, nil
 			end
