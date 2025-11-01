@@ -318,9 +318,16 @@ return view.extend({
 
 		function renderSection(title, items){
 			if (!items || items.length === 0) return;
+			var iconMap = {
+				'VUM插件类': 'vumc.png',
+				'iStoreOS插件类': 'isc.png',
+				'其他插件类': 'qtc.png',
+				'系统默认插件类': 'xtc.png'
+			};
+			var icon = iconMap[title] || 'folder.png';
 			var header = E('div', { 'style': 'display:flex; align-items:center; justify-content:space-between;' }, [
 				E('div', { 'style': 'display:flex; align-items:center; gap:8px;' }, [
-					E('img', { src: L.resource('icons/folder.png'), 'style': 'width:20px;height:20px;' }),
+					E('img', { src: L.resource('icons/' + icon), 'style': 'width:20px;height:20px;' }),
 					E('h3', { 'style': 'margin:12px 0 0 0; font-size:18px; color:#111827; font-weight:700; display:inline-block; padding:6px 10px; border-radius:10px; background: linear-gradient(90deg, #ffffff 0%, #e0f2fe 100%);' }, title)
 				])
 			]);
