@@ -92,7 +92,7 @@ return view.extend({
 			'luci-app-fogvdn': 'openfog',
 			'luci-app-syncdial': 'syncdial',
 			'luci-app-aliyundrive-webdav': 'aliyundrive-webdav',
-			'luci-app-tailscaler': 'ailscale',
+			'luci-app-tailscaler': 'tailscale',
 			'luci-app-webcontrol': 'webcontrol',
 			'luci-app-timecontrol': 'webcontrol',
 			'luci-app-control-weburl': 'webcontrol'
