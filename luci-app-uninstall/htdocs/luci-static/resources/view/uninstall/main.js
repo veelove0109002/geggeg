@@ -393,6 +393,7 @@ return view.extend({
 					var okBtn = E('button', { 'class': 'btn', 'style': 'background:#2563eb;color:#fff;border-radius:999px;padding:6px 14px;' }, _('确定'));
 					var footer = E('div', { 'style':'margin-top:12px;display:flex;gap:8px;justify-content:flex-end;' }, [ cancelBtn, okBtn ]);
 					var modal = ui.showModal(headerName, [ titleRow, headerInfo, warnBar, body, footer ]);
+					var overlay = modal && modal.parentNode; if (overlay) { overlay.style.display = 'flex'; overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center'; }
 					cancelBtn.addEventListener('click', function(){ ui.hideModal(modal); resolve(false); });
 					okBtn.addEventListener('click', function(){ ui.hideModal(modal); resolve(true); });
 				});
@@ -444,6 +445,7 @@ return view.extend({
 					log,
 					E('div', { 'style':'margin-top:10px;display:flex;gap:8px;justify-content:flex-end;' }, [ closeBtn ])
 				]);
+				var overlay = modal && modal.parentNode; if (overlay) { overlay.style.display = 'flex'; overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center'; }
 				function println(s){ log.appendChild(document.createTextNode(String(s) + '\n')); log.scrollTop = log.scrollHeight; }
 				var opSuccess = false;
 				function enableClose(){
