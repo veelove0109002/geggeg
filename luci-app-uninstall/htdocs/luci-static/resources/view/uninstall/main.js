@@ -403,16 +403,59 @@ return view.extend({
 				if (!ok) return;
 
 				// 日志弹窗
-				var log = E('pre', { 'style': 'max-height:260px;overflow:auto;background:#0b1024;color:#cbd5e1;padding:10px;border-radius:8px;' }, '');
+				var statusBar = E('div', { 'style': 'display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;' }, [
+					E('div', { 'style': 'display:flex; align-items:center; gap:8px;' }, [
+						E('span', { 'style': 'display:inline-flex;width:22px;height:22px;background:#fde68a;color:#92400e;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '…'),
+						E('span', { 'style': 'font-weight:600;color:#f59e0b;' }, _('正在卸载'))
+					]),
+					E('div', { 'style': 'display:flex; align-items:center; gap:10px;' }, [
+						E('span', { 'style': 'font-size:12px; color:#6b7280; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:999px; padding:2px 8px;' }, (version || '')),
+						E('img', { src: packageIcon(name), 'style': 'width:24px; height:24px; border-radius:6px; background:#f3f4f6; border:1px solid #e5e7eb; object-fit:contain;' })
+					])
+				]);
+				var log = E('pre', { 'style': 'max-height:260px;overflow:auto;background:linear-gradient(180deg,#0b1024 0%,#0f1633 100%);color:#cbd5e1;padding:10px;border-radius:8px; box-shadow: inset 0 0 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06); transition: filter .15s ease;' }, '');
+				log.addEventListener('mouseenter', function(){ log.style.filter = 'brightness(1.08)'; });
+				log.addEventListener('mouseleave', function(){ log.style.filter = 'none'; });
 				var closeBtn = E('button', { 'class': 'btn', disabled: true }, _('关闭'));
 				var zhName2 = displayName(name);
 				var fullName2 = zhName2 && zhName2 !== name ? (zhName2 + ' (' + name + ')') : name;
+				var startTs = Date.now();
+				var elapsedEl = E('span', { 'style': 'font-size:12px;color:#6b7280;' }, '0s');
+				var timer = setInterval(function(){ var s = Math.floor((Date.now() - startTs) / 1000); elapsedEl.textContent = s + 's'; }, 1000);
+				var progressTrack = E('div', { 'style': 'height:6px;border-radius:999px;background:#0f1838;overflow:hidden;' });
+				var progressBar = E('div', { 'style': 'height:6px;width:0%;background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.6);transition: width .25s ease;' });
+				progressTrack.appendChild(progressBar);
+				function setProgress(p){ progressBar.style.width = Math.max(0, Math.min(100, p)) + '%'; }
+				var statusBar = E('div', { 'style': 'display:flex; flex-direction:column; gap:8px; margin-bottom:8px;' }, [
+					E('div', { 'style': 'display:flex; align-items:center; justify-content:space-between; gap:8px;' }, [
+						E('div', { 'style': 'display:flex; align-items:center; gap:8px;' }, [
+							E('span', { 'style': 'display:inline-flex;width:22px;height:22px;background:#fde68a;color:#92400e;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '…'),
+							E('span', { 'style': 'font-weight:600;color:#f59e0b;' }, _('正在卸载')),
+							elapsedEl
+						]),
+						E('div', { 'style': 'display:flex; align-items:center; gap:10px;' }, [
+							E('span', { 'style': 'font-size:12px; color:#6b7280; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:999px; padding:2px 8px;' }, (version || '')),
+							E('img', { src: packageIcon(name), 'style': 'width:24px; height:24px; border-radius:6px; background:#f3f4f6; border:1px solid #e5e7eb; object-fit:contain;' })
+						])
+					]),
+					E('div', { 'style': 'font-size:15px;font-weight:700;color:#e5e7eb;' }, fullName2),
+					progressTrack
+				]);
 				var modal = ui.showModal(_('正在卸载…') + ' ' + fullName2, [
+					statusBar,
 					log,
 					E('div', { 'style':'margin-top:10px;display:flex;gap:8px;justify-content:flex-end;' }, [ closeBtn ])
 				]);
 				function println(s){ log.appendChild(document.createTextNode(String(s) + '\n')); log.scrollTop = log.scrollHeight; }
-				function enableClose(){ closeBtn.disabled = false; closeBtn.addEventListener('click', function(){ ui.hideModal(modal); window.location.reload(); }); }
+				var opSuccess = false;
+				function enableClose(){
+					closeBtn.disabled = false;
+					closeBtn.textContent = opSuccess ? _('返回列表') : _('查看详情');
+					closeBtn.addEventListener('click', function(){
+						if (opSuccess) { ui.hideModal(modal); window.location.reload(); }
+						else { log.style.maxHeight = '420px'; log.scrollTop = log.scrollHeight; }
+					});
+				}
 
 				var token = (L.env && (L.env.token || L.env.csrf_token)) || '';
 				var removeUrl = L.url('admin/vum/uninstall/remove') + (token ? ('?token=' + encodeURIComponent(token)) : '');
@@ -420,6 +463,7 @@ return view.extend({
 
 				println('> POST ' + removeUrl);
 				println('> body: ' + formBody);
+				setProgress(25);
 				return self._httpJson(removeUrl, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'Accept': 'application/json', 'X-CSRF-Token': token },
@@ -428,9 +472,14 @@ return view.extend({
 					println('< Response: ' + JSON.stringify(res));
 					if (res && res.ok) {
 						println(_('卸载成功'));
-						enableClose();
-						ui.addNotification(null, E('p', {}, _('卸载成功')), 'success');
-						refresh();
+					var statusDone = E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin:8px 0 0 0;' }, [
+						E('span', { 'style': 'display:inline-flex;width:22px;height:22px;background:#dcfce7;color:#065f46;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '✓'),
+						E('span', { 'style': 'font-weight:600;color:#065f46;' }, _('卸载完成'))
+					]);
+					log.parentNode.insertBefore(statusDone, log.nextSibling);
+					enableClose();
+					ui.addNotification(null, E('p', {}, _('卸载成功')), 'success');
+					refresh();
 						return;
 					}
 					println('! POST 失败或返回非成功，尝试 GET…');
@@ -438,13 +487,19 @@ return view.extend({
 						(token ? ('token=' + encodeURIComponent(token) + '&') : '') +
 						('package=' + encodeURIComponent(name) + '&purge=' + (purge ? '1' : '0') + '&removeDeps=' + (removeDeps ? '1' : '0'));
 					println('> GET ' + q);
+					setProgress(60);
 					return self._httpJson(q, { method: 'GET', headers: { 'Accept': 'application/json' } }).then(function(r2){
 						println('< Response: ' + JSON.stringify(r2));
 						if (r2 && r2.ok) {
+							setProgress(100);
 							println(_('卸载成功'));
+							opSuccess = true;
 							ui.addNotification(null, E('p', {}, _('卸载成功')), 'success');
 							refresh();
 						} else {
+							setProgress(100);
+							progressBar.style.background = '#ef4444';
+							progressBar.style.boxShadow = '0 0 8px rgba(239,68,68,.6)';
 							println(_('卸载失败'));
 							ui.addNotification(null, E('p', {}, _('卸载失败')), 'danger');
 						}
@@ -452,6 +507,14 @@ return view.extend({
 					});
 				}).catch(function(err){
 					println('! Error: ' + String(err));
+					setProgress(100);
+					progressBar.style.background = '#ef4444';
+					progressBar.style.boxShadow = '0 0 8px rgba(239,68,68,.6)';
+					var statusFail2 = E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin:8px 0 0 0;' }, [
+						E('span', { 'style': 'display:inline-flex;width:22px;height:22px;background:#fee2e2;color:#7f1d1d;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '✕'),
+						E('span', { 'style': 'font-weight:600;color:#7f1d1d;' }, _('卸载失败'))
+					]);
+					log.parentNode.insertBefore(statusFail2, log.nextSibling);
 					ui.addNotification(null, E('p', {}, _('卸载失败') + '：' + String(err)), 'danger');
 					enableClose();
 				});
