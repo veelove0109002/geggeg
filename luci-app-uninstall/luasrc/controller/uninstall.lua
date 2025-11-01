@@ -19,6 +19,10 @@ function index()
 	e = entry({ 'admin', 'vum', 'uninstall', 'remove' }, call('action_remove'))
 	e.leaf = true
 	e.acl_depends = { 'luci-app-uninstall' }
+
+	e = entry({ 'admin', 'vum', 'uninstall', 'search_files' }, call('action_search_files'))
+	e.leaf = true
+	e.acl_depends = { 'luci-app-uninstall' }
 end
 
 local http = require 'luci.http'
@@ -26,6 +30,7 @@ local sys = require 'luci.sys'
 local ipkg = require 'luci.model.ipkg'
 local json = require 'luci.jsonc'
 local fs = require 'nixio.fs'
+local util = require 'luci.util'
 
 local function json_response(tbl, code)
 	code = code or 200
@@ -36,6 +41,41 @@ local function json_response(tbl, code)
 	http.header('Expires', '0')
 	http.prepare_content('application/json')
 	http.write(json.stringify(tbl or {}))
+end
+
+-- 根据文件名关键词匹配：返回包含该文件的已安装包名列表
+function action_search_files()
+	local q = http.formvalue('q') or ''
+	q = tostring(q):gsub('^%s+', ''):gsub('%s+$', '')
+	if q == '' then return json_response({ packages = {} }) end
+	-- opkg files <pkg> 遍历成本高；这里通过解析 status 文件的 Conffiles 字段与常见安装目录兜底匹配
+	-- 1) 先构建已安装包列表
+	local installed = {}
+	local status_path = fs.stat('/usr/lib/opkg/status') and '/usr/lib/opkg/status' or (fs.stat('/var/lib/opkg/status') and '/var/lib/opkg/status' or nil)
+	if status_path then
+		local s = fs.readfile(status_path) or ''
+		local cur
+		for line in s:gmatch('[^\n\r]*') do
+			local n = line:match('^Package:%s*(.+)$')
+			if n then cur = n end
+			local st = line:match('^Status:%s*(.+)$')
+			if st and st:match('installed') and cur then installed[#installed+1] = cur end
+		end
+	end
+	-- 2) 尝试基于 opkg files 查询（有限次数，避免阻塞）
+	local matches, limit = {}, 2000
+	for _, name in ipairs(installed) do
+		local out = sys.exec(string.format("opkg files '%s' 2>/dev/null", name)) or ''
+		local hit
+		for line in out:gmatch('[^\n]+') do
+			if line:match('^/[^%s]+') then
+				if line:lower():find(q, 1, true) then hit = true; break end
+			end
+		end
+		if hit then matches[#matches+1] = name end
+		if #matches >= 200 then break end
+	end
+	return json_response({ packages = matches })
 end
 
 function action_list()

@@ -73,9 +73,17 @@ return view.extend({
 		var root = E('div', { 'class': 'cbi-map' }, [
 			E('h2', {}, _('高级卸载')),
 			E('div', { 'class': 'cbi-section-descr' }, _('选择要卸载的已安装软件包。可选地同时删除其配置文件。')),
-			E('div', { 'style': 'margin:8px 0; display:flex; gap:8px; align-items:center;' }, [
-				E('input', { id: 'filter', type: 'text', placeholder: _('筛选包名…'), 'style': 'flex:1;' })
-			])
+			(function(){
+				var wrap = E('div', { 'style': 'margin:8px 0; display:flex; align-items:center;' }, []);
+				var box = E('div', { 'style': 'flex:1; display:flex; align-items:center; gap:8px; background:#ffffff; border:1px solid #e5e7eb; border-radius:999px; padding:8px 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);' }, []);
+				var icon = E('span', { 'style': 'display:inline-flex; width:18px; height:18px; color:#6b7280;' }, '🔍');
+				var input = E('input', { id: 'filter', type: 'text', placeholder: _('按包名或文件名搜索…'), 'style': 'flex:1; border:none; outline:none; font-size:14px; color:#111827; background:transparent;' });
+				var clearBtn = E('button', { id: 'filter-clear', type: 'button', 'style': 'display:none; background:#f3f4f6; border:1px solid #e5e7eb; color:#6b7280; border-radius:999px; padding:2px 8px; font-size:12px;' }, _('清除'));
+				box.appendChild(icon); box.appendChild(input); box.appendChild(clearBtn); wrap.appendChild(box);
+				input.addEventListener('input', function(){ clearBtn.style.display = input.value ? 'inline-block' : 'none'; });
+				clearBtn.addEventListener('click', function(){ input.value=''; clearBtn.style.display='none'; input.dispatchEvent(new Event('input')); });
+				return wrap;
+			})()
 		]);
 
 		// Default icon (inline SVG as data URI)
@@ -343,23 +351,42 @@ return view.extend({
 			self.pollList().then(function(data){
 				var pkgs = (data && data.packages) || [];
 				var q = (document.getElementById('filter').value || '').toLowerCase();
-				var list = pkgs.filter(function(p){ return p.name && p.name.indexOf('luci-app-') === 0; }).filter(function(p){ return !q || p.name.toLowerCase().includes(q); });
-				// Clear grid
-				while (grid.firstChild) grid.removeChild(grid.firstChild);
-				var g_vum = [], g_istore = [], g_default = [], g_manual = [];
-				list.forEach(function(p){
-					var cat = (p.category || '');
-					if (cat === 'VUM插件类') g_vum.push(p);
-					else if (cat === 'iStoreOS插件类') g_istore.push(p);
-					else if (cat === '系统默认插件类') g_default.push(p);
-					else if (cat === '其他插件类') g_manual.push(p);
-					else g_manual.push(p);
+				var base = pkgs.filter(function(p){ return p.name && p.name.indexOf('luci-app-') === 0; });
+				var list = base.filter(function(p){
+					var byName = !q || p.name.toLowerCase().includes(q) || (p.display_name && String(p.display_name).toLowerCase().includes(q));
+					return byName;
 				});
-				renderSection(_('VUM插件类'), g_vum);
-				renderSection(_('iStoreOS插件类'), g_istore);
-				renderSection(_('其他插件类'), g_manual);
-				renderSection(_('系统默认插件类'), g_default);
-
+				function renderWith(listFinal){
+					while (grid.firstChild) grid.removeChild(grid.firstChild);
+					var g_vum = [], g_istore = [], g_default = [], g_manual = [];
+					listFinal.forEach(function(p){
+						var cat = (p.category || '');
+						if (cat === 'VUM插件类') g_vum.push(p);
+						else if (cat === 'iStoreOS插件类') g_istore.push(p);
+						else if (cat === '系统默认插件类') g_default.push(p);
+						else if (cat === '其他插件类') g_manual.push(p);
+						else g_manual.push(p);
+					});
+					renderSection(_('VUM插件类'), g_vum);
+					renderSection(_('iStoreOS插件类'), g_istore);
+					renderSection(_('其他插件类'), g_manual);
+					renderSection(_('系统默认插件类'), g_default);
+				}
+				if (!q) { renderWith(list); return; }
+				// 文件名匹配：后端返回包含该文件的已安装包名列表
+				var url = L.url('admin/vum/uninstall/search_files') + '?q=' + encodeURIComponent(q);
+				self._httpJson(url, { headers: { 'Accept': 'application/json' } }).then(function(res){
+					var matchNames = (res && res.packages) || [];
+					if (matchNames.length > 0) {
+						var nameSet = {};
+						list.forEach(function(p){ nameSet[p.name] = true; });
+						base.forEach(function(p){ if (matchNames.indexOf(p.name) !== -1) nameSet[p.name] = true; });
+						var merged = base.filter(function(p){ return nameSet[p.name]; });
+						renderWith(merged);
+					} else {
+						renderWith(list);
+					}
+				}).catch(function(){ renderWith(list); });
 			}).catch(function(err){
 				ui.addNotification(null, E('p', {}, _('加载软件包列表失败: ') + String(err)), 'danger');
 			});
@@ -546,6 +573,7 @@ return view.extend({
 		root.addEventListener('input', function(ev) {
 			if (ev.target && ev.target.id === 'filter') refresh();
 		});
+		root.addEventListener('click', function(ev){ if (ev.target && ev.target.id === 'filter-clear') refresh(); });
 
 		refresh();
 		return root;
