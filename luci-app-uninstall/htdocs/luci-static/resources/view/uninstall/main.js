@@ -305,7 +305,7 @@ return view.extend({
 			var depsLabel = E('label', { 'style': 'display:grid; grid-template-columns:16px auto auto; align-items:center; column-gap:6px; line-height:20px;' }, [ E('img', { src: ICON_DEP, width: 16, height: 16, 'style': 'display:inline-block;' }), _('卸载相关依赖'), makeSwitch(depsEl) ]);
 			var optionsRow = E('div', { 'style': 'display:flex; gap:12px; align-items:center; flex-wrap:wrap;' }, [ purgeLabel, depsLabel ]);
 			var btn = E('button', { type: 'button', 'class': 'btn cbi-button cbi-button-remove' }, _('卸载'));
-			btn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); uninstall(pkg.name, purgeEl.checked, depsEl.checked); });
+			btn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); uninstall(pkg.name, purgeEl.checked, depsEl.checked, pkg.version || ''); });
 			var metaTop = E('div', { 'style': 'display:flex; align-items:center; gap:8px; flex-wrap:wrap;' }, [ title ]);
 			var metaCol = E('div', { 'class': 'pkg-meta', 'style': 'flex:1; display:flex; flex-direction:column; gap:6px;' }, [ metaTop, optionsRow ]);
 			var actions = E('div', { 'class': 'pkg-actions', 'style': 'display:flex; align-items:center; margin-left:auto;' }, [ btn ]);
@@ -365,12 +365,25 @@ return view.extend({
 			});
 		}
 
-		function uninstall(name, purge, removeDeps) {
+		function uninstall(name, purge, removeDeps, version) {
 			var confirmFn = function(msg, desc){
 				return new Promise(function(resolve){
 					var titleRow = E('div', { 'style': 'display:flex; align-items:center; gap:8px;' }, [
 						E('span', { 'style': 'display:inline-flex;width:28px;height:28px;background:#fee2e2;color:#b91c1c;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '!'),
 						E('span', { 'style': 'font-weight:600;font-size:16px;color:#111827;' }, _('卸载确认'))
+					]);
+					var zhHeader = displayName(name);
+					var headerName = zhHeader && zhHeader !== name ? (zhHeader + ' (' + name + ')') : name;
+					var headerInfo = E('div', { 'style': 'margin-top:8px; display:flex; align-items:center; justify-content:space-between;' }, [
+						E('div', { 'style': 'font-size:18px; font-weight:700; color:#111827;' }, headerName),
+						E('div', { 'style': 'display:flex; align-items:center; gap:10px;' }, [
+							E('span', { 'style': 'font-size:12px; color:#6b7280; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:999px; padding:2px 8px;' }, (version || '')),
+							E('img', { src: packageIcon(name), 'style': 'width:32px; height:32px; border-radius:6px; background:#f3f4f6; border:1px solid #e5e7eb; object-fit:contain;' })
+						])
+					]);
+					var warnBar = E('div', { 'style': 'margin-top:8px; border-radius:8px; padding:8px 10px; background: linear-gradient(90deg, #fff1f2 0%, #ffe4e6 50%, #fecaca 100%); color:#7f1d1d; display:flex; align-items:center; gap:8px;' }, [
+						E('span', { 'style': 'display:inline-flex;width:20px;height:20px;background:#fca5a5;color:#7f1d1d;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '!'),
+						E('span', {}, _('此操作将卸载插件，可能影响系统功能，请谨慎操作。'))
 					]);
 					var body = E('div', { 'style': 'margin-top:8px;color:#374151;line-height:1.6;' }, [
 						E('div', {}, msg),
@@ -379,9 +392,7 @@ return view.extend({
 					var cancelBtn = E('button', { 'class': 'btn', 'style': 'background:#eef2ff;color:#1f2937;border-radius:999px;padding:6px 14px;' }, _('取消'));
 					var okBtn = E('button', { 'class': 'btn', 'style': 'background:#2563eb;color:#fff;border-radius:999px;padding:6px 14px;' }, _('确定'));
 					var footer = E('div', { 'style':'margin-top:12px;display:flex;gap:8px;justify-content:flex-end;' }, [ cancelBtn, okBtn ]);
-					var zhHeader = displayName(name);
-					var headerName = zhHeader && zhHeader !== name ? (zhHeader + ' (' + name + ')') : name;
-					var modal = ui.showModal(headerName, [ titleRow, body, footer ]);
+					var modal = ui.showModal(headerName, [ titleRow, headerInfo, warnBar, body, footer ]);
 					cancelBtn.addEventListener('click', function(){ ui.hideModal(modal); resolve(false); });
 					okBtn.addEventListener('click', function(){ ui.hideModal(modal); resolve(true); });
 				});
