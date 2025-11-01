@@ -319,7 +319,7 @@ return view.extend({
 		function renderSection(title, items){
 			if (!items || items.length === 0) return;
 			var header = E('div', { 'style': 'display:flex; align-items:center; justify-content:space-between;' }, [
-				E('h3', { 'style': 'margin:12px 0 0 0; font-size:14px; color:#374151; font-weight:600;' }, title)
+				E('h3', { 'style': 'margin:12px 0 0 0; font-size:18px; color:#111827; font-weight:700;' }, title)
 			]);
 			var groupGrid = E('div', { 'style': 'display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:12px; margin-top:8px;' });
 			items.forEach(function(p){ groupGrid.appendChild(renderCard(p)); });
@@ -345,8 +345,8 @@ return view.extend({
 				});
 				renderSection(_('VUM插件类'), g_vum);
 				renderSection(_('iStoreOS插件类'), g_istore);
-				renderSection(_('系统默认插件类'), g_default);
 				renderSection(_('其他插件类'), g_manual);
+				renderSection(_('系统默认插件类'), g_default);
 
 			}).catch(function(err){
 				ui.addNotification(null, E('p', {}, _('加载软件包列表失败: ') + String(err)), 'danger');
