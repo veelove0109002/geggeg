@@ -95,7 +95,8 @@ return view.extend({
 			'luci-app-tailscaler': 'tailscale',
 			'luci-app-webcontrol': 'webcontrol',
 			'luci-app-timecontrol': 'webcontrol',
-			'luci-app-control-weburl': 'webcontrol'
+			'luci-app-control-weburl': 'webcontrol',
+			'luci-app-control-webrestriction': 'webcontrol'
 		};
 		function packageIcon(name){
 			// 从 app-icons 目录加载 PNG
@@ -249,6 +250,7 @@ return view.extend({
 			'luci-app-webcontrol': _('简单网络管控'),
 			'luci-app-timecontrol': _('简单网络管控组件1'),
 			'luci-app-control-weburl': _('简单网络管控组件2'),
+			'luci-app-control-webrestriction': _('简单网络管控'),
 			'luci-app-wan-mac': _('MAC地址生成器'),
 			'luci-app-vsftpd': _('FTP服务器'),
 			'luci-app-vaultwarden': _('Vaultwarden私人密码箱'),
