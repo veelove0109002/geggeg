@@ -190,6 +190,16 @@ function action_list()
 		local s = fs.readfile(path)
 		if not s or #s == 0 then return end
 		local name, ver, is_installed, install_time, vum_tag
+		-- 系统默认插件白名单
+		local default_apps = {
+			['luci-app-cifs-mount']=true, ['luci-app-cpufreq']=true, ['luci-app-ddns']=true,
+			['luci-app-diskman']=true, ['luci-app-dockerman']=true, ['luci-app-fan']=true,
+			['luci-app-filetransfer']=true, ['luci-app-firewall']=true, ['luci-app-hd-idle']=true,
+			['luci-app-mergerfs']=true, ['luci-app-nfs']=true, ['luci-app-oaf']=true,
+			['luci-app-ota']=true, ['luci-app-package-manager']=true, ['luci-app-samba4']=true,
+			['luci-app-ttyd']=true, ['luci-app-unishare']=true, ['luci-app-upnp']=true,
+			['luci-app-wol']=true
+		}
 		for line in s:gmatch("[^\n\r]*") do
 			local n = line:match("^Package:%s*(.+)$")
 			if n then
@@ -232,6 +242,8 @@ function action_list()
 				cat = 'VUM插件类'
 			elseif istore_list[name] or name:match('^app%-meta%-.+') then
 				cat = 'iStoreOS插件类'
+			elseif default_apps[name] then
+				cat = '系统默认插件类'
 			elseif name:match('^luci%-app%-') then
 				cat = '其他插件类'
 			end

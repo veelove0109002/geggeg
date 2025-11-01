@@ -334,16 +334,18 @@ return view.extend({
 				var list = pkgs.filter(function(p){ return p.name && p.name.indexOf('luci-app-') === 0; }).filter(function(p){ return !q || p.name.toLowerCase().includes(q); });
 				// Clear grid
 				while (grid.firstChild) grid.removeChild(grid.firstChild);
-				var g_vum = [], g_istore = [], g_manual = [];
+				var g_vum = [], g_istore = [], g_default = [], g_manual = [];
 				list.forEach(function(p){
 					var cat = (p.category || '');
 					if (cat === 'VUM插件类') g_vum.push(p);
 					else if (cat === 'iStoreOS插件类') g_istore.push(p);
+					else if (cat === '系统默认插件类') g_default.push(p);
 					else if (cat === '其他插件类') g_manual.push(p);
 					else g_manual.push(p);
 				});
 				renderSection(_('VUM插件类'), g_vum);
 				renderSection(_('iStoreOS插件类'), g_istore);
+				renderSection(_('系统默认插件类'), g_default);
 				renderSection(_('其他插件类'), g_manual);
 
 			}).catch(function(err){
