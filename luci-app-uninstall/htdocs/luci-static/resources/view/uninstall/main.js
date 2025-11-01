@@ -319,7 +319,10 @@ return view.extend({
 		function renderSection(title, items){
 			if (!items || items.length === 0) return;
 			var header = E('div', { 'style': 'display:flex; align-items:center; justify-content:space-between;' }, [
-				E('h3', { 'style': 'margin:12px 0 0 0; font-size:18px; color:#111827; font-weight:700; display:inline-block; padding:6px 10px; border-radius:10px; background: linear-gradient(90deg, #ffffff 0%, #e0f2fe 100%);' }, title)
+				E('div', { 'style': 'display:flex; align-items:center; gap:8px;' }, [
+					E('img', { src: L.resource('icons/folder.png'), 'style': 'width:20px;height:20px;' }),
+					E('h3', { 'style': 'margin:12px 0 0 0; font-size:18px; color:#111827; font-weight:700; display:inline-block; padding:6px 10px; border-radius:10px; background: linear-gradient(90deg, #ffffff 0%, #e0f2fe 100%);' }, title)
+				])
 			]);
 			var groupGrid = E('div', { 'style': 'display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:12px; margin-top:8px;' });
 			items.forEach(function(p){ groupGrid.appendChild(renderCard(p)); });
