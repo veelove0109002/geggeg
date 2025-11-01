@@ -384,13 +384,17 @@ return view.extend({
 					okBtn.addEventListener('click', function(){ ui.hideModal(modal); resolve(true); });
 				});
 			};
-			return confirmFn((_('确定卸载包 %s ？').format ? _('确定卸载包 %s ？').format(name) : '确定卸载包 ' + name + ' ？'), purge ? _('同时删除配置文件。') : '').then(function(ok) {
+			var zhName = displayName(name);
+			var fullName = zhName && zhName !== name ? (zhName + ' (' + name + ')') : name;
+			return confirmFn((_('确定卸载包 %s ？').format ? _('确定卸载包 %s ？').format(fullName) : '确定卸载包 ' + fullName + ' ？'), purge ? _('同时删除配置文件。') : '').then(function(ok) {
 				if (!ok) return;
 
 				// 日志弹窗
 				var log = E('pre', { 'style': 'max-height:260px;overflow:auto;background:#0b1024;color:#cbd5e1;padding:10px;border-radius:8px;' }, '');
 				var closeBtn = E('button', { 'class': 'btn', disabled: true }, _('关闭'));
-				var modal = ui.showModal(_('正在卸载…') + ' ' + name, [
+				var zhName2 = displayName(name);
+				var fullName2 = zhName2 && zhName2 !== name ? (zhName2 + ' (' + name + ')') : name;
+				var modal = ui.showModal(_('正在卸载…') + ' ' + fullName2, [
 					log,
 					E('div', { 'style':'margin-top:10px;display:flex;gap:8px;justify-content:flex-end;' }, [ closeBtn ])
 				]);
