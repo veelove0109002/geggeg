@@ -379,7 +379,9 @@ return view.extend({
 					var cancelBtn = E('button', { 'class': 'btn', 'style': 'background:#eef2ff;color:#1f2937;border-radius:999px;padding:6px 14px;' }, _('取消'));
 					var okBtn = E('button', { 'class': 'btn', 'style': 'background:#2563eb;color:#fff;border-radius:999px;padding:6px 14px;' }, _('确定'));
 					var footer = E('div', { 'style':'margin-top:12px;display:flex;gap:8px;justify-content:flex-end;' }, [ cancelBtn, okBtn ]);
-					var modal = ui.showModal('', [ titleRow, body, footer ]);
+					var zhHeader = displayName(name);
+					var headerName = zhHeader && zhHeader !== name ? (zhHeader + ' (' + name + ')') : name;
+					var modal = ui.showModal(headerName, [ titleRow, body, footer ]);
 					cancelBtn.addEventListener('click', function(){ ui.hideModal(modal); resolve(false); });
 					okBtn.addEventListener('click', function(){ ui.hideModal(modal); resolve(true); });
 				});
