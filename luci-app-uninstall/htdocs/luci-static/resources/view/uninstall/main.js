@@ -341,13 +341,8 @@ return view.extend({
 				E('div', { 'style': 'display:flex; align-items:center; gap:12px;' }, [
 					E('img', { src: L.resource('icons/' + icon), 'style': 'width:36px;height:36px; object-fit:contain;' }),
 					(function(){
-						var gradMap = {};
-						// 半透明渐变以实现“果冻玻璃”叠加效果
-						gradMap[_('VUM插件类')] = 'linear-gradient(90deg, rgba(241,239,254,0.6) 0%, rgba(217,210,254,0.6) 50%, rgba(167,139,250,0.6) 100%)';
-						gradMap[_('iStoreOS插件类')] = 'linear-gradient(90deg, rgba(240,245,255,0.6) 0%, rgba(230,240,255,0.6) 50%, rgba(219,228,255,0.6) 100%)';
-						gradMap[_('其他插件类')] = 'linear-gradient(90deg, rgba(248,250,252,0.6) 0%, rgba(238,242,255,0.6) 50%, rgba(229,231,235,0.6) 100%)';
-						gradMap[_('系统默认插件类')] = 'linear-gradient(90deg, rgba(250,250,250,0.6) 0%, rgba(244,244,245,0.6) 50%, rgba(237,237,237,0.6) 100%)';
-						var grad = gradMap[title] || 'linear-gradient(90deg, rgba(248,250,252,0.6) 0%, rgba(238,242,255,0.6) 50%, rgba(229,231,235,0.6) 100%)';
+						// 统一使用 iStoreOS 插件类的渐变色（半透明果冻玻璃效果）
+						var grad = 'linear-gradient(90deg, rgba(240,245,255,0.6) 0%, rgba(230,240,255,0.6) 50%, rgba(219,228,255,0.6) 100%)';
 						var style = 'margin:0; font-size:20px; color:#111827; font-weight:800; display:inline-block; padding:8px 16px; border-radius:14px; background: ' + grad + '; backdrop-filter: saturate(160%) blur(10px); -webkit-backdrop-filter: saturate(160%) blur(10px); border:1px solid rgba(255,255,255,0.45); box-shadow: 0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.25)';
 						return E('h3', { 'style': style }, title);
 					})()
