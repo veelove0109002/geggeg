@@ -511,20 +511,52 @@ local function remove_confs(files)
 		if f:sub(1,12) == '/etc/init.d/' then
 			local base = f:match('/etc/init.d/(.+)$')
 			if base then
-				for rc in fs.dir('/etc/rc.d') or function() return nil end do end
 				local d = '/etc/rc.d'
 				local h = fs.dir(d)
 				if h then
 					for n in h do
-						if n:match(base .. '$') then
+						if n:match(base) then
 							local p = d .. '/' .. n
 							if fs.lstat(p) then fs.remove(p) end
+							removed[#removed+1] = p
 						end
 					end
 				end
 			end
 		end
 	end
+	return removed
+end
+
+-- 强力清理：确保重新安装后是“全新未配置”状态
+local function purge_everything(app)
+	local removed = {}
+	local function rm(p)
+		local st = fs.stat(p)
+		if st and st.type == 'reg' then fs.remove(p); removed[#removed+1] = p end
+		if st and st.type == 'dir' then sys.call(string.format("rm -rf %q >/dev/null 2>&1", p)); removed[#removed+1] = p end
+	end
+	-- configs
+	rm('/etc/config/' .. app)
+	rm('/etc/config/luci-app-' .. app)
+	-- init scripts and rc.d links
+	rm('/etc/init.d/' .. app)
+	local rd = '/etc/rc.d'
+	local it = fs.dir(rd)
+	if it then for n in it do if n:match(app) then rm(rd .. '/' .. n) end end end
+	-- app specific dirs
+	rm('/etc/' .. app)
+	rm('/usr/share/' .. app)
+	rm('/var/etc/' .. app)
+	rm('/var/run/' .. app)
+	rm('/run/' .. app)
+	-- LuCI caches
+	rm('/tmp/luci-indexcache')
+	sys.call('rm -rf /tmp/luci-modulecache/* >/dev/null 2>&1')
+	-- UCI runtime state
+	local vs = '/var/state'
+	local dit = fs.dir(vs)
+	if dit then for n in dit do if n:match(app) then rm(vs .. '/' .. n) end end end
 	return removed
 end
 
@@ -731,20 +763,19 @@ function action_remove()
 	end
 
 	local removed_confs = {}
+	local removed_force = {}
 	if purge then
 		removed_confs = remove_confs(files)
-		-- best-effort: also remove /etc/config/<pkg> if exists
-		local cfg = '/etc/config/' .. pkg
-		if fs.stat(cfg) then
-			fs.remove(cfg)
-			removed_confs[#removed_confs+1] = cfg
-		end
+		-- also remove common config and symlinks by app name
+		local appname = pkg:match('^luci%-app%-(.+)$') or pkg
+		removed_force = purge_everything(appname)
 	end
 
 	json_response({
 		ok = success,
 		message = output or '',
 		removed_configs = removed_confs,
-		removed_caches = removed_caches
+		removed_caches = removed_caches,
+		removed_force = removed_force
 	})
 end
