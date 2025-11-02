@@ -9,7 +9,7 @@ function index()
 
 	entry({ 'admin', 'vum' }, firstchild(), _('VUM插件库'), 60).dependent = true
 	entry({ 'admin', 'vum', 'uninstall' }, view('uninstall/main'), _('高级卸载'), 90).acl_depends = { 'luci-app-uninstall' }
-	entry({ 'admin', 'vum' }, firstchild(), _('VUM插件库'), 60).icon = 'icons/vumcj.svg'
+	entry({ 'admin', 'vum' }, firstchild(), _('VUM插件库'), 60).icon = '/luci-static/resources/icons/vumcj.svg'
 
 	local e
 	e = entry({ 'admin', 'vum', 'uninstall', 'list' }, call('action_list'))
