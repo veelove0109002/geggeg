@@ -252,7 +252,7 @@ jobs:
       - name: Upload .run installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: luci-app-uninstall_run_${{ matrix.release }}_${{ matrix.short }}
+          name: luci-app-uninstall_run_${{ matrix.release }}_${{ matrix.short }}_${{ github.run_id }}
           path: ${{ steps.makeself.outputs.run_path }}
           if-no-files-found: error
 
