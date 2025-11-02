@@ -406,6 +406,24 @@ function action_list()
 			end
 		end
 	end
+	-- de-duplicate by package name, prefer records with version and latest install_time
+	local uniq = {}
+	for _, p in ipairs(pkgs) do
+		local exist = uniq[p.name]
+		if not exist then
+			uniq[p.name] = p
+		else
+			local function score(x)
+				local s = (tonumber(x.install_time or 0) or 0)
+				if x.version and #x.version > 0 then s = s + 1000000000 end
+				return s
+			end
+			if score(p) > score(exist) then uniq[p.name] = p end
+		end
+	end
+	local dedup = {}
+	for _, v in pairs(uniq) do dedup[#dedup+1] = v end
+
 	-- sort: latest install_time desc, then name asc
 	local function cmp(a, b)
 		local at = tonumber(a.install_time or 0) or 0
@@ -413,8 +431,8 @@ function action_list()
 		if at ~= bt then return at > bt end
 		return (a.name or '') < (b.name or '')
 	end
-	table.sort(pkgs, cmp)
-	json_response({ packages = pkgs, count = #pkgs })
+	table.sort(dedup, cmp)
+	json_response({ packages = dedup, count = #dedup })
 end
 
 local function collect_conffiles(pkg)
