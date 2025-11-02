@@ -8,6 +8,8 @@ LUCI_PKGARCH:=all
 LUCI_DEPENDS:=+luci-base +rpcd +opkg
 PKG_LICENSE:=Apache-2.0
 
+PKG_VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null)
+PKG_RELEASE?=1
 include $(TOPDIR)/feeds/luci/luci.mk
 
 define Package/luci-app-uninstall/install

@@ -108,6 +108,16 @@ jobs:
 
           rm -rf package/luci-app-uninstall
           cp -a "$GITHUB_WORKSPACE/luci-app-uninstall" package/
+
+          # Inject version into package Makefile if provided
+          VER='${{ github.event.inputs.app_version }}'
+          if [ -n "$VER" ]; then
+            MF="package/luci-app-uninstall/Makefile"
+            if grep -q "include \$(TOPDIR)/feeds/luci/luci.mk" "$MF"; then
+              sed -i "s|include \\$(TOPDIR)/feeds/luci/luci.mk|PKG_VERSION:=$VER\nPKG_RELEASE:=1\ninclude \\$(TOPDIR)/feeds/luci/luci.mk|" "$MF"
+            fi
+          fi
+
           make defconfig
           make package/luci-app-uninstall/compile -j$(nproc) V=sc
 
