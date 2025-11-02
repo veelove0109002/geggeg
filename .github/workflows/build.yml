@@ -124,13 +124,16 @@ jobs:
           make defconfig
           make package/luci-app-uninstall/compile -j$(nproc) V=sc
 
-          mkdir -p "$GITHUB_WORKSPACE/artifacts/${{ matrix.release }}/${{ matrix.short }}"
-          # Collect any built ipk from anywhere under bin
+          ART_DIR="$GITHUB_WORKSPACE/artifacts/${{ matrix.release }}/${{ matrix.short }}"
+          mkdir -p "$ART_DIR"
+          # Clean old IPKs to avoid mixing versions in installer
+          rm -f "$ART_DIR"/luci-app-uninstall*.ipk || true
           echo "== Locate built IPKs =="
           find bin -type f -name 'luci-app-uninstall*.ipk' -print || true
           IPK_FOUND=$(find bin -type f -name 'luci-app-uninstall*.ipk' | wc -l || true)
           if [ "${IPK_FOUND}" -gt 0 ]; then
-            find bin -type f -name 'luci-app-uninstall*.ipk' -exec cp -v {} "$GITHUB_WORKSPACE/artifacts/${{ matrix.release }}/${{ matrix.short }}/" \;
+            # Copy freshly built IPKs only
+            find bin -type f -name 'luci-app-uninstall*.ipk' -exec cp -v {} "$ART_DIR/" \;
           else
             echo "No luci-app-uninstall*.ipk found under SDK/bin" >&2
           fi
@@ -208,7 +211,8 @@ jobs:
           mkdir -p "$INSTALLER_DIR"
 
           # Collect built ipks (handle no-match safely)
-          IPK_LIST=$(find "$ART_DIR" -maxdepth 1 -type f -name '*.ipk' | sort || true)
+          # Only package freshly copied IPKs; ensure single version
+          IPK_LIST=$(find "$ART_DIR" -maxdepth 1 -type f -name 'luci-app-uninstall*.ipk' -printf '%T@ %p\n' | sort -nr | awk '{print $2}' || true)
           if [ -z "$IPK_LIST" ]; then
             echo "No IPK found in $ART_DIR. Build probably failed earlier." >&2
             exit 2

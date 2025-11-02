@@ -530,16 +530,38 @@ end
 
 local function clear_caches(app)
 	local removed = {}
+	-- 1) 清理 LuCI 相关缓存
+	local luci_paths = {
+		'/tmp/luci-indexcache',
+		'/tmp/luci-modulecache'
+	}
+	for _, p in ipairs(luci_paths) do
+		local st = fs.stat(p)
+		if st then
+			local cmd = st.type == 'dir' and string.format("rm -rf %q", p .. '/*') or string.format("rm -f %q", p)
+			sys.call(cmd .. ' >/dev/null 2>&1')
+			removed[#removed+1] = p
+		end
+	end
+	-- 2) 清理 opkg 列表与缓存（不会影响系统正常使用）
+	local opkg_paths = { '/tmp/opkg-lists', '/var/lib/opkg/lists', '/var/cache/opkg' }
+	for _, d in ipairs(opkg_paths) do
+		local st = fs.stat(d)
+		if st and st.type == 'dir' then
+			sys.call(string.format("rm -rf %q >/dev/null 2>&1", d .. '/*'))
+			removed[#removed+1] = d
+		end
+	end
+	-- 3) 清理 /tmp、/var/tmp、/var/run、/run 下命中 app 名称的项
 	local dirs = { '/tmp', '/var/tmp', '/var/cache', '/var/run', '/run' }
 	for _, d in ipairs(dirs) do
 		local it = fs.dir(d)
 		if it then
 			for n in it do
-				if n and n:match(app) then
+				if n and (n:match(app) or n:match('^' .. (app or '') .. '[-_]?')) then
 					local p = d .. '/' .. n
 					local st = fs.stat(p)
 					if st then
-						-- best-effort recursive remove via shell; restricted to volatile dirs only
 						sys.call(string.format("rm -rf %q >/dev/null 2>&1", p))
 						removed[#removed+1] = p
 					end
