@@ -201,15 +201,13 @@ jobs:
             exit 2
           fi
           while IFS= read -r f; do
-            cp -v "$f" "$INSTALLER_DIR"/
-          done <<EOF_LIST
-          $IPK_LIST
+            [ -n "$f" ] && cp -v "$f" "$INSTALLER_DIR"/
+          done <<< "$IPK_LIST"
 
           # If version provided, annotate a VERSION file inside installer for reference
           if [ -n "$VER" ]; then
             echo "$VER" > "$INSTALLER_DIR/VERSION"
           fi
-          EOF_LIST
 
           # Write install script executed on target (OpenWrt)
           cat > "$INSTALLER_DIR/install.sh" << 'EOF'
