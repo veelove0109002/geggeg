@@ -104,7 +104,10 @@ return view.extend({
 			'luci-app-webcontrol': 'webcontrol',
 			'luci-app-timecontrol': 'webcontrol',
 			'luci-app-control-weburl': 'webcontrol',
-			'luci-app-control-webrestriction': 'webcontrol'
+			'luci-app-control-webrestriction': 'webcontrol',
+			'luci-app-argon-config': 'zt',
+			'luci-app-quickstart': 'ks',
+			'luci-app-store': 'istoreos'
 		};
 		function packageIcon(name){
 			// 从 app-icons 目录加载 PNG
@@ -122,6 +125,9 @@ return view.extend({
 
 		var NAME_MAP = {
 			'luci-app-uninstall': _('高级卸载'),
+			'luci-app-argon-config': _('Argon 主题设置'),
+			'luci-app-quickstart': _('快速开始'),
+			'luci-app-store': _('iStore'),
 			'luci-app-ttyd': _('Web终端'),
 			'luci-app-samba4': _('文件共享'),
 			'luci-app-aria2': _('离线下载'),
@@ -293,7 +299,7 @@ return view.extend({
 			var titleEn = E('div', { 'style': 'font-size:12px;color:#6b7280;word-break:break-all;' }, pkg.name);
 			var title = E('div', { 'style': 'display:flex; flex-direction:column; gap:2px;' }, [ titleCn, titleEn ]);
 			// small inline icons for options
-			var ICON_CFG = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/><path d="M7 7V5a3 3 0 0 1 6 0v2"/></svg>');
+			var ICON_CFG = L.resource('app-icons/qk.png');
 			var ICON_DEP = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 1 7.07 0l1.41 1.41a5 5 0 1 1-7.07 7.07l-1.41-1.41"/><path d="M14 11a5 5 0 0 1-7.07 0L5.52 9.59a5 5 0 1 1 7.07-7.07L14 3.93"/></svg>');
 			
 			var verCorner = E('div', { 'style': 'position:absolute; right:12px; bottom:6px; font-size:12px; color:#111827; background:#f3f4f6; padding:2px 8px; border-radius:10px; border:1px solid #e5e7eb;' }, (pkg.version || ''));
