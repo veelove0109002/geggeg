@@ -663,6 +663,26 @@ return view.extend({
 			if (el && v && v.length > 0) { el.textContent = v; el.style.display = 'inline-block'; }
 		}).catch(function(){});
 
+		// 隐藏全局“保存&应用/保存/复位”按钮（主题可能默认添加）
+		var hideGlobalActions = function(){
+			var actions = document.querySelector('.cbi-page-actions');
+			if (actions) actions.style.display = 'none';
+			['apply','save','reset'].forEach(function(k){
+				var btns = document.querySelectorAll('.cbi-button-' + k);
+				btns.forEach(function(b){ b.style.display = 'none'; });
+			});
+			// 按文案兜底
+			var allBtns = document.querySelectorAll('button');
+			allBtns.forEach(function(b){
+				var t = (b.textContent || '').trim();
+				if (t === '保存&应用' || t === '保存' || t === '复位') b.style.display = 'none';
+			});
+		};
+		// 初次隐藏 + 监听 DOM 变化以防主题重新插入
+		hideGlobalActions();
+		var mo = new MutationObserver(function(){ hideGlobalActions(); });
+		mo.observe(document.body || document.documentElement, { childList: true, subtree: true });
+
 		refresh();
 		return root;
 	}
