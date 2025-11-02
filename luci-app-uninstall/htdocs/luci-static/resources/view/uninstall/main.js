@@ -340,7 +340,12 @@ return view.extend({
 			var header = E('div', { 'style': 'display:flex; align-items:center; justify-content:space-between;' }, [
 				E('div', { 'style': 'display:flex; align-items:center; gap:12px;' }, [
 					E('img', { src: L.resource('icons/' + icon), 'style': 'width:36px;height:36px; object-fit:contain;' }),
-					E('h3', { 'style': 'margin:0; font-size:20px; color:#111827; font-weight:800; display:inline-block; padding:8px 12px; border-radius:12px; background: linear-gradient(90deg, #fff7e6 0%, #f3d081 50%, #e2b34c 100%); box-shadow: inset 0 0 6px rgba(255,255,255,0.6), inset 0 -2px 6px rgba(0,0,0,0.08);' }, title)
+					(function(){
+						var gradVUM = 'linear-gradient(90deg, #ede9fe 0%, #c4b5fd 50%, #7c3aed 100%)';
+						var gradDefault = 'linear-gradient(90deg, #fff7e6 0%, #f3d081 50%, #e2b34c 100%)';
+						var grad = (title === _('VUM插件类')) ? gradVUM : gradDefault;
+						return E('h3', { 'style': 'margin:0; font-size:20px; color:#111827; font-weight:800; display:inline-block; padding:8px 12px; border-radius:12px; background: ' + grad + '; box-shadow: inset 0 0 6px rgba(255,255,255,0.6), inset 0 -2px 6px rgba(0,0,0,0.08);' }, title);
+					})()
 				])
 			]);
 			var groupGrid = E('div', { 'style': 'display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:12px; margin-top:8px;' });
