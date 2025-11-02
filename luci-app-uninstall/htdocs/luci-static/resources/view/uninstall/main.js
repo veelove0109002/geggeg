@@ -311,9 +311,11 @@ return view.extend({
 			var purgeLabel = E('label', { 'style': 'display:grid; grid-template-columns:16px auto auto; align-items:center; column-gap:6px; line-height:20px;' }, [ E('img', { src: ICON_CFG, width: 16, height: 16, 'style': 'display:inline-block;' }), _('删除配置文件'), makeSwitch(purgeEl) ]);
 			var depsEl = E('input', { type: 'checkbox', checked: true, 'style': 'display:none;' });
 			var depsLabel = E('label', { 'style': 'display:grid; grid-template-columns:16px auto auto; align-items:center; column-gap:6px; line-height:20px;' }, [ E('img', { src: ICON_DEP, width: 16, height: 16, 'style': 'display:inline-block;' }), _('卸载相关依赖'), makeSwitch(depsEl) ]);
-			var optionsRow = E('div', { 'style': 'display:flex; gap:12px; align-items:center; flex-wrap:wrap;' }, [ purgeLabel, depsLabel ]);
+			var cacheEl = E('input', { type: 'checkbox', checked: true, 'style': 'display:none;' });
+			var cacheLabel = E('label', { 'style': 'display:grid; grid-template-columns:16px auto auto; align-items:center; column-gap:6px; line-height:20px;' }, [ E('img', { src: ICON_CFG, width: 16, height: 16, 'style': 'display:inline-block;' }), _('清空插件缓存'), makeSwitch(cacheEl) ]);
+			var optionsRow = E('div', { 'style': 'display:flex; gap:12px; align-items:center; flex-wrap:wrap;' }, [ purgeLabel, depsLabel, cacheLabel ]);
 			var btn = E('button', { type: 'button', 'class': 'btn cbi-button cbi-button-remove' }, _('卸载'));
-			btn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); uninstall(pkg.name, purgeEl.checked, depsEl.checked, pkg.version || ''); });
+			btn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); uninstall(pkg.name, purgeEl.checked, depsEl.checked, pkg.version || '', cacheEl.checked); });
 			var metaTop = E('div', { 'style': 'display:flex; align-items:center; gap:8px; flex-wrap:wrap;' }, [ title ]);
 			var metaCol = E('div', { 'class': 'pkg-meta', 'style': 'flex:1; display:flex; flex-direction:column; gap:6px;' }, [ metaTop, optionsRow ]);
 			var actions = E('div', { 'class': 'pkg-actions', 'style': 'display:flex; align-items:center; margin-left:auto;' }, [ btn ]);
@@ -409,7 +411,7 @@ return view.extend({
 			});
 		}
 
-		function uninstall(name, purge, removeDeps, version) {
+		function uninstall(name, purge, removeDeps, version, clearCache) {
 			var confirmFn = function(msg, desc){
 				return new Promise(function(resolve){
 					var titleRow = E('div', { 'style': 'display:flex; align-items:center; gap:8px;' }, [
@@ -447,6 +449,7 @@ return view.extend({
 			var descParts = [];
 			if (purge) descParts.push(_('同时删除配置文件。'));
 			if (removeDeps) descParts.push(_('同时卸载相关依赖。'));
+			if (clearCache) descParts.push(_('同时清空插件缓存。'));
 			return confirmFn((_('确定卸载包 %s ？').format ? _('确定卸载包 %s ？').format(fullName) : '确定卸载包 ' + fullName + ' ？'), descParts.join(' ')).then(function(ok) {
 				if (!ok) return;
 
@@ -506,7 +509,7 @@ return view.extend({
 
 				var token = (L.env && (L.env.token || L.env.csrf_token)) || '';
 				var removeUrl = L.url('admin/vum/uninstall/remove') + (token ? ('?token=' + encodeURIComponent(token)) : '');
-				var formBody = 'package=' + encodeURIComponent(name) + '&purge=' + (purge ? '1' : '0') + '&removeDeps=' + (removeDeps ? '1' : '0');
+				var formBody = 'package=' + encodeURIComponent(name) + '&purge=' + (purge ? '1' : '0') + '&removeDeps=' + (removeDeps ? '1' : '0') + '&clearCache=' + (clearCache ? '1' : '0');
 
 				println('> POST ' + removeUrl);
 				println('> body: ' + formBody);

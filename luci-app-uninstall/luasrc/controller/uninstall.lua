@@ -528,11 +528,34 @@ local function remove_confs(files)
 	return removed
 end
 
+local function clear_caches(app)
+	local removed = {}
+	local dirs = { '/tmp', '/var/tmp', '/var/cache', '/var/run', '/run' }
+	for _, d in ipairs(dirs) do
+		local it = fs.dir(d)
+		if it then
+			for n in it do
+				if n and n:match(app) then
+					local p = d .. '/' .. n
+					local st = fs.stat(p)
+					if st then
+						-- best-effort recursive remove via shell; restricted to volatile dirs only
+						sys.call(string.format("rm -rf %q >/dev/null 2>&1", p))
+						removed[#removed+1] = p
+					end
+				end
+			end
+		end
+	end
+	return removed
+end
+
 function action_remove()
 	-- 优先从表单获取参数，避免读取原始内容后导致表单解析失效
 	local pkg = http.formvalue('package')
 	local purge = (http.formvalue('purge') == '1')
 	local remove_deps = (http.formvalue('removeDeps') == '1')
+	local clear_cache = (http.formvalue('clearCache') == '1')
 	-- 若表单未提供，则尝试解析 JSON 请求体
 	if (not pkg or pkg == '') then
 		local body = http.content() or ''
@@ -542,6 +565,7 @@ function action_remove()
 				pkg = data.package or pkg
 				if data.purge ~= nil then purge = data.purge and true or false end
 				if data.removeDeps ~= nil then remove_deps = data.removeDeps and true or false end
+				if data.clearCache ~= nil then clear_cache = data.clearCache and true or false end
 			end
 		end
 	end
@@ -678,6 +702,12 @@ function action_remove()
 	-- 自动清理未使用依赖
 	sys.call('opkg autoremove >/dev/null 2>&1')
 
+	local removed_caches = {}
+	if success and clear_cache then
+		local appname = pkg:match('^luci%-app%-(.+)$') or pkg
+		removed_caches = clear_caches(appname)
+	end
+
 	local removed_confs = {}
 	if purge then
 		removed_confs = remove_confs(files)
@@ -692,6 +722,7 @@ function action_remove()
 	json_response({
 		ok = success,
 		message = output or '',
-		removed_configs = removed_confs
+		removed_configs = removed_confs,
+		removed_caches = removed_caches
 	})
 end
