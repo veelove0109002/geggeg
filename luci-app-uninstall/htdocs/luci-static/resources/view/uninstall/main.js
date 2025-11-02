@@ -444,7 +444,10 @@ return view.extend({
 			};
 			var zhName = displayName(name);
 			var fullName = zhName && zhName !== name ? (zhName + ' (' + name + ')') : name;
-			return confirmFn((_('确定卸载包 %s ？').format ? _('确定卸载包 %s ？').format(fullName) : '确定卸载包 ' + fullName + ' ？'), purge ? _('同时删除配置文件。') : '').then(function(ok) {
+			var descParts = [];
+			if (purge) descParts.push(_('同时删除配置文件。'));
+			if (removeDeps) descParts.push(_('同时卸载相关依赖。'));
+			return confirmFn((_('确定卸载包 %s ？').format ? _('确定卸载包 %s ？').format(fullName) : '确定卸载包 ' + fullName + ' ？'), descParts.join(' ')).then(function(ok) {
 				if (!ok) return;
 
 				// 日志弹窗
