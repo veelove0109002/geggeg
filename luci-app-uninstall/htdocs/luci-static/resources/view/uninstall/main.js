@@ -341,9 +341,16 @@ return view.extend({
 				E('div', { 'style': 'display:flex; align-items:center; gap:12px;' }, [
 					E('img', { src: L.resource('icons/' + icon), 'style': 'width:36px;height:36px; object-fit:contain;' }),
 					(function(){
-						var gradVUM = 'linear-gradient(90deg, #ede9fe 0%, #c4b5fd 50%, #7c3aed 100%)';
-						var gradDefault = 'linear-gradient(90deg, #fff7e6 0%, #f3d081 50%, #e2b34c 100%)';
-						var grad = (title === _('VUM插件类')) ? gradVUM : gradDefault;
+						var gradMap = {};
+						// VUM：保持紫色但更柔和
+						gradMap[_('VUM插件类')] = 'linear-gradient(90deg, #f1effe 0%, #d9d2fe 50%, #a78bfa 100%)';
+						// iStoreOS：更浅的蓝紫
+						gradMap[_('iStoreOS插件类')] = 'linear-gradient(90deg, #f0f5ff 0%, #e6f0ff 50%, #dbe4ff 100%)';
+						// 其他插件类：浅灰蓝
+						gradMap[_('其他插件类')] = 'linear-gradient(90deg, #f8fafc 0%, #eef2ff 50%, #e5e7eb 100%)';
+						// 系统默认插件类：极浅中性灰
+						gradMap[_('系统默认插件类')] = 'linear-gradient(90deg, #fafafa 0%, #f4f4f5 50%, #ededed 100%)';
+						var grad = gradMap[title] || 'linear-gradient(90deg, #f8fafc 0%, #eef2ff 50%, #e5e7eb 100%)';
 						return E('h3', { 'style': 'margin:0; font-size:20px; color:#111827; font-weight:800; display:inline-block; padding:8px 12px; border-radius:12px; background: ' + grad + '; box-shadow: inset 0 0 6px rgba(255,255,255,0.6), inset 0 -2px 6px rgba(0,0,0,0.08);' }, title);
 					})()
 				])
