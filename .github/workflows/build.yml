@@ -12,6 +12,11 @@ on:
       - 'luci-app-uninstall/**'
       - '.github/workflows/build.yml'
   workflow_dispatch:
+    inputs:
+      app_version:
+        description: 'App version (e.g., 1.2.3) used when manually dispatching'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -153,8 +158,8 @@ jobs:
         id: release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: luci-app-uninstall_${{ matrix.release }}_${{ matrix.short }}
-          name: luci-app-uninstall SDK ${{ matrix.release }} - ${{ matrix.short }}
+          tag_name: ${{ github.event.inputs.app_version != '' && format('luci-app-uninstall_{0}_{1}_{2}', matrix.release, matrix.short, github.event.inputs.app_version) || format('luci-app-uninstall_{0}_{1}', matrix.release, matrix.short) }}
+          name: luci-app-uninstall SDK ${{ matrix.release }} - ${{ matrix.short }}${{ github.event.inputs.app_version != '' && format(' (v{0})', github.event.inputs.app_version) || '' }}
           draft: false
           prerelease: false
           generate_release_notes: true
@@ -164,7 +169,7 @@ jobs:
       - name: Upload IPKs to Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: luci-app-uninstall_${{ matrix.release }}_${{ matrix.short }}
+          tag_name: ${{ github.event.inputs.app_version != '' && format('luci-app-uninstall_{0}_{1}_{2}', matrix.release, matrix.short, github.event.inputs.app_version) || format('luci-app-uninstall_{0}_{1}', matrix.release, matrix.short) }}
           files: |
             artifacts/${{ matrix.release }}/${{ matrix.short }}/*.ipk
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -183,6 +188,7 @@ jobs:
           set -euxo pipefail
           REL='${{ matrix.release }}'
           ARCH='${{ matrix.short }}'
+          VER='${{ github.event.inputs.app_version }}'
           ART_DIR="artifacts/${REL}/${ARCH}"
           INSTALLER_DIR="installer/${REL}/${ARCH}"
           rm -rf "$INSTALLER_DIR"
@@ -198,6 +204,11 @@ jobs:
             cp -v "$f" "$INSTALLER_DIR"/
           done <<EOF_LIST
           $IPK_LIST
+
+          # If version provided, annotate a VERSION file inside installer for reference
+          if [ -n "$VER" ]; then
+            echo "$VER" > "$INSTALLER_DIR/VERSION"
+          fi
           EOF_LIST
 
           # Write install script executed on target (OpenWrt)
