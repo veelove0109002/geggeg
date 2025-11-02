@@ -244,9 +244,27 @@ jobs:
           if [ -f "$RUN_PATH" ]; then
             echo "run_exists=1" >> "$GITHUB_OUTPUT"
             echo "run_path=$RUN_PATH" >> "$GITHUB_OUTPUT"
+            echo "run_name=$RUN_NAME" >> "$GITHUB_OUTPUT"
           else
             echo "run_exists=0" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Upload .run installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: luci-app-uninstall_run_${{ matrix.release }}_${{ matrix.short }}
+          path: ${{ steps.makeself.outputs.run_path }}
+          if-no-files-found: error
+
+      - name: Upload .run to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.app_version != '' && format('luci-app-uninstall_{0}_{1}_{2}', matrix.release, matrix.short, github.event.inputs.app_version) || format('luci-app-uninstall_{0}_{1}', matrix.release, matrix.short) }}
+          files: |
+            ${{ steps.makeself.outputs.run_path }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: List artifacts after .run
         run: |

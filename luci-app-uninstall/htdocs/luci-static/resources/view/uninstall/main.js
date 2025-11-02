@@ -596,6 +596,13 @@ return view.extend({
 		});
 		root.addEventListener('click', function(ev){ if (ev.target && ev.target.id === 'filter-clear') { if (searchTimer) clearTimeout(searchTimer); searchTimer = setTimeout(refresh, 10); } });
 
+		// 拉取自身版本并显示徽标
+		self._httpJson(L.url('admin/vum/uninstall/version'), { headers: { 'Accept': 'application/json' } }).then(function(res){
+			var v = res && res.version;
+			var el = document.getElementById('uninstall-version');
+			if (el && v && v.length > 0) { el.textContent = v; el.style.display = 'inline-block'; }
+		}).catch(function(){});
+
 		refresh();
 		return root;
 	}

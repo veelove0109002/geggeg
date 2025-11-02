@@ -23,6 +23,10 @@ function index()
 	e = entry({ 'admin', 'vum', 'uninstall', 'search_files' }, call('action_search_files'))
 	e.leaf = true
 	e.acl_depends = { 'luci-app-uninstall' }
+
+	e = entry({ 'admin', 'vum', 'uninstall', 'version' }, call('action_version'))
+	e.leaf = true
+	e.acl_depends = { 'luci-app-uninstall' }
 end
 
 local http = require 'luci.http'
@@ -41,6 +45,28 @@ local function json_response(tbl, code)
 	http.header('Expires', '0')
 	http.prepare_content('application/json')
 	http.write(json.stringify(tbl or {}))
+end
+
+-- 查询 luci-app-uninstall 当前已安装版本
+function action_version()
+	local status_path = fs.stat('/usr/lib/opkg/status') and '/usr/lib/opkg/status' or (fs.stat('/var/lib/opkg/status') and '/var/lib/opkg/status' or nil)
+	local ver
+	if status_path then
+		local s = fs.readfile(status_path) or ''
+		local name, installed
+		for line in s:gmatch('[^\n\r]*') do
+			local n = line:match('^Package:%s*(.+)$')
+			if n then
+				if name == 'luci-app-uninstall' and installed and not ver then break end
+				name, installed = n, false
+			end
+			local st = line:match('^Status:%s*(.+)$')
+			if st and st:match('installed') then installed = true end
+			local v = line:match('^Version:%s*(.+)$')
+			if v and name == 'luci-app-uninstall' and installed then ver = v end
+		end
+	end
+	json_response({ version = ver or '' })
 end
 
 -- 根据文件名关键词匹配：返回包含该文件的已安装包名列表
