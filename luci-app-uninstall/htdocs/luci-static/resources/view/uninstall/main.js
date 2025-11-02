@@ -77,7 +77,7 @@ return view.extend({
 				var wrap = E('div', { 'style': 'margin:8px 0; display:flex; align-items:center;' }, []);
 				var box = E('div', { 'style': 'flex:1; display:flex; align-items:center; gap:8px; background:#ffffff; border:1px solid #e5e7eb; border-radius:999px; padding:8px 12px;' }, []);
 				var icon = E('span', { 'style': 'display:inline-flex; width:18px; height:18px; color:#6b7280;' }, '🔍');
-				var input = E('input', { id: 'filter', type: 'text', placeholder: _('按包名或文件名搜索…'), 'style': 'flex:1; border:none; outline:none; font-size:14px; color:#111827; background:transparent;' });
+				var input = E('input', { id: 'filter', type: 'text', placeholder: _('按包名或文件名搜索…'), 'style': 'flex:1; border:none; outline:none; box-shadow:none; -webkit-appearance:none; appearance:none; font-size:14px; color:#111827; background:transparent;' });
 				var clearBtn = E('button', { id: 'filter-clear', type: 'button', 'style': 'display:none; background:#f3f4f6; border:1px solid #e5e7eb; color:#6b7280; border-radius:999px; padding:2px 8px; font-size:12px;' }, _('清除'));
 				box.appendChild(icon); box.appendChild(input); box.appendChild(clearBtn); wrap.appendChild(box);
 				input.addEventListener('input', function(){ clearBtn.style.display = input.value ? 'inline-block' : 'none'; });
@@ -337,7 +337,7 @@ return view.extend({
 			var icon = iconMap[title] || 'folder.png';
 			var header = E('div', { 'style': 'display:flex; align-items:center; justify-content:space-between;' }, [
 				E('div', { 'style': 'display:flex; align-items:center; gap:12px;' }, [
-					E('img', { src: L.resource('icons/' + icon), 'style': 'width:28px;height:28px; object-fit:contain;' }),
+					E('img', { src: L.resource('icons/' + icon), 'style': 'width:36px;height:36px; object-fit:contain;' }),
 					E('h3', { 'style': 'margin:0; font-size:20px; color:#111827; font-weight:800; display:inline-block; padding:8px 12px; border-radius:12px; background: linear-gradient(90deg, #fff7e6 0%, #f3d081 50%, #e2b34c 100%); box-shadow: inset 0 0 6px rgba(255,255,255,0.6), inset 0 -2px 6px rgba(0,0,0,0.08);' }, title)
 				])
 			]);
