@@ -236,9 +236,18 @@ jobs:
             exit 1
           fi
           echo "Installing packages..."
-          if ! opkg install ./*.ipk; then
-            echo "Retrying with --force-reinstall"
-            opkg install --force-reinstall ./*.ipk
+          # Prefer installing the local IPK explicitly to avoid repo preference
+          BEST_IPK=$(ls -1t ./luci-app-uninstall_*.ipk 2>/dev/null | head -n1 || true)
+          if [ -z "$BEST_IPK" ]; then
+            echo "No local luci-app-uninstall_*.ipk found in installer dir" >&2
+            exit 2
+          fi
+          # Try cleanly remove old version to avoid HOLD/PREFER behavior
+          opkg remove luci-app-uninstall >/dev/null 2>&1 || true
+          opkg update >/dev/null 2>&1 || true
+          if ! opkg install --force-reinstall --force-downgrade "$BEST_IPK"; then
+            echo "Retrying with --force-depends"
+            opkg install --force-reinstall --force-downgrade --force-depends "$BEST_IPK"
           fi
           echo "Installation finished."
           EOF
