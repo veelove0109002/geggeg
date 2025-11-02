@@ -331,7 +331,7 @@ return view.extend({
 		function renderSection(title, items){
 			if (!items || items.length === 0) return;
 			var iconMap = {
-				'VUM插件类': 'vumc.png',
+				'VUM-Plugin类': 'vumc.png',
 				'iStoreOS插件类': 'isc.png',
 				'其他插件类': 'qtc.png',
 				'系统默认插件类': 'xtc.png'
@@ -343,7 +343,7 @@ return view.extend({
 					(function(){
 						// 统一使用 iStoreOS 插件类的渐变色（半透明果冻玻璃效果）
 						var grad = 'linear-gradient(90deg, rgba(240,245,255,0.6) 0%, rgba(230,240,255,0.6) 50%, rgba(219,228,255,0.6) 100%)';
-						var style = 'margin:0; font-size:20px; color:#111827; font-weight:800; display:inline-block; padding:8px 16px; border-radius:14px; background: ' + grad + '; backdrop-filter: saturate(160%) blur(10px); -webkit-backdrop-filter: saturate(160%) blur(10px); border:1px solid rgba(255,255,255,0.45); box-shadow: 0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.25)';
+						var style = 'margin:0; font-size:20px; color:rgba(17,24,39,0.72); font-weight:800; display:inline-block; padding:8px 16px; border-radius:14px; background: ' + grad + '; backdrop-filter: saturate(160%) blur(10px); -webkit-backdrop-filter: saturate(160%) blur(10px); border:1px solid rgba(255,255,255,0.45); box-shadow: 0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.25)';
 						return E('h3', { 'style': style }, title);
 					})()
 				])
@@ -383,7 +383,7 @@ return view.extend({
 						else if (cat === '其他插件类') g_manual.push(p);
 						else g_manual.push(p);
 					});
-					renderSection(_('VUM插件类'), g_vum);
+					renderSection(_('VUM-Plugin类'), g_vum);
 					renderSection(_('iStoreOS插件类'), g_istore);
 					renderSection(_('其他插件类'), g_manual);
 					renderSection(_('系统默认插件类'), g_default);
