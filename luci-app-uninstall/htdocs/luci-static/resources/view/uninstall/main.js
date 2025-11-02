@@ -357,8 +357,12 @@ return view.extend({
 				var q = (document.getElementById('filter').value || '').toLowerCase();
 				var base = pkgs.filter(function(p){ return p.name && p.name.indexOf('luci-app-') === 0; });
 				var list = base.filter(function(p){
-					var byName = !q || p.name.toLowerCase().includes(q) || (p.display_name && String(p.display_name).toLowerCase().includes(q));
-					return byName;
+					if (!q) return true;
+					var zh = (typeof displayName === 'function') ? displayName(p.name, p.category) : (p.display_name || '');
+					var byName = p.name && p.name.toLowerCase().includes(q);
+					var byDisp = p.display_name && String(p.display_name).toLowerCase().includes(q);
+					var byZh = zh && String(zh).toLowerCase().includes(q);
+					return byName || byDisp || byZh;
 				});
 				function renderWith(listFinal){
 					if (curSeq !== searchSeq) return; // 已过期
