@@ -107,7 +107,26 @@ return view.extend({
 			'luci-app-control-webrestriction': 'webcontrol',
 			'luci-app-argon-config': 'zt',
 			'luci-app-quickstart': 'ks',
-			'luci-app-store': 'istoreos'
+			'luci-app-store': 'istoreos',
+			'luci-app-cifs-mount': 'cifs',
+			'luci-app-cpufreq': 'cpu',
+			'luci-app-ddns': 'ddns',
+			'luci-app-diskman': 'disk',
+			'luci-app-dockerman': 'docker',
+			'luci-app-fan': 'fs',
+			'luci-app-filetransfer': 'wj',
+			'luci-app-firewall': 'fhq',
+			'luci-app-hd-idle': 'ypxm',
+			'luci-app-mergerfs': 'hbwj',
+			'luci-app-nfs': 'nfs',
+			'luci-app-oaf': 'oaf',
+			'luci-app-ota': 'ota',
+			'luci-app-package-manager': 'gl',
+			'luci-app-samba4': 'gx',
+			'luci-app-ttyd': 'zd',
+			'luci-app-unishare': 'lh',
+			'luci-app-upnp': 'upnp',
+			'luci-app-wol': 'hx'
 		};
 		function packageIcon(name){
 			// 从 app-icons 目录加载 PNG
