@@ -108,6 +108,11 @@ return view.extend({
 			'luci-app-argon-config': 'zt',
 			'luci-app-quickstart': 'ks',
 			'luci-app-store': 'istoreos',
+			'luci-app-nikki': 'niki',
+			'luci-app-passwall': 'ps',
+			'luci-app-cloudflared': 'ct',
+			'luci-app-adguardhome': 'ad',
+			'luci-app-openclash': 'oc',
 			'luci-app-cifs-mount': 'cifs',
 			'luci-app-cpufreq': 'cpu',
 			'luci-app-ddns': 'ddns',
@@ -162,6 +167,8 @@ return view.extend({
 			'luci-app-aria2': _('离线下载'),
 			'luci-app-upnp': _('UPnP端口映射'),
 			'luci-app-ddns': _('动态域名'),
+			'luci-app-nikki': _('NIKKI'),
+			'luci-app-cloudflared': _('Cloudflare Tunnel'),
 			'luci-app-ddnsto': _('DDNSTO路由远程'),
 			'luci-app-wol': _('网络唤醒'),
 			'luci-app-firewall': _('防火墙'),
@@ -169,8 +176,9 @@ return view.extend({
 			'luci-app-openvpn': _('OpenVPN'),
 			'luci-app-wireguard': _('WireGuard'),
 			'luci-app-sqm': _('智能队列管理'),
-			'luci-app-adguardhome': _('广告过滤'),
-			'luci-app-passwall': _('科学上网'),
+			'luci-app-adguardhome': _('AdguardHome'),
+			'luci-app-passwall': _('PassWall'),
+			'luci-app-cloudflared': _('Cloudflare Tunnel'),
 			'luci-app-homeassistant': _('家庭助手'),
 			'luci-app-dockerman': _('容器管理'),
 			'luci-app-zerotier': _('ZeroTier'),
@@ -331,6 +339,11 @@ return view.extend({
 			var ICON_PURGE = L.resource('app-icons/pz.png');
 			var ICON_CACHE = L.resource('app-icons/qk.png');
 			var ICON_DEP = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 1 7.07 0l1.41 1.41a5 5 0 1 1-7.07 7.07l-1.41-1.41"/><path d="M14 11a5 5 0 0 1-7.07 0L5.52 9.59a5 5 0 1 1 7.07-7.07L14 3.93"/></svg>');
+			function optionIcon(src){
+				return E('span', { 'style': 'display:inline-flex;width:18px;height:18px;align-items:center;justify-content:center;' }, [
+					E('img', { src: src, width: 16, height: 16, 'style': 'display:inline-block;object-fit:contain;' })
+				]);
+			}
 			
 			var verCorner = E('div', { 'style': 'position:absolute; right:12px; bottom:6px; font-size:12px; color:#111827; background:#f3f4f6; padding:2px 8px; border-radius:10px; border:1px solid #e5e7eb;' }, (pkg.version || ''));
 			var purgeEl = E('input', { type: 'checkbox', checked: true, 'style': 'display:none;' });
@@ -344,11 +357,11 @@ return view.extend({
 				sw.addEventListener('click', function(ev){ ev.preventDefault(); el.checked = !el.checked; sw.firstChild.setAttribute('style', el.checked ? knobOn : knobOff); sw.setAttribute('style', el.checked ? baseOn : baseOff); });
 				return sw;
 			};
-			var purgeLabel = E('label', { 'style': 'display:grid; grid-template-columns:16px auto auto; align-items:center; column-gap:6px; line-height:20px;' }, [ E('img', { src: ICON_PURGE, width: 16, height: 16, 'style': 'display:inline-block;' }), _('删除配置文件'), makeSwitch(purgeEl) ]);
+			var purgeLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px auto auto; align-items:center; column-gap:6px; line-height:20px;' }, [ optionIcon(ICON_PURGE), _('删除配置文件'), makeSwitch(purgeEl) ]);
 			var depsEl = E('input', { type: 'checkbox', checked: true, 'style': 'display:none;' });
-			var depsLabel = E('label', { 'style': 'display:grid; grid-template-columns:16px auto auto; align-items:center; column-gap:6px; line-height:20px;' }, [ E('img', { src: ICON_DEP, width: 16, height: 16, 'style': 'display:inline-block;' }), _('卸载相关依赖'), makeSwitch(depsEl) ]);
+			var depsLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px auto auto; align-items:center; column-gap:6px; line-height:20px;' }, [ optionIcon(ICON_DEP), _('卸载相关依赖'), makeSwitch(depsEl) ]);
 			var cacheEl = E('input', { type: 'checkbox', checked: true, 'style': 'display:none;' });
-			var cacheLabel = E('label', { 'style': 'display:grid; grid-template-columns:16px auto auto; align-items:center; column-gap:6px; line-height:20px;' }, [ E('img', { src: ICON_CACHE, width: 16, height: 16, 'style': 'display:inline-block;' }), _('清空插件缓存'), makeSwitch(cacheEl) ]);
+			var cacheLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px auto auto; align-items:center; column-gap:6px; line-height:20px;' }, [ optionIcon(ICON_CACHE), _('清空插件缓存'), makeSwitch(cacheEl) ]);
 			var optionsRow = E('div', { 'style': 'display:flex; gap:12px; align-items:center; flex-wrap:wrap;' }, [ purgeLabel, depsLabel, cacheLabel ]);
 			var btn = E('button', { type: 'button', 'class': 'btn cbi-button cbi-button-remove' }, _('卸载'));
 			btn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); uninstall(pkg.name, purgeEl.checked, depsEl.checked, pkg.version || '', cacheEl.checked); });
