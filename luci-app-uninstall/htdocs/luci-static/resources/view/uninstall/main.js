@@ -115,6 +115,7 @@ return view.extend({
 			// 特殊映射优先
 			var base = SPECIAL_ICON_MAP[name];
 			if (base) return L.resource('app-icons/' + base + '.png');
+			if (name === 'luci-app-uninstall') return L.resource('app-icons/gjxz.png');
 			// 例如：luci-app-ddns-go -> ddnsgo.png
 			var short = (name || '').replace(/^luci-app-/, '').replace(/-/g, '');
 			return L.resource('app-icons/' + short + '.png');
@@ -125,6 +126,15 @@ return view.extend({
 
 		var NAME_MAP = {
 			'luci-app-uninstall': _('高级卸载'),
+			'luci-app-cifs-mount': _('挂载cifs'),
+			'luci-app-fan': _('风扇'),
+			'luci-app-filetransfer': _('文件传输'),
+			'luci-app-mergerfs': _('合并文件系统'),
+			'luci-app-nfs': _('NFS'),
+			'luci-app-oaf': _('OAF'),
+			'luci-app-ota': _('OTA'),
+			'luci-app-package-manager': _('软件包管理器'),
+			'luci-app-unishare': _('联合共享'),
 			'luci-app-argon-config': _('Argon 主题设置'),
 			'luci-app-quickstart': _('快速开始'),
 			'luci-app-store': _('iStore'),
