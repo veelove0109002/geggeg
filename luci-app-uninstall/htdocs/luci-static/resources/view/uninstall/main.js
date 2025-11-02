@@ -377,7 +377,7 @@ return view.extend({
 					var g_vum = [], g_istore = [], g_default = [], g_manual = [];
 					listFinal.forEach(function(p){
 						var cat = (p.category || '');
-						if (cat === 'VUM插件类') g_vum.push(p);
+						if (cat === 'VUM-Plugin类') g_vum.push(p);
 						else if (cat === 'iStoreOS插件类') g_istore.push(p);
 						else if (cat === '系统默认插件类') g_default.push(p);
 						else if (cat === '其他插件类') g_manual.push(p);

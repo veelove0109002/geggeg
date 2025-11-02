@@ -315,9 +315,9 @@ function action_list()
 		if name and is_installed then
 			local cat
 			if vum_tag and (vum_tag == '1' or vum_tag == 'yes' or vum_tag == 'true') then
-				cat = 'VUM插件类'
+				cat = 'VUM-Plugin类'
 			elseif name == 'luci-app-uninstall' then
-				cat = 'VUM插件类'
+				cat = 'VUM-Plugin类'
 			elseif istore_list[name] or name:match('^app%-meta%-.+') then
 				cat = 'iStoreOS插件类'
 			elseif default_apps[name] then
