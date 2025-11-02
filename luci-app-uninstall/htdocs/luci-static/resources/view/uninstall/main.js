@@ -342,16 +342,14 @@ return view.extend({
 					E('img', { src: L.resource('icons/' + icon), 'style': 'width:36px;height:36px; object-fit:contain;' }),
 					(function(){
 						var gradMap = {};
-						// VUM：保持紫色但更柔和
-						gradMap[_('VUM插件类')] = 'linear-gradient(90deg, #f1effe 0%, #d9d2fe 50%, #a78bfa 100%)';
-						// iStoreOS：更浅的蓝紫
-						gradMap[_('iStoreOS插件类')] = 'linear-gradient(90deg, #f0f5ff 0%, #e6f0ff 50%, #dbe4ff 100%)';
-						// 其他插件类：浅灰蓝
-						gradMap[_('其他插件类')] = 'linear-gradient(90deg, #f8fafc 0%, #eef2ff 50%, #e5e7eb 100%)';
-						// 系统默认插件类：极浅中性灰
-						gradMap[_('系统默认插件类')] = 'linear-gradient(90deg, #fafafa 0%, #f4f4f5 50%, #ededed 100%)';
-						var grad = gradMap[title] || 'linear-gradient(90deg, #f8fafc 0%, #eef2ff 50%, #e5e7eb 100%)';
-						return E('h3', { 'style': 'margin:0; font-size:20px; color:#111827; font-weight:800; display:inline-block; padding:8px 12px; border-radius:12px; background: ' + grad + '; box-shadow: inset 0 0 6px rgba(255,255,255,0.6), inset 0 -2px 6px rgba(0,0,0,0.08);' }, title);
+						// 半透明渐变以实现“果冻玻璃”叠加效果
+						gradMap[_('VUM插件类')] = 'linear-gradient(90deg, rgba(241,239,254,0.6) 0%, rgba(217,210,254,0.6) 50%, rgba(167,139,250,0.6) 100%)';
+						gradMap[_('iStoreOS插件类')] = 'linear-gradient(90deg, rgba(240,245,255,0.6) 0%, rgba(230,240,255,0.6) 50%, rgba(219,228,255,0.6) 100%)';
+						gradMap[_('其他插件类')] = 'linear-gradient(90deg, rgba(248,250,252,0.6) 0%, rgba(238,242,255,0.6) 50%, rgba(229,231,235,0.6) 100%)';
+						gradMap[_('系统默认插件类')] = 'linear-gradient(90deg, rgba(250,250,250,0.6) 0%, rgba(244,244,245,0.6) 50%, rgba(237,237,237,0.6) 100%)';
+						var grad = gradMap[title] || 'linear-gradient(90deg, rgba(248,250,252,0.6) 0%, rgba(238,242,255,0.6) 50%, rgba(229,231,235,0.6) 100%)';
+						var style = 'margin:0; font-size:20px; color:#111827; font-weight:800; display:inline-block; padding:8px 16px; border-radius:14px; background: ' + grad + '; backdrop-filter: saturate(160%) blur(10px); -webkit-backdrop-filter: saturate(160%) blur(10px); border:1px solid rgba(255,255,255,0.45); box-shadow: 0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.25)';
+						return E('h3', { 'style': style }, title);
 					})()
 				])
 			]);
