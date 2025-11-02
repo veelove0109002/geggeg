@@ -109,13 +109,16 @@ jobs:
           rm -rf package/luci-app-uninstall
           cp -a "$GITHUB_WORKSPACE/luci-app-uninstall" package/
 
-          # Inject version into package Makefile if provided
+          # Inject version into package Makefile if provided (robust override)
           VER='${{ github.event.inputs.app_version }}'
           if [ -n "$VER" ]; then
             MF="package/luci-app-uninstall/Makefile"
-            if grep -q "include \$(TOPDIR)/feeds/luci/luci.mk" "$MF"; then
-              sed -i "s|include \\$(TOPDIR)/feeds/luci/luci.mk|PKG_VERSION:=$VER\nPKG_RELEASE:=1\ninclude \\$(TOPDIR)/feeds/luci/luci.mk|" "$MF"
-            fi
+            # 1) Replace conditional assignment to ensure override
+            sed -i -E "s/^PKG_VERSION\?=.*/PKG_VERSION:=$VER/" "$MF"
+            sed -i -E "s/^PKG_RELEASE\?=.*/PKG_RELEASE:=1/" "$MF"
+            # 2) If PKG_VERSION not present, insert at top
+            if ! grep -q "^PKG_VERSION" "$MF"; then sed -i "1i PKG_VERSION:=$VER" "$MF"; fi
+            if ! grep -q "^PKG_RELEASE" "$MF"; then sed -i "1i PKG_RELEASE:=1" "$MF"; fi
           fi
 
           make defconfig
