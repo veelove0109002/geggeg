@@ -377,7 +377,7 @@ return view.extend({
 					E('span', { id: 'remote-version', 'style': 'font-size:12px; color:#111827; background:#e0f2fe; border:1px solid #93c5fd; border-radius:999px; padding:2px 8px; display:none;' }, ''),
 					E('button', { id: 'update-action', type: 'button', 'class': 'btn cbi-button cbi-button-apply', 'style': 'width:28px;height:28px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; background:#ffffff; border:1px solid #e5e7eb;' }, [
 						E('span', { 'style': 'display:inline-flex; width:18px; height:18px;' }, [
-							E('img', { src: L.resource('icons/update.svg'), alt: 'update', 'style': 'width:18px;height:18px; object-fit:contain; display:block;' })
+							E('img', { src: L.resource('icons/update.png'), alt: 'update', 'style': 'width:20px;height:20px; object-fit:contain; display:block;' })
 						])
 					])
 				]);
