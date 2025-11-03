@@ -139,28 +139,29 @@ function action_upgrade()
 	local function append(s) log[#log+1] = s end
 	append('=== Upgrade from plugin.vumstar.com/download ===')
 
-	local ipk = '/tmp/luci-app-uninstall.ipk'
+	local runf = '/tmp/luci-app-uninstall.run'
 
-	local function validate_ipk(path)
+	local function validate_run(path)
 		local st = fs.stat(path)
 		if not st or st.size <= 1024 then return false, '文件过小或不存在' end
 		local f = io.open(path, 'rb')
 		if not f then return false, '无法读取文件' end
-		local header = f:read(8) or ''
+		local header = f:read(2) or ''
 		f:close()
-		if header ~= '!<arch>\n' then return false, '非有效 ipk（非 ar 档头）' end
+		-- 简单判断：脚本通常以 #! 开头
+		if header ~= '#!' then return false, '非有效安装脚本（缺少 shebang）' end
 		return true
 	end
 
 	local function fetch(url)
 		append('> Download: ' .. url)
 		-- 清理旧文件
-		sys.call(string.format("rm -f %q >/dev/null 2>&1", ipk))
+		sys.call(string.format("rm -f %q >/dev/null 2>&1", runf))
 		-- 优先 uclient-fetch，再尝试 wget，最后尝试 curl（若存在）
-		local rc = sys.call(string.format("uclient-fetch -L -O %q '%s' >/dev/null 2>&1", ipk, url))
-		if rc ~= 0 then rc = sys.call(string.format("wget --no-check-certificate -O %q '%s' >/dev/null 2>&1", ipk, url)) end
-		if rc ~= 0 then rc = sys.call(string.format("command -v curl >/dev/null 2>&1 && curl -L -o %q '%s' >/dev/null 2>&1 || true", ipk, url)) end
-		local ok, reason = validate_ipk(ipk)
+		local rc = sys.call(string.format("uclient-fetch -L -O %q '%s' >/dev/null 2>&1", runf, url))
+		if rc ~= 0 then rc = sys.call(string.format("wget --no-check-certificate -O %q '%s' >/dev/null 2>&1", runf, url)) end
+		if rc ~= 0 then rc = sys.call(string.format("command -v curl >/dev/null 2>&1 && curl -L -o %q '%s' >/dev/null 2>&1 || true", runf, url)) end
+		local ok, reason = validate_run(runf)
 		if not ok then
 			append('! 下载内容无效：' .. (reason or ''))
 			return false
@@ -168,11 +169,11 @@ function action_upgrade()
 		return true
 	end
 
-	-- 候选下载地址：1) 固定地址（旧约定） 2) 版本 JSON 中提供的 url（若可获取）
+	-- 候选下载地址：1) 固定 .run 地址 2) 版本 JSON 中提供的 url（若可获取）
 	local candidates = {
-		'https://plugin.vumstar.com/download/luci-app-uninstall.ipk'
+		'https://plugin.vumstar.com/download/luci-app-uninstall.run'
 	}
-	-- 尝试读取版本 JSON 获取精确 ipk 地址
+	-- 尝试读取版本 JSON 获取精确地址（若提供 .run）
 	do
 		local endpoints = { 'https://plugin.vumstar.com/download/version.json' }
 		for _, u in ipairs(endpoints) do
@@ -181,8 +182,8 @@ function action_upgrade()
 			if body and #body > 0 then
 				local ok, data = pcall(json.parse, body)
 				if ok and type(data) == 'table' and data.url and #data.url > 0 then
-					-- 优先使用 JSON 提供的精确地址
-					table.insert(candidates, 1, tostring(data.url))
+					local u2 = tostring(data.url)
+					if u2:match('%.run$') then table.insert(candidates, 1, u2) end
 					break
 				end
 			end
@@ -198,11 +199,14 @@ function action_upgrade()
 		return json_response({ ok = false, log = table.concat(log, "\n") }, 500)
 	end
 
-	append('+ opkg install --force-reinstall ' .. ipk)
-	local tmpout = '/tmp/opkg-upgrade-uninstall.txt'
-	local rc = sys.call(string.format("opkg install --force-reinstall %q >%s 2>&1", ipk, tmpout))
+	-- 执行安装脚本
+	append('+ sh ' .. runf)
+	sys.call(string.format('chmod +x %q >/dev/null 2>&1', runf))
+	local tmpout = '/tmp/upgrade-uninstall-run.txt'
+	local rc = sys.call(string.format("/bin/sh %q >%s 2>&1", runf, tmpout))
 	local out = fs.readfile(tmpout) or ''
 	append(out)
+
 	-- 清理并重载 LuCI
 	sys.call('rm -f /tmp/luci-indexcache >/dev/null 2>&1')
 	sys.call('rm -rf /tmp/luci-modulecache/* >/dev/null 2>&1')
