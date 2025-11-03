@@ -375,14 +375,9 @@ return view.extend({
 			if (pkg && pkg.name === 'luci-app-uninstall') {
 				var actionsTop = E('div', { 'style': 'position:absolute; right:12px; top:10px; display:flex; gap:8px; align-items:center;' }, [
 					E('span', { id: 'remote-version', 'style': 'font-size:12px; color:#111827; background:#e0f2fe; border:1px solid #93c5fd; border-radius:999px; padding:2px 8px; display:none;' }, ''),
-					E('button', { id: 'check-update', type: 'button', 'class': 'btn', 'style': 'width:26px;height:26px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px;' }, [
+					E('button', { id: 'update-action', type: 'button', 'class': 'btn cbi-button cbi-button-apply', 'style': 'width:26px;height:26px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px;' }, [
 						E('span', { 'style': 'display:inline-flex; width:16px; height:16px;' }, [
-							E('img', { src: L.resource('icons/vum.svg'), 'style': 'width:16px;height:16px; object-fit:contain;' })
-						])
-					]),
-					E('button', { id: 'do-upgrade', type: 'button', 'class': 'btn cbi-button cbi-button-apply', 'style': 'width:26px;height:26px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px;' }, [
-						E('span', { 'style': 'display:inline-flex; width:16px; height:16px;' }, [
-							E('img', { src: L.resource('icons/vumcj.svg'), 'style': 'width:16px;height:16px; object-fit:contain;' })
+							E('img', { src: L.resource('icons/update.svg'), 'style': 'width:16px;height:16px; object-fit:contain;' })
 						])
 					])
 				]);
@@ -441,6 +436,36 @@ return view.extend({
 				if (res && res.ok) { ui.addNotification(null, E('p', {}, _('升级成功')), 'success'); setTimeout(function(){ window.location.reload(); }, 1200); }
 				else { ui.addNotification(null, E('p', {}, _('升级失败')), 'danger'); }
 			}).catch(function(err){ println('! ' + String(err)); ui.addNotification(null, E('p', {}, _('升级失败：') + String(err)), 'danger'); });
+		}
+		function updateAction(){
+			self._httpJson(L.url('admin/vum/uninstall/check_update'), { headers: { 'Accept': 'application/json' } }).then(function(res){
+				var cur = (res && res.current) || '';
+				var latest = (res && res.latest) || '';
+				var has = !!(res && res.available);
+				var badge = document.getElementById('remote-version');
+				if (badge) { badge.textContent = latest || ''; badge.style.display = latest ? 'inline-block' : 'none'; }
+				if (has) {
+					// 有新版本，弹出确认后再升级
+					var msg = E('div', { 'style': 'max-width:520px;' }, [
+						E('p', { 'style': 'margin:0 0 8px 0;' }, _('检测到新版本：') + (latest || '')),
+						E('p', { 'style': 'margin:0 0 8px 0; color:#6b7280;' }, _('当前版本：') + (cur || '')),
+						res && res.changelog ? E('pre', { 'style': 'margin:8px 0 0 0; white-space:pre-wrap; background:#f3f4f6; color:#374151; padding:8px; border-radius:6px;' }, String(res.changelog)) : E('span', {}, '')
+					]);
+					var modal = ui.showModal(_('确认升级到最新版本？'), [
+						msg,
+						E('div', { 'style':'margin-top:10px;display:flex;gap:8px;justify-content:flex-end;' }, [
+							E('button', { 'class': 'btn', id: 'cancel-upgrade' }, _('取消')),
+							E('button', { 'class': 'btn cbi-button cbi-button-apply', id: 'confirm-upgrade' }, _('立即升级'))
+						])
+					]);
+					var cancelBtn = modal.querySelector('#cancel-upgrade');
+					var okBtn = modal.querySelector('#confirm-upgrade');
+					if (cancelBtn) cancelBtn.addEventListener('click', function(){ ui.hideModal(modal); });
+					if (okBtn) okBtn.addEventListener('click', function(){ ui.hideModal(modal); doUpgrade(); });
+				} else {
+					ui.addNotification(null, E('p', {}, _('当前已是最新版本：') + (cur || '')), 'success');
+				}
+			}).catch(function(err){ ui.addNotification(null, E('p', {}, _('检测更新失败：') + String(err)), 'danger'); });
 		}
 
 		var FILE_SEARCH_CACHE = {};
@@ -697,8 +722,7 @@ return view.extend({
 		root.addEventListener('click', function(ev){
 			if (!ev.target) return;
 			if (ev.target.id === 'filter-clear') { if (searchTimer) clearTimeout(searchTimer); searchTimer = setTimeout(refresh, 10); return; }
-			if (ev.target.id === 'check-update') { checkUpdate(); return; }
-			if (ev.target.id === 'do-upgrade') { doUpgrade(); return; }
+			if (ev.target.id === 'update-action') { updateAction(); return; }
 		});
 
 		// 拉取自身版本并显示徽标
