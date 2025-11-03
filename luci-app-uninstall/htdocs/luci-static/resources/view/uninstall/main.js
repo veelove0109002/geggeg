@@ -371,6 +371,23 @@ return view.extend({
 			var children = [ img, metaCol, actions, verCorner ];
 			if (pkg.vum_plugin) children.push(E('div', { 'style': 'position:absolute; left:12px; bottom:6px; font-size:11px; color:#fff; background:#4f46e5; padding:2px 6px; border-radius:10px;' }, 'VUM-Plugin'));
 			if (isNew) children.push(E('div', { 'style': 'position:absolute; left:12px; top:10px; font-size:11px; color:#fff; background:#f59e0b; padding:2px 6px; border-radius:10px;' }, _('新')));
+			// 顶部右侧：仅在“高级卸载”卡片上展示图标按钮与远端版本
+			if (pkg && pkg.name === 'luci-app-uninstall') {
+				var actionsTop = E('div', { 'style': 'position:absolute; right:12px; top:10px; display:flex; gap:8px; align-items:center;' }, [
+					E('span', { id: 'remote-version', 'style': 'font-size:12px; color:#111827; background:#e0f2fe; border:1px solid #93c5fd; border-radius:999px; padding:2px 8px; display:none;' }, ''),
+					E('button', { id: 'check-update', type: 'button', 'class': 'btn', 'style': 'width:26px;height:26px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px;' }, [
+						E('span', { 'style': 'display:inline-flex; width:16px; height:16px;' }, [
+							E('img', { src: L.resource('icons/vum.svg'), 'style': 'width:16px;height:16px; object-fit:contain;' })
+						])
+					]),
+					E('button', { id: 'do-upgrade', type: 'button', 'class': 'btn cbi-button cbi-button-apply', 'style': 'width:26px;height:26px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px;' }, [
+						E('span', { 'style': 'display:inline-flex; width:16px; height:16px;' }, [
+							E('img', { src: L.resource('icons/vumcj.svg'), 'style': 'width:16px;height:16px; object-fit:contain;' })
+						])
+					])
+				]);
+				children.push(actionsTop);
+			}
 			var card = E('div', { 'class': 'pkg-card', 'style': 'position:relative; display:flex; align-items:center; gap:12px; padding:14px 16px 36px 16px; border:1px solid #e5e7eb; border-radius:12px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); box-shadow:0 1px 2px rgba(0,0,0,0.04); transition: transform .15s ease, box-shadow .15s ease;' }, children);
 			card.addEventListener('mouseenter', function(){ card.style.transform = 'translateY(-2px)'; card.style.boxShadow = '0 6px 16px rgba(0,0,0,0.10)'; });
 			card.addEventListener('mouseleave', function(){ card.style.transform = 'translateY(0)'; card.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)'; });
@@ -409,6 +426,8 @@ return view.extend({
 				var latest = (res && res.latest) || '';
 				var has = !!(res && res.available);
 				var msg = has ? (_('检测到新版本：') + latest + ' / 当前：' + cur) : (_('当前已是最新版本：') + (cur || ''));
+				var badge = document.getElementById('remote-version');
+				if (badge) { badge.textContent = latest || ''; badge.style.display = latest ? 'inline-block' : 'none'; }
 				ui.addNotification(null, E('p', {}, msg), has ? 'info' : 'success');
 			}).catch(function(err){ ui.addNotification(null, E('p', {}, _('检测更新失败：') + String(err)), 'danger'); });
 		}
@@ -710,6 +729,8 @@ return view.extend({
 		mo.observe(document.body || document.documentElement, { childList: true, subtree: true });
 
 		refresh();
+		// 自动拉取远端版本以显示徽标
+		setTimeout(function(){ try { checkUpdate(); } catch(e){} }, 500);
 		return root;
 	}
 
