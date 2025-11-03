@@ -462,6 +462,23 @@ return view.extend({
 					var okBtn = modal.querySelector('#confirm-upgrade');
 					if (cancelBtn) cancelBtn.addEventListener('click', function(){ ui.hideModal(modal); });
 					if (okBtn) okBtn.addEventListener('click', function(){ ui.hideModal(modal); doUpgrade(); });
+				} else if (res && res.url) {
+					var msg2 = E('div', { 'style': 'max-width:520px;' }, [
+						E('p', { 'style': 'margin:0 0 8px 0;' }, _('未获取到最新版本号，但提供了升级包。')),
+						E('p', { 'style': 'margin:0 0 8px 0; color:#6b7280;' }, _('当前版本：') + (cur || '')),
+						E('code', { 'style': 'display:inline-block; padding:2px 6px; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:6px; color:#374151;' }, String(res.url || ''))
+					]);
+					var modal2 = ui.showModal(_('是否按提供地址进行升级？'), [
+						msg2,
+						E('div', { 'style':'margin-top:10px;display:flex;gap:8px;justify-content:flex-end;' }, [
+							E('button', { 'class': 'btn', id: 'cancel-upgrade' }, _('取消')),
+							E('button', { 'class': 'btn cbi-button cbi-button-apply', id: 'confirm-upgrade' }, _('立即升级'))
+						])
+					]);
+					var cancelBtn2 = modal2.querySelector('#cancel-upgrade');
+					var okBtn2 = modal2.querySelector('#confirm-upgrade');
+					if (cancelBtn2) cancelBtn2.addEventListener('click', function(){ ui.hideModal(modal2); });
+					if (okBtn2) okBtn2.addEventListener('click', function(){ ui.hideModal(modal2); doUpgrade(); });
 				} else {
 					ui.addNotification(null, E('p', {}, _('当前已是最新版本：') + (cur || '')), 'success');
 				}
@@ -492,6 +509,23 @@ return view.extend({
 					var okBtn = modal.querySelector('#confirm-upgrade');
 					if (cancelBtn) cancelBtn.addEventListener('click', function(){ ui.hideModal(modal); });
 					if (okBtn) okBtn.addEventListener('click', function(){ ui.hideModal(modal); doUpgrade(); });
+				} else if (res && res.url) {
+					var msg2 = E('div', { 'style': 'max-width:520px;' }, [
+						E('p', { 'style': 'margin:0 0 8px 0;' }, _('未获取到最新版本号，但提供了升级包。')),
+						E('p', { 'style': 'margin:0 0 8px 0; color:#6b7280;' }, _('当前版本：') + (cur || '')),
+						E('code', { 'style': 'display:inline-block; padding:2px 6px; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:6px; color:#374151;' }, String(res.url || ''))
+					]);
+					var modal2 = ui.showModal(_('是否按提供地址进行升级？'), [
+						msg2,
+						E('div', { 'style':'margin-top:10px;display:flex;gap:8px;justify-content:flex-end;' }, [
+							E('button', { 'class': 'btn', id: 'cancel-upgrade' }, _('取消')),
+							E('button', { 'class': 'btn cbi-button cbi-button-apply', id: 'confirm-upgrade' }, _('立即升级'))
+						])
+					]);
+					var cancelBtn2 = modal2.querySelector('#cancel-upgrade');
+					var okBtn2 = modal2.querySelector('#confirm-upgrade');
+					if (cancelBtn2) cancelBtn2.addEventListener('click', function(){ ui.hideModal(modal2); });
+					if (okBtn2) okBtn2.addEventListener('click', function(){ ui.hideModal(modal2); doUpgrade(); });
 				}
 				// 无更新：静默不弹全局通知
 			}).catch(function(err){ ui.addNotification(null, E('p', {}, _('检测更新失败：') + String(err)), 'danger'); });
