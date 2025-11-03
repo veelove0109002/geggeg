@@ -418,13 +418,19 @@ return view.extend({
 
 		function checkUpdate(){
 			self._httpJson(L.url('admin/vum/uninstall/check_update'), { headers: { 'Accept': 'application/json' } }).then(function(res){
-				var cur = (res && res.current) || '';
+				var cur = (res && res.current) || (function(){ var el = document.getElementById('uninstall-card-version'); return el ? (el.textContent||'').trim() : ''; })();
 				var latest = (res && res.latest) || '';
-				var has = !!(res && res.available);
-				var msg = has ? (_('检测到新版本：') + latest + ' / 当前：' + cur) : (_('当前已是最新版本：') + (cur || ''));
 				var badge = document.getElementById('remote-version');
-				if (badge) { badge.textContent = latest || ''; badge.style.display = latest ? 'inline-block' : 'none'; }
-				/* 静默：仅更新徽标，不弹全局通知 */
+				var btn = document.getElementById('update-action');
+				if (badge) badge.textContent = latest || '';
+				if (latest && cur && latest === cur) {
+					if (badge) badge.style.display = 'none';
+					if (btn) btn.style.display = 'none';
+				} else {
+					if (badge) badge.style.display = latest ? 'inline-block' : 'none';
+					if (btn) btn.style.display = 'inline-flex';
+				}
+				/* 静默：仅更新徽标/按钮可见性，不弹全局通知 */
 			}).catch(function(err){ ui.addNotification(null, E('p', {}, _('检测更新失败：') + String(err)), 'danger'); });
 		}
 		function doUpgrade(){
