@@ -431,7 +431,7 @@ return view.extend({
 					if (btn) btn.style.display = 'inline-flex';
 				}
 				/* 静默：仅更新徽标/按钮可见性，不弹全局通知 */
-			}).catch(function(err){ ui.addNotification(null, E('p', {}, _('检测更新失败：') + String(err)), 'danger'); });
+			}).catch(function(err){ /* silent */ });
 		}
 		function doUpgrade(){
 			// 进度 + 日志 UI
@@ -480,7 +480,6 @@ return view.extend({
 					closeBtn.disabled = false;
 					closeBtn.textContent = _('返回页面');
 					closeBtn.addEventListener('click', function(){ ui.hideModal(modal); window.location.reload(); });
-					ui.addNotification(null, E('p', {}, _('升级成功')), 'success');
 				} else {
 					setProgress(100);
 					progressBar.style.background = '#ef4444';
@@ -492,7 +491,6 @@ return view.extend({
 					closeBtn.disabled = false;
 					closeBtn.textContent = _('关闭');
 					closeBtn.addEventListener('click', function(){ ui.hideModal(modal); });
-					ui.addNotification(null, E('p', {}, _('升级失败')), 'danger');
 				}
 			}).catch(function(err){
 				clearInterval(progTimer);
@@ -508,7 +506,6 @@ return view.extend({
 				closeBtn.disabled = false;
 				closeBtn.textContent = _('关闭');
 				closeBtn.addEventListener('click', function(){ ui.hideModal(modal); });
-				ui.addNotification(null, E('p', {}, _('升级失败：') + String(err)), 'danger');
 			});
 		}
 		function updateAction(){
@@ -559,10 +556,8 @@ return view.extend({
 					var okBtn2 = modal2.querySelector('#confirm-upgrade');
 					if (cancelBtn2) cancelBtn2.addEventListener('click', function(){ ui.hideModal(modal2); });
 					if (okBtn2) okBtn2.addEventListener('click', function(){ ui.hideModal(modal2); doUpgrade(); });
-				} else {
-					ui.addNotification(null, E('p', {}, _('当前已是最新版本：') + (cur || '')), 'success');
 				}
-			}).catch(function(err){ ui.addNotification(null, E('p', {}, _('检测更新失败：') + String(err)), 'danger'); });
+			}).catch(function(err){ /* silent */ });
 		}
 
 		function updateAction(){
@@ -614,7 +609,7 @@ return view.extend({
 					if (okBtn2) okBtn2.addEventListener('click', function(){ ui.hideModal(modal2); doUpgrade(); });
 				}
 				// 无更新：静默不弹全局通知
-			}).catch(function(err){ ui.addNotification(null, E('p', {}, _('检测更新失败：') + String(err)), 'danger'); });
+			}).catch(function(err){ /* silent */ });
 		}
 
 		var FILE_SEARCH_CACHE = {};
@@ -675,7 +670,6 @@ return view.extend({
 				}).catch(function(){ if (curSeq === searchSeq) renderWith(list); });
 			}).catch(function(err){
 				if (curSeq !== searchSeq) return;
-				ui.addNotification(null, E('p', {}, _('加载软件包列表失败: ') + String(err)), 'danger');
 			});
 		}
 
@@ -803,7 +797,6 @@ return view.extend({
 						log.parentNode.insertBefore(statusDone, log.nextSibling);
 						opSuccess = true;
 						enableClose();
-						ui.addNotification(null, E('p', {}, _('卸载成功')), 'success');
 						refresh();
 						return;
 					}
@@ -824,8 +817,7 @@ return view.extend({
 							statusTextEl.textContent = _('卸载完成');
 							statusTextEl.setAttribute('style', 'font-weight:600;color:#065f46;');
 							opSuccess = true;
-							ui.addNotification(null, E('p', {}, _('卸载成功')), 'success');
-							refresh();
+								refresh();
 						} else {
 							setProgress(100);
 							clearInterval(timer);
@@ -836,7 +828,6 @@ return view.extend({
 							statusIconEl.setAttribute('style', 'display:inline-flex;width:22px;height:22px;background:#fee2e2;color:#7f1d1d;border-radius:999px;align-items:center;justify-content:center;font-weight:700;');
 							statusTextEl.textContent = _('卸载失败');
 							statusTextEl.setAttribute('style', 'font-weight:600;color:#7f1d1d;');
-							ui.addNotification(null, E('p', {}, _('卸载失败')), 'danger');
 						}
 						enableClose();
 					});
@@ -855,7 +846,6 @@ return view.extend({
 						E('span', { 'style': 'font-weight:600;color:#7f1d1d;' }, _('卸载失败'))
 					]);
 					log.parentNode.insertBefore(statusFail2, log.nextSibling);
-					ui.addNotification(null, E('p', {}, _('卸载失败') + '：' + String(err)), 'danger');
 					enableClose();
 				});
 			});

@@ -41,7 +41,7 @@
           list.forEach(function (p) { grid.appendChild(renderCard(p)); });
         })
         .catch(function (err) {
-          ui.addNotification(null, E('p', {}, _('加载软件包列表失败: ') + String(err)), 'danger');
+          // silent
         });
     }
 
