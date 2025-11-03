@@ -373,9 +373,9 @@ return view.extend({
 			if (isNew) children.push(E('div', { 'style': 'position:absolute; left:12px; top:10px; font-size:11px; color:#fff; background:#f59e0b; padding:2px 6px; border-radius:10px;' }, _('新')));
 			// 顶部右侧：仅在“高级卸载”卡片上展示图标按钮与远端版本
 			if (pkg && pkg.name === 'luci-app-uninstall') {
-				var actionsTop = E('div', { 'style': 'position:absolute; right:10px; top:8px; display:flex; gap:8px; align-items:center; z-index:50; pointer-events:auto;' }, [
+				var actionsTop = E('div', { 'style': 'position:absolute; right:10px; top:8px; display:flex; gap:8px; align-items:center; z-index:1000; pointer-events:auto;' }, [
 					E('span', { id: 'remote-version', 'style': 'font-size:12px; color:#111827; background:#e0f2fe; border:1px solid #93c5fd; border-radius:999px; padding:2px 8px; display:none; pointer-events:none;' }, ''),
-					E('button', { id: 'update-action', type: 'button', 'class': 'btn cbi-button cbi-button-apply', 'style': 'width:30px;height:30px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; background:#ffffff; border:1px solid #e5e7eb; box-shadow:0 2px 6px rgba(0,0,0,0.06);' }, [
+					E('button', { id: 'update-action', type: 'button', 'class': 'btn', 'style': 'width:30px;height:30px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; background:#ffffff; border:1px solid #e5e7eb; box-shadow:0 2px 6px rgba(0,0,0,0.06); cursor:pointer;' }, [
 						E('span', { 'style': 'display:inline-flex; width:20px; height:20px;' }, [
 							E('img', { src: L.resource('icons/update.png'), alt: 'update', 'style': 'width:20px;height:20px; object-fit:contain; display:block; image-rendering:auto;' })
 						])
@@ -383,7 +383,7 @@ return view.extend({
 				]);
 				children.push(actionsTop);
 			}
-			var card = E('div', { 'class': 'pkg-card', 'style': 'position:relative; display:flex; align-items:center; gap:12px; padding:14px 16px 36px 16px; border:1px solid #e5e7eb; border-radius:12px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); box-shadow:0 1px 2px rgba(0,0,0,0.04); transition: transform .15s ease, box-shadow .15s ease;' }, children);
+			var card = E('div', { 'class': 'pkg-card', 'style': 'position:relative; display:flex; align-items:center; gap:12px; padding:14px 16px 36px 16px; border:1px solid #e5e7eb; border-radius:12px; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); box-shadow:0 1px 2px rgba(0,0,0,0.04); transition: transform .15s ease, box-shadow .15s ease; overflow:visible;' }, children);
 			card.addEventListener('mouseenter', function(){ card.style.transform = 'translateY(-2px)'; card.style.boxShadow = '0 6px 16px rgba(0,0,0,0.10)'; });
 			card.addEventListener('mouseleave', function(){ card.style.transform = 'translateY(0)'; card.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)'; });
 			return card;
@@ -750,8 +750,13 @@ return view.extend({
 		});
 		root.addEventListener('click', function(ev){
 			if (!ev.target) return;
-			if (ev.target.id === 'filter-clear') { if (searchTimer) clearTimeout(searchTimer); searchTimer = setTimeout(refresh, 10); return; }
-			if (ev.target.id === 'update-action') { updateAction(); return; }
+			var t = ev.target;
+			if (t.id === 'filter-clear') { if (searchTimer) clearTimeout(searchTimer); searchTimer = setTimeout(refresh, 10); return; }
+			// 兼容点击图标或内部元素
+			while (t && t !== root) {
+				if (t.id === 'update-action') { updateAction(); return; }
+				t = t.parentNode;
+			}
 		});
 
 		// 拉取自身版本并显示徽标
