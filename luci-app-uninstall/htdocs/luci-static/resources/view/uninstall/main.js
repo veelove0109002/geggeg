@@ -346,6 +346,7 @@ return view.extend({
 			}
 			
 			var verCorner = E('div', { 'style': 'position:absolute; right:12px; bottom:6px; font-size:12px; color:#111827; background:#f3f4f6; padding:2px 8px; border-radius:10px; border:1px solid #e5e7eb;' }, (pkg.version || ''));
+			if (pkg && pkg.name === 'luci-app-uninstall') verCorner.id = 'uninstall-card-version';
 			var purgeEl = E('input', { type: 'checkbox', checked: true, 'style': 'display:none;' });
 			var makeSwitch = function(el){
 				var baseOn = 'display:inline-block;width:36px;height:20px;background:#4f46e5;border-radius:999px;position:relative;transition:all .15s;';
@@ -440,7 +441,7 @@ return view.extend({
 		}
 		function updateAction(){
 			self._httpJson(L.url('admin/vum/uninstall/check_update'), { headers: { 'Accept': 'application/json' } }).then(function(res){
-				var cur = (res && res.current) || '';
+				var cur = (res && res.current) || (function(){ var el = document.getElementById('uninstall-card-version'); return el ? (el.textContent||'').trim() : ''; })();
 				var latest = (res && res.latest) || '';
 				var has = !!(res && res.available);
 				var badge = document.getElementById('remote-version');
@@ -490,7 +491,7 @@ return view.extend({
 
 		function updateAction(){
 			self._httpJson(L.url('admin/vum/uninstall/check_update'), { headers: { 'Accept': 'application/json' } }).then(function(res){
-				var cur = (res && res.current) || '';
+				var cur = (res && res.current) || (function(){ var el = document.getElementById('uninstall-card-version'); return el ? (el.textContent||'').trim() : ''; })();
 				var latest = (res && res.latest) || '';
 				var has = !!(res && res.available);
 				var badge = document.getElementById('remote-version');
