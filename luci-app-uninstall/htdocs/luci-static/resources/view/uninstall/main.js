@@ -373,11 +373,11 @@ return view.extend({
 			if (isNew) children.push(E('div', { 'style': 'position:absolute; left:12px; top:10px; font-size:11px; color:#fff; background:#f59e0b; padding:2px 6px; border-radius:10px;' }, _('新')));
 			// 顶部右侧：仅在“高级卸载”卡片上展示图标按钮与远端版本
 			if (pkg && pkg.name === 'luci-app-uninstall') {
-				var actionsTop = E('div', { 'style': 'position:absolute; right:12px; top:10px; display:flex; gap:8px; align-items:center; z-index:3;' }, [
-					E('span', { id: 'remote-version', 'style': 'font-size:12px; color:#111827; background:#e0f2fe; border:1px solid #93c5fd; border-radius:999px; padding:2px 8px; display:none;' }, ''),
-					E('button', { id: 'update-action', type: 'button', 'class': 'btn cbi-button cbi-button-apply', 'style': 'width:28px;height:28px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; background:#ffffff; border:1px solid #e5e7eb;' }, [
-						E('span', { 'style': 'display:inline-flex; width:18px; height:18px;' }, [
-							E('img', { src: L.resource('icons/update.png'), alt: 'update', 'style': 'width:20px;height:20px; object-fit:contain; display:block;' })
+				var actionsTop = E('div', { 'style': 'position:absolute; right:10px; top:8px; display:flex; gap:8px; align-items:center; z-index:50; pointer-events:auto;' }, [
+					E('span', { id: 'remote-version', 'style': 'font-size:12px; color:#111827; background:#e0f2fe; border:1px solid #93c5fd; border-radius:999px; padding:2px 8px; display:none; pointer-events:none;' }, ''),
+					E('button', { id: 'update-action', type: 'button', 'class': 'btn cbi-button cbi-button-apply', 'style': 'width:30px;height:30px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; background:#ffffff; border:1px solid #e5e7eb; box-shadow:0 2px 6px rgba(0,0,0,0.06);' }, [
+						E('span', { 'style': 'display:inline-flex; width:20px; height:20px;' }, [
+							E('img', { src: L.resource('icons/update.png'), alt: 'update', 'style': 'width:20px;height:20px; object-fit:contain; display:block; image-rendering:auto;' })
 						])
 					])
 				]);
