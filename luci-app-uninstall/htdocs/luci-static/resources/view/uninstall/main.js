@@ -429,6 +429,7 @@ return view.extend({
 		function doUpgrade(){
 			var log = E('pre', { 'style': 'max-height:320px;overflow:auto;background:#0f1633;color:#cbd5e1;padding:10px;border-radius:8px;' }, '');
 			var modal = ui.showModal(_('在线升级 luci-app-uninstall'), [ log, E('div', { 'style':'margin-top:10px;display:flex;gap:8px;justify-content:flex-end;' }, [ E('button', { 'class': 'btn', id: 'upgrade-close' }, _('关闭')) ]) ]);
+			var overlay = modal && modal.parentNode; if (overlay) { overlay.style.display = 'flex'; overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center'; }
 			function println(s){ log.appendChild(document.createTextNode(String(s) + '\n')); log.scrollTop = log.scrollHeight; }
 			println('> GET ' + L.url('admin/vum/uninstall/upgrade'));
 			self._httpJson(L.url('admin/vum/uninstall/upgrade'), { headers: { 'Accept': 'application/json' } }).then(function(res){
@@ -458,6 +459,7 @@ return view.extend({
 							E('button', { 'class': 'btn cbi-button cbi-button-apply', id: 'confirm-upgrade' }, _('立即升级'))
 						])
 					]);
+					var overlay = modal && modal.parentNode; if (overlay) { overlay.style.display = 'flex'; overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center'; }
 					var cancelBtn = modal.querySelector('#cancel-upgrade');
 					var okBtn = modal.querySelector('#confirm-upgrade');
 					if (cancelBtn) cancelBtn.addEventListener('click', function(){ ui.hideModal(modal); });
@@ -475,6 +477,7 @@ return view.extend({
 							E('button', { 'class': 'btn cbi-button cbi-button-apply', id: 'confirm-upgrade' }, _('立即升级'))
 						])
 					]);
+					var overlay2 = modal2 && modal2.parentNode; if (overlay2) { overlay2.style.display = 'flex'; overlay2.style.alignItems = 'center'; overlay2.style.justifyContent = 'center'; }
 					var cancelBtn2 = modal2.querySelector('#cancel-upgrade');
 					var okBtn2 = modal2.querySelector('#confirm-upgrade');
 					if (cancelBtn2) cancelBtn2.addEventListener('click', function(){ ui.hideModal(modal2); });
@@ -505,6 +508,7 @@ return view.extend({
 							E('button', { 'class': 'btn cbi-button cbi-button-apply', id: 'confirm-upgrade' }, _('立即升级'))
 						])
 					]);
+					var overlay = modal && modal.parentNode; if (overlay) { overlay.style.display = 'flex'; overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center'; }
 					var cancelBtn = modal.querySelector('#cancel-upgrade');
 					var okBtn = modal.querySelector('#confirm-upgrade');
 					if (cancelBtn) cancelBtn.addEventListener('click', function(){ ui.hideModal(modal); });
@@ -522,6 +526,7 @@ return view.extend({
 							E('button', { 'class': 'btn cbi-button cbi-button-apply', id: 'confirm-upgrade' }, _('立即升级'))
 						])
 					]);
+					var overlay2 = modal2 && modal2.parentNode; if (overlay2) { overlay2.style.display = 'flex'; overlay2.style.alignItems = 'center'; overlay2.style.justifyContent = 'center'; }
 					var cancelBtn2 = modal2.querySelector('#cancel-upgrade');
 					var okBtn2 = modal2.querySelector('#confirm-upgrade');
 					if (cancelBtn2) cancelBtn2.addEventListener('click', function(){ ui.hideModal(modal2); });

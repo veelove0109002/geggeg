@@ -77,7 +77,7 @@ function action_version()
 	json_response({ version = ver or '' })
 end
 
--- 在线检测 luci-app-uninstall 可用版本（来源：xz.vumstar.com）
+-- 在线检测 luci-app-uninstall 可用版本（来源：plugin.vumstar.com/download）
 function action_check_update()
 	-- 当前已安装版本
 	local status_path = fs.stat('/usr/lib/opkg/status') and '/usr/lib/opkg/status' or (fs.stat('/var/lib/opkg/status') and '/var/lib/opkg/status' or nil)
@@ -100,9 +100,7 @@ function action_check_update()
 	-- 远端版本信息
 	local latest, url, changelog
 	local endpoints = {
-		'https://xz.vumstar.com/uninstall/version.json',
-		'https://xz.vumstar.com/luci-app-uninstall/version.json',
-		'https://xz.vumstar.com/version.json'
+		'https://plugin.vumstar.com/download/version.json'
 	}
 	local body = ''
 	for _, u in ipairs(endpoints) do
@@ -121,8 +119,7 @@ function action_check_update()
 	-- 回退：尝试纯文本版本与固定下载地址
 	if not latest or #latest == 0 then
 		local txts = {
-			'https://xz.vumstar.com/uninstall/version.txt',
-			'https://xz.vumstar.com/luci-app-uninstall/version.txt'
+			'https://plugin.vumstar.com/download/version.txt'
 		}
 		for _, u in ipairs(txts) do
 			local t = sys.exec("wget -qO- '" .. u .. "' 2>/dev/null") or ''
@@ -130,59 +127,24 @@ function action_check_update()
 			if t and #t > 0 then latest = (t:gsub('%s+$',''):gsub('^%s+','')); break end
 		end
 	end
-	if not url or #url == 0 then
-		-- 假设固定路径：包含版本与架构
-		local arch = sys.exec("uname -m 2>/dev/null") or ''
-		arch = arch:gsub('%s+$',''):gsub('^%s+','')
-		-- 常见 OpenWrt 架构映射（粗略）
-		local map = { x86_64='x86_64', aarch64='aarch64', armv7l='armv7', mips='mips', mipsel='mipsel' }
-		local a = map[arch] or arch or 'all'
-		if latest and #latest > 0 then
-			url = string.format('https://xz.vumstar.com/uninstall/luci-app-uninstall_%s_%s.ipk', latest, a)
-		else
-			url = 'https://xz.vumstar.com/uninstall/luci-app-uninstall.ipk'
-		end
-	end
-	json_response({ current = cur or '', latest = latest or '', available = (latest and cur and latest ~= cur) or false, url = url or '', changelog = changelog })
+	-- 固定下载地址（无需返回 url 给前端）
+	url = 'https://plugin.vumstar.com/download/luci-app-uninstall.ipk'
+	-- 若无法获取 latest，也不影响在线更新；为了前端确认，标记 available=true
+	json_response({ current = cur or '', latest = latest or '', available = true })
 end
 
--- 在线升级 luci-app-uninstall（来源：xz.vumstar.com）
+-- 在线升级 luci-app-uninstall（来源：plugin.vumstar.com/download）
 function action_upgrade()
 	local log = {}
 	local function append(s) log[#log+1] = s end
-	append('=== Upgrade from xz.vumstar.com ===')
-	-- 读取远端版本信息
-	local ok, data
-	local endpoints = {
-		'https://xz.vumstar.com/uninstall/version.json',
-		'https://xz.vumstar.com/luci-app-uninstall/version.json',
-		'https://xz.vumstar.com/version.json'
-	}
-	for _, u in ipairs(endpoints) do
-		local body = sys.exec("wget -qO- '" .. u .. "' 2>/dev/null") or ''
-		if not body or #body == 0 then body = sys.exec("uclient-fetch -qO- '" .. u .. "' 2>/dev/null") or '' end
-		if body and #body > 0 then
-			ok, data = pcall(json.parse, body)
-			if ok and type(data) == 'table' then break end
-		end
-	end
-	local latest = data and (data.latest or data.version) or nil
-	local url = data and data.url or nil
-	if not url or #url == 0 then
-		local arch = sys.exec("uname -m 2>/dev/null") or ''
-		arch = arch:gsub('%s+$',''):gsub('^%s+','')
-		local map = { x86_64='x86_64', aarch64='aarch64', armv7l='armv7', mips='mips', mipsel='mipsel' }
-		local a = map[arch] or arch or 'all'
-		if latest and #latest > 0 then
-			url = string.format('https://xz.vumstar.com/uninstall/luci-app-uninstall_%s_%s.ipk', latest, a)
-		else
-			url = 'https://xz.vumstar.com/uninstall/luci-app-uninstall.ipk'
-		end
-	end
+	append('=== Upgrade from plugin.vumstar.com/download ===')
+	-- 直接使用固定下载地址（无需先拉取版本信息）
+	local url = 'https://plugin.vumstar.com/download/luci-app-uninstall.ipk'
 	append('> Download: ' .. url)
 	local ipk = '/tmp/luci-app-uninstall.ipk'
-	local rc_dl = sys.call(string.format("wget -O %q '%s' >/dev/null 2>&1", ipk, url))
-	if rc_dl ~= 0 then rc_dl = sys.call(string.format("uclient-fetch -O %q '%s' >/dev/null 2>&1", ipk, url)) end
+	-- 优先 uclient-fetch（OpenWrt 常见），再回退 wget
+	local rc_dl = sys.call(string.format("uclient-fetch -O %q '%s' >/dev/null 2>&1", ipk, url))
+	if rc_dl ~= 0 then rc_dl = sys.call(string.format("wget -O %q '%s' >/dev/null 2>&1", ipk, url)) end
 	if rc_dl ~= 0 or not fs.stat(ipk) then
 		append('! 下载失败')
 		return json_response({ ok = false, log = table.concat(log, "\n") }, 500)
