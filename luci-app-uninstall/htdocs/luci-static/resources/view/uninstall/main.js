@@ -434,16 +434,82 @@ return view.extend({
 			}).catch(function(err){ ui.addNotification(null, E('p', {}, _('检测更新失败：') + String(err)), 'danger'); });
 		}
 		function doUpgrade(){
-			var log = E('pre', { 'style': 'max-height:320px;overflow:auto;background:#0f1633;color:#cbd5e1;padding:10px;border-radius:8px;' }, '');
-			var modal = ui.showModal(_('在线升级 luci-app-uninstall'), [ log, E('div', { 'style':'margin-top:10px;display:flex;gap:8px;justify-content:flex-end;' }, [ E('button', { 'class': 'btn', id: 'upgrade-close' }, _('关闭')) ]) ]);
-			var overlay = modal && modal.parentNode; if (overlay) { overlay.style.display = 'flex'; overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center'; }
+			// 进度 + 日志 UI
+			var statusIconEl = E('span', { 'style': 'display:inline-flex;width:22px;height:22px;background:#fde68a;color:#92400e;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '…');
+			var statusTextEl = E('span', { 'style': 'font-weight:600;color:#f59e0b;' }, _('正在升级'));
+			var elapsedEl = E('span', { 'style': 'font-size:12px;color:#6b7280;' }, '0s');
+			var progressTrack = E('div', { 'style': 'height:6px;border-radius:999px;background:#0f1838;overflow:hidden;' });
+			var progressBar = E('div', { 'style': 'height:6px;width:0%;background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.6);transition: width .25s ease;' });
+			progressTrack.appendChild(progressBar);
+			function setProgress(p){ progressBar.style.width = Math.max(0, Math.min(100, p)) + '%'; }
+			var topRow = E('div', { 'style': 'display:flex; align-items:center; justify-content:space-between; gap:8px;' }, [
+				E('div', { 'style': 'display:flex; align-items:center; gap:8px;' }, [ statusIconEl, statusTextEl, elapsedEl ]),
+				E('div', { 'style': 'display:flex; align-items:center; gap:10px;' }, [
+					E('span', { 'style': 'font-size:12px; color:#6b7280; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:999px; padding:2px 8px;' }, _('在线升级')),
+					E('img', { src: L.resource('icons/update.png'), 'style': 'width:20px; height:20px; border-radius:6px; background:#f3f4f6; border:1px solid #e5e7eb; object-fit:contain;' })
+				])
+			]);
+			var statusBar = E('div', { 'style': 'display:flex; flex-direction:column; gap:8px; margin-bottom:8px;' }, [
+				topRow,
+				E('div', { 'style': 'font-size:15px;font-weight:700;color:#e5e7eb;' }, _('luci-app-uninstall')),
+				progressTrack
+			]);
+			var log = E('pre', { 'style': 'max-height:260px;overflow:auto;background:linear-gradient(180deg,#0b1024 0%,#0f1633 100%);color:#cbd5e1;padding:10px;border-radius:8px; box-shadow: inset 0 0 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);' }, '');
 			function println(s){ log.appendChild(document.createTextNode(String(s) + '\n')); log.scrollTop = log.scrollHeight; }
+			var closeBtn = E('button', { 'class': 'btn', disabled: true }, _('关闭'));
+			var modal = ui.showModal(_('正在升级…') + ' luci-app-uninstall', [ statusBar, log, E('div', { 'style':'margin-top:10px;display:flex;gap:8px;justify-content:flex-end;' }, [ closeBtn ]) ]);
+			var overlay = modal && modal.parentNode; if (overlay) { overlay.style.display = 'flex'; overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center'; }
+			var startTs = Date.now();
+			var timer = setInterval(function(){ var s = Math.floor((Date.now() - startTs) / 1000); elapsedEl.textContent = s + 's'; }, 1000);
+			// 模拟阶段性进度（请求未返回前最多到 90%）
+			setProgress(10);
+			var autoProg = 10;
+			var progTimer = setInterval(function(){ if (autoProg < 90) { autoProg += 1; setProgress(autoProg); } }, 300);
+			// 执行请求
 			println('> GET ' + L.url('admin/vum/uninstall/upgrade'));
 			self._httpJson(L.url('admin/vum/uninstall/upgrade'), { headers: { 'Accept': 'application/json' } }).then(function(res){
 				println('< ' + JSON.stringify(res));
-				if (res && res.ok) { ui.addNotification(null, E('p', {}, _('升级成功')), 'success'); setTimeout(function(){ window.location.reload(); }, 1200); }
-				else { ui.addNotification(null, E('p', {}, _('升级失败')), 'danger'); }
-			}).catch(function(err){ println('! ' + String(err)); ui.addNotification(null, E('p', {}, _('升级失败：') + String(err)), 'danger'); });
+				clearInterval(progTimer);
+				clearInterval(timer);
+				if (res && res.ok) {
+					setProgress(100);
+					statusIconEl.textContent = '✓';
+					statusIconEl.setAttribute('style', 'display:inline-flex;width:22px;height:22px;background:#dcfce7;color:#065f46;border-radius:999px;align-items:center;justify-content:center;font-weight:700;');
+					statusTextEl.textContent = _('升级完成');
+					statusTextEl.setAttribute('style', 'font-weight:600;color:#065f46;');
+					closeBtn.disabled = false;
+					closeBtn.textContent = _('返回页面');
+					closeBtn.addEventListener('click', function(){ ui.hideModal(modal); window.location.reload(); });
+					ui.addNotification(null, E('p', {}, _('升级成功')), 'success');
+				} else {
+					setProgress(100);
+					progressBar.style.background = '#ef4444';
+					progressBar.style.boxShadow = '0 0 8px rgba(239,68,68,.6)';
+					statusIconEl.textContent = '✕';
+					statusIconEl.setAttribute('style', 'display:inline-flex;width:22px;height:22px;background:#fee2e2;color:#7f1d1d;border-radius:999px;align-items:center;justify-content:center;font-weight:700;');
+					statusTextEl.textContent = _('升级失败');
+					statusTextEl.setAttribute('style', 'font-weight:600;color:#7f1d1d;');
+					closeBtn.disabled = false;
+					closeBtn.textContent = _('关闭');
+					closeBtn.addEventListener('click', function(){ ui.hideModal(modal); });
+					ui.addNotification(null, E('p', {}, _('升级失败')), 'danger');
+				}
+			}).catch(function(err){
+				clearInterval(progTimer);
+				clearInterval(timer);
+				println('! ' + String(err));
+				setProgress(100);
+				progressBar.style.background = '#ef4444';
+				progressBar.style.boxShadow = '0 0 8px rgba(239,68,68,.6)';
+				statusIconEl.textContent = '✕';
+				statusIconEl.setAttribute('style', 'display:inline-flex;width:22px;height:22px;background:#fee2e2;color:#7f1d1d;border-radius:999px;align-items:center;justify-content:center;font-weight:700;');
+				statusTextEl.textContent = _('升级失败');
+				statusTextEl.setAttribute('style', 'font-weight:600;color:#7f1d1d;');
+				closeBtn.disabled = false;
+				closeBtn.textContent = _('关闭');
+				closeBtn.addEventListener('click', function(){ ui.hideModal(modal); });
+				ui.addNotification(null, E('p', {}, _('升级失败：') + String(err)), 'danger');
+			});
 		}
 		function updateAction(){
 			self._httpJson(L.url('admin/vum/uninstall/check_update'), { headers: { 'Accept': 'application/json' } }).then(function(res){
