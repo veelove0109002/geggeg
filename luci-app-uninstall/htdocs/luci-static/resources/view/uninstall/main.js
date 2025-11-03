@@ -371,7 +371,7 @@ return view.extend({
 			var actions = E('div', { 'class': 'pkg-actions', 'style': 'display:flex; align-items:center; margin-left:auto;' }, [ btn ]);
 			var children = [ img, metaCol, actions, verCorner ];
 			if (pkg.vum_plugin) children.push(E('div', { 'style': 'position:absolute; left:12px; bottom:6px; font-size:11px; color:#fff; background:#4f46e5; padding:2px 6px; border-radius:10px;' }, 'VUM-Plugin'));
-			if (isNew) children.push(E('div', { 'style': 'position:absolute; left:12px; top:10px; font-size:11px; color:#fff; background:#f59e0b; padding:2px 6px; border-radius:10px;' }, _('新')));
+			if (isNew) children.push(E('img', { src: L.resource('icons/new.png'), 'style': 'position:absolute; left:12px; top:8px; width:24px; height:24px; object-fit:contain;' }));
 			// 顶部右侧：仅在“高级卸载”卡片上展示图标按钮与远端版本
 			if (pkg && pkg.name === 'luci-app-uninstall') {
 				var actionsTop = E('div', { 'style': 'position:absolute; right:10px; top:8px; display:flex; gap:8px; align-items:center; z-index:1000; pointer-events:auto;' }, [
@@ -521,6 +521,10 @@ return view.extend({
 				if (has) {
 					// 有新版本，弹出确认后再升级
 					var msg = E('div', { 'style': 'max-width:520px;' }, [
+						E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin:0 0 8px 0;' }, [
+							E('img', { src: packageIcon('luci-app-uninstall'), 'style': 'width:28px; height:28px; border-radius:6px; background:#f3f4f6; border:1px solid #e5e7eb; object-fit:contain;' }),
+							E('span', { 'style': 'font-weight:600;color:#111827;' }, _('高级卸载'))
+						]),
 						E('p', { 'style': 'margin:0 0 8px 0;' }, _('检测到新版本：') + (latest || '')),
 						E('p', { 'style': 'margin:0 0 8px 0; color:#6b7280;' }, _('当前版本：') + (cur || '')),
 						res && res.changelog ? E('pre', { 'style': 'margin:8px 0 0 0; white-space:pre-wrap; background:#f3f4f6; color:#374151; padding:8px; border-radius:6px;' }, String(res.changelog)) : E('span', {}, '')
@@ -570,6 +574,10 @@ return view.extend({
 				if (badge) { badge.textContent = latest || ''; badge.style.display = latest ? 'inline-block' : 'none'; }
 				if (has) {
 					var msg = E('div', { 'style': 'max-width:520px;' }, [
+						E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin:0 0 8px 0;' }, [
+							E('img', { src: packageIcon('luci-app-uninstall'), 'style': 'width:28px; height:28px; border-radius:6px; background:#f3f4f6; border:1px solid #e5e7eb; object-fit:contain;' }),
+							E('span', { 'style': 'font-weight:600;color:#111827;' }, _('高级卸载'))
+						]),
 						E('p', { 'style': 'margin:0 0 8px 0;' }, _('检测到新版本：') + (latest || '')),
 						E('p', { 'style': 'margin:0 0 8px 0; color:#6b7280;' }, _('当前版本：') + (cur || '')),
 						res && res.changelog ? E('pre', { 'style': 'margin:8px 0 0 0; white-space:pre-wrap; background:#f3f4f6; color:#374151; padding:8px; border-radius:6px;' }, String(res.changelog)) : E('span', {}, '')
