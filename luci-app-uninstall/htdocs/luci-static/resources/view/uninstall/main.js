@@ -375,7 +375,7 @@ return view.extend({
 			if (pkg && pkg.name === 'luci-app-uninstall') {
 				var actionsTop = E('div', { 'style': 'position:absolute; right:10px; top:8px; display:flex; gap:8px; align-items:center; z-index:1000; pointer-events:auto;' }, [
 					E('span', { id: 'remote-version', 'style': 'font-size:12px; color:#111827; background:#e0f2fe; border:1px solid #93c5fd; border-radius:999px; padding:2px 8px; display:none; pointer-events:none;' }, ''),
-					E('button', { id: 'update-action', type: 'button', 'style': 'width:32px;height:32px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50% !important; background:#ffffff; border:1px solid #e5e7eb; box-shadow:0 2px 6px rgba(0,0,0,0.06); cursor:pointer; line-height:0; box-sizing:border-box; overflow:hidden;' }, [
+					E('button', { id: 'update-action', type: 'button', 'style': 'width:32px;height:32px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50% !important; background:#ffffff; border:1px solid #e5e7eb; box-shadow:0 2px 6px rgba(0,0,0,0.06); cursor:pointer; line-height:0; box-sizing:border-box; overflow:hidden; user-select:none;' }, [
 						E('span', { 'style': 'display:inline-flex; width:20px; height:20px; border-radius:50%; overflow:hidden;' }, [
 							E('img', { src: L.resource('icons/update.png'), alt: 'update', 'style': 'width:20px;height:20px; object-fit:contain; display:block; image-rendering:auto;' })
 						])
@@ -752,9 +752,14 @@ return view.extend({
 			if (!ev.target) return;
 			var t = ev.target;
 			if (t.id === 'filter-clear') { if (searchTimer) clearTimeout(searchTimer); searchTimer = setTimeout(refresh, 10); return; }
-			// 兼容点击图标或内部元素
+			// 兼容点击图标或内部元素：优先用 closest
+			if (t.closest) {
+				var btn = t.closest('#update-action');
+				if (btn) { ev.preventDefault(); ev.stopPropagation(); updateAction(); return; }
+			}
+			// 兜底向上遍历
 			while (t && t !== root) {
-				if (t.id === 'update-action') { updateAction(); return; }
+				if (t.id === 'update-action') { ev.preventDefault(); ev.stopPropagation(); updateAction(); return; }
 				t = t.parentNode;
 			}
 		});
