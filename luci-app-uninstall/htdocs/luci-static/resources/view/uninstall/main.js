@@ -373,11 +373,11 @@ return view.extend({
 			if (isNew) children.push(E('div', { 'style': 'position:absolute; left:12px; top:10px; font-size:11px; color:#fff; background:#f59e0b; padding:2px 6px; border-radius:10px;' }, _('新')));
 			// 顶部右侧：仅在“高级卸载”卡片上展示图标按钮与远端版本
 			if (pkg && pkg.name === 'luci-app-uninstall') {
-				var actionsTop = E('div', { 'style': 'position:absolute; right:12px; top:10px; display:flex; gap:8px; align-items:center;' }, [
+				var actionsTop = E('div', { 'style': 'position:absolute; right:12px; top:10px; display:flex; gap:8px; align-items:center; z-index:3;' }, [
 					E('span', { id: 'remote-version', 'style': 'font-size:12px; color:#111827; background:#e0f2fe; border:1px solid #93c5fd; border-radius:999px; padding:2px 8px; display:none;' }, ''),
-					E('button', { id: 'update-action', type: 'button', 'class': 'btn cbi-button cbi-button-apply', 'style': 'width:26px;height:26px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px;' }, [
-						E('span', { 'style': 'display:inline-flex; width:16px; height:16px;' }, [
-							E('img', { src: L.resource('icons/update.svg'), 'style': 'width:16px;height:16px; object-fit:contain;' })
+					E('button', { id: 'update-action', type: 'button', 'class': 'btn cbi-button cbi-button-apply', 'style': 'width:28px;height:28px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; background:#ffffff; border:1px solid #e5e7eb;' }, [
+						E('span', { 'style': 'display:inline-flex; width:18px; height:18px;' }, [
+							E('img', { src: L.resource('icons/update.svg'), alt: 'update', 'style': 'width:18px;height:18px; object-fit:contain; display:block;' })
 						])
 					])
 				]);
@@ -423,7 +423,7 @@ return view.extend({
 				var msg = has ? (_('检测到新版本：') + latest + ' / 当前：' + cur) : (_('当前已是最新版本：') + (cur || ''));
 				var badge = document.getElementById('remote-version');
 				if (badge) { badge.textContent = latest || ''; badge.style.display = latest ? 'inline-block' : 'none'; }
-				ui.addNotification(null, E('p', {}, msg), has ? 'info' : 'success');
+				/* 静默：仅更新徽标，不弹全局通知 */
 			}).catch(function(err){ ui.addNotification(null, E('p', {}, _('检测更新失败：') + String(err)), 'danger'); });
 		}
 		function doUpgrade(){
@@ -465,6 +465,35 @@ return view.extend({
 				} else {
 					ui.addNotification(null, E('p', {}, _('当前已是最新版本：') + (cur || '')), 'success');
 				}
+			}).catch(function(err){ ui.addNotification(null, E('p', {}, _('检测更新失败：') + String(err)), 'danger'); });
+		}
+
+		function updateAction(){
+			self._httpJson(L.url('admin/vum/uninstall/check_update'), { headers: { 'Accept': 'application/json' } }).then(function(res){
+				var cur = (res && res.current) || '';
+				var latest = (res && res.latest) || '';
+				var has = !!(res && res.available);
+				var badge = document.getElementById('remote-version');
+				if (badge) { badge.textContent = latest || ''; badge.style.display = latest ? 'inline-block' : 'none'; }
+				if (has) {
+					var msg = E('div', { 'style': 'max-width:520px;' }, [
+						E('p', { 'style': 'margin:0 0 8px 0;' }, _('检测到新版本：') + (latest || '')),
+						E('p', { 'style': 'margin:0 0 8px 0; color:#6b7280;' }, _('当前版本：') + (cur || '')),
+						res && res.changelog ? E('pre', { 'style': 'margin:8px 0 0 0; white-space:pre-wrap; background:#f3f4f6; color:#374151; padding:8px; border-radius:6px;' }, String(res.changelog)) : E('span', {}, '')
+					]);
+					var modal = ui.showModal(_('确认升级到最新版本？'), [
+						msg,
+						E('div', { 'style':'margin-top:10px;display:flex;gap:8px;justify-content:flex-end;' }, [
+							E('button', { 'class': 'btn', id: 'cancel-upgrade' }, _('取消')),
+							E('button', { 'class': 'btn cbi-button cbi-button-apply', id: 'confirm-upgrade' }, _('立即升级'))
+						])
+					]);
+					var cancelBtn = modal.querySelector('#cancel-upgrade');
+					var okBtn = modal.querySelector('#confirm-upgrade');
+					if (cancelBtn) cancelBtn.addEventListener('click', function(){ ui.hideModal(modal); });
+					if (okBtn) okBtn.addEventListener('click', function(){ ui.hideModal(modal); doUpgrade(); });
+				}
+				// 无更新：静默不弹全局通知
 			}).catch(function(err){ ui.addNotification(null, E('p', {}, _('检测更新失败：') + String(err)), 'danger'); });
 		}
 
