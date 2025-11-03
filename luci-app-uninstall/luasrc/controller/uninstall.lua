@@ -27,6 +27,14 @@ function index()
 	e = entry({ 'admin', 'vum', 'uninstall', 'version' }, call('action_version'))
 	e.leaf = true
 	e.acl_depends = { 'luci-app-uninstall' }
+
+	e = entry({ 'admin', 'vum', 'uninstall', 'check_update' }, call('action_check_update'))
+	e.leaf = true
+	e.acl_depends = { 'luci-app-uninstall' }
+
+	e = entry({ 'admin', 'vum', 'uninstall', 'upgrade' }, call('action_upgrade'))
+	e.leaf = true
+	e.acl_depends = { 'luci-app-uninstall' }
 end
 
 local http = require 'luci.http'
@@ -67,6 +75,129 @@ function action_version()
 		end
 	end
 	json_response({ version = ver or '' })
+end
+
+-- 在线检测 luci-app-uninstall 可用版本（来源：xz.vumstar.com）
+function action_check_update()
+	-- 当前已安装版本
+	local status_path = fs.stat('/usr/lib/opkg/status') and '/usr/lib/opkg/status' or (fs.stat('/var/lib/opkg/status') and '/var/lib/opkg/status' or nil)
+	local cur
+	if status_path then
+		local s = fs.readfile(status_path) or ''
+		local name, installed
+		for line in s:gmatch('[^\n\r]*') do
+			local n = line:match('^Package:%s*(.+)$')
+			if n then
+				if name == 'luci-app-uninstall' and installed and cur then break end
+				name, installed = n, false
+			end
+			local st = line:match('^Status:%s*(.+)$')
+			if st and st:match('installed') then installed = true end
+			local v = line:match('^Version:%s*(.+)$')
+			if v and name == 'luci-app-uninstall' and installed then cur = v end
+		end
+	end
+	-- 远端版本信息
+	local latest, url, changelog
+	local endpoints = {
+		'https://xz.vumstar.com/uninstall/version.json',
+		'https://xz.vumstar.com/luci-app-uninstall/version.json',
+		'https://xz.vumstar.com/version.json'
+	}
+	local body = ''
+	for _, u in ipairs(endpoints) do
+		body = sys.exec("wget -qO- '" .. u .. "' 2>/dev/null") or ''
+		if not body or #body == 0 then body = sys.exec("uclient-fetch -qO- '" .. u .. "' 2>/dev/null") or '' end
+		if body and #body > 0 then
+			local ok, data = pcall(json.parse, body)
+			if ok and type(data) == 'table' then
+				latest = data.latest or data.version or latest
+				url = data.url or url
+				changelog = data.changelog or changelog
+				break
+			end
+		end
+	end
+	-- 回退：尝试纯文本版本与固定下载地址
+	if not latest or #latest == 0 then
+		local txts = {
+			'https://xz.vumstar.com/uninstall/version.txt',
+			'https://xz.vumstar.com/luci-app-uninstall/version.txt'
+		}
+		for _, u in ipairs(txts) do
+			local t = sys.exec("wget -qO- '" .. u .. "' 2>/dev/null") or ''
+			if not t or #t == 0 then t = sys.exec("uclient-fetch -qO- '" .. u .. "' 2>/dev/null") or '' end
+			if t and #t > 0 then latest = (t:gsub('%s+$',''):gsub('^%s+','')); break end
+		end
+	end
+	if not url or #url == 0 then
+		-- 假设固定路径：包含版本与架构
+		local arch = sys.exec("uname -m 2>/dev/null") or ''
+		arch = arch:gsub('%s+$',''):gsub('^%s+','')
+		-- 常见 OpenWrt 架构映射（粗略）
+		local map = { x86_64='x86_64', aarch64='aarch64', armv7l='armv7', mips='mips', mipsel='mipsel' }
+		local a = map[arch] or arch or 'all'
+		if latest and #latest > 0 then
+			url = string.format('https://xz.vumstar.com/uninstall/luci-app-uninstall_%s_%s.ipk', latest, a)
+		else
+			url = 'https://xz.vumstar.com/uninstall/luci-app-uninstall.ipk'
+		end
+	end
+	json_response({ current = cur or '', latest = latest or '', available = (latest and cur and latest ~= cur) or false, url = url or '', changelog = changelog })
+end
+
+-- 在线升级 luci-app-uninstall（来源：xz.vumstar.com）
+function action_upgrade()
+	local log = {}
+	local function append(s) log[#log+1] = s end
+	append('=== Upgrade from xz.vumstar.com ===')
+	-- 读取远端版本信息
+	local ok, data
+	local endpoints = {
+		'https://xz.vumstar.com/uninstall/version.json',
+		'https://xz.vumstar.com/luci-app-uninstall/version.json',
+		'https://xz.vumstar.com/version.json'
+	}
+	for _, u in ipairs(endpoints) do
+		local body = sys.exec("wget -qO- '" .. u .. "' 2>/dev/null") or ''
+		if not body or #body == 0 then body = sys.exec("uclient-fetch -qO- '" .. u .. "' 2>/dev/null") or '' end
+		if body and #body > 0 then
+			ok, data = pcall(json.parse, body)
+			if ok and type(data) == 'table' then break end
+		end
+	end
+	local latest = data and (data.latest or data.version) or nil
+	local url = data and data.url or nil
+	if not url or #url == 0 then
+		local arch = sys.exec("uname -m 2>/dev/null") or ''
+		arch = arch:gsub('%s+$',''):gsub('^%s+','')
+		local map = { x86_64='x86_64', aarch64='aarch64', armv7l='armv7', mips='mips', mipsel='mipsel' }
+		local a = map[arch] or arch or 'all'
+		if latest and #latest > 0 then
+			url = string.format('https://xz.vumstar.com/uninstall/luci-app-uninstall_%s_%s.ipk', latest, a)
+		else
+			url = 'https://xz.vumstar.com/uninstall/luci-app-uninstall.ipk'
+		end
+	end
+	append('> Download: ' .. url)
+	local ipk = '/tmp/luci-app-uninstall.ipk'
+	local rc_dl = sys.call(string.format("wget -O %q '%s' >/dev/null 2>&1", ipk, url))
+	if rc_dl ~= 0 then rc_dl = sys.call(string.format("uclient-fetch -O %q '%s' >/dev/null 2>&1", ipk, url)) end
+	if rc_dl ~= 0 or not fs.stat(ipk) then
+		append('! 下载失败')
+		return json_response({ ok = false, log = table.concat(log, "\n") }, 500)
+	end
+	append('+ opkg install --force-reinstall ' .. ipk)
+	local tmpout = '/tmp/opkg-upgrade-uninstall.txt'
+	local rc = sys.call(string.format("opkg install --force-reinstall %q >%s 2>&1", ipk, tmpout))
+	local out = fs.readfile(tmpout) or ''
+	append(out)
+	-- 清理并重载 LuCI
+	sys.call('rm -f /tmp/luci-indexcache >/dev/null 2>&1')
+	sys.call('rm -rf /tmp/luci-modulecache/* >/dev/null 2>&1')
+	sys.call('[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd reload >/dev/null 2>&1')
+	sys.call('[ -x /etc/init.d/nginx ] && /etc/init.d/nginx reload >/dev/null 2>&1')
+	return json_response({ ok = (rc == 0), log = table.concat(log, "\n") })
 end
 
 -- 根据文件名关键词匹配：返回包含该文件的已安装包名列表

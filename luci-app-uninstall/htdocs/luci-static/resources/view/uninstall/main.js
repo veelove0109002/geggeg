@@ -403,6 +403,27 @@ return view.extend({
 			grid.appendChild(section);
 		}
 
+		function checkUpdate(){
+			self._httpJson(L.url('admin/vum/uninstall/check_update'), { headers: { 'Accept': 'application/json' } }).then(function(res){
+				var cur = (res && res.current) || '';
+				var latest = (res && res.latest) || '';
+				var has = !!(res && res.available);
+				var msg = has ? (_('检测到新版本：') + latest + ' / 当前：' + cur) : (_('当前已是最新版本：') + (cur || ''));
+				ui.addNotification(null, E('p', {}, msg), has ? 'info' : 'success');
+			}).catch(function(err){ ui.addNotification(null, E('p', {}, _('检测更新失败：') + String(err)), 'danger'); });
+		}
+		function doUpgrade(){
+			var log = E('pre', { 'style': 'max-height:320px;overflow:auto;background:#0f1633;color:#cbd5e1;padding:10px;border-radius:8px;' }, '');
+			var modal = ui.showModal(_('在线升级 luci-app-uninstall'), [ log, E('div', { 'style':'margin-top:10px;display:flex;gap:8px;justify-content:flex-end;' }, [ E('button', { 'class': 'btn', id: 'upgrade-close' }, _('关闭')) ]) ]);
+			function println(s){ log.appendChild(document.createTextNode(String(s) + '\n')); log.scrollTop = log.scrollHeight; }
+			println('> GET ' + L.url('admin/vum/uninstall/upgrade'));
+			self._httpJson(L.url('admin/vum/uninstall/upgrade'), { headers: { 'Accept': 'application/json' } }).then(function(res){
+				println('< ' + JSON.stringify(res));
+				if (res && res.ok) { ui.addNotification(null, E('p', {}, _('升级成功')), 'success'); setTimeout(function(){ window.location.reload(); }, 1200); }
+				else { ui.addNotification(null, E('p', {}, _('升级失败')), 'danger'); }
+			}).catch(function(err){ println('! ' + String(err)); ui.addNotification(null, E('p', {}, _('升级失败：') + String(err)), 'danger'); });
+		}
+
 		var FILE_SEARCH_CACHE = {};
 		var searchSeq = 0;
 		function refresh() {
@@ -654,7 +675,12 @@ return view.extend({
 				searchTimer = setTimeout(refresh, 250);
 			}
 		});
-		root.addEventListener('click', function(ev){ if (ev.target && ev.target.id === 'filter-clear') { if (searchTimer) clearTimeout(searchTimer); searchTimer = setTimeout(refresh, 10); } });
+		root.addEventListener('click', function(ev){
+			if (!ev.target) return;
+			if (ev.target.id === 'filter-clear') { if (searchTimer) clearTimeout(searchTimer); searchTimer = setTimeout(refresh, 10); return; }
+			if (ev.target.id === 'check-update') { checkUpdate(); return; }
+			if (ev.target.id === 'do-upgrade') { doUpgrade(); return; }
+		});
 
 		// 拉取自身版本并显示徽标
 		self._httpJson(L.url('admin/vum/uninstall/version'), { headers: { 'Accept': 'application/json' } }).then(function(res){
