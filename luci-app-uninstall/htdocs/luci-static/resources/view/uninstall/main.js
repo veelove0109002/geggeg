@@ -76,7 +76,7 @@ return view.extend({
 			(function(){
 				var wrap = E('div', { 'style': 'margin:8px 0; display:flex; align-items:center;' }, []);
 				var box = E('div', { 'style': 'flex:1; display:flex; align-items:center; gap:8px; background:#ffffff; border:1px solid #e5e7eb; border-radius:999px; padding:8px 12px;' }, []);
-				var icon = E('span', { 'style': 'display:inline-flex; width:18px; height:18px; color:#6b7280;' }, '🔍');
+				var icon = E('img', { src: L.resource('icons/ss.svg'), 'style': 'display:inline-block; width:22px; height:22px; object-fit:contain;' });
 				var input = E('input', { id: 'filter', type: 'text', placeholder: _('按包名或文件名搜索…'), 'style': 'flex:1; border:none; outline:none; box-shadow:none; -webkit-appearance:none; appearance:none; font-size:14px; color:#111827; background:transparent;' });
 				var clearBtn = E('button', { id: 'filter-clear', type: 'button', 'style': 'display:none; background:#f3f4f6; border:1px solid #e5e7eb; color:#6b7280; border-radius:999px; padding:2px 8px; font-size:12px;' }, _('清除'));
 				box.appendChild(icon); box.appendChild(input); box.appendChild(clearBtn); wrap.appendChild(box);
