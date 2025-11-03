@@ -138,17 +138,66 @@ function action_upgrade()
 	local log = {}
 	local function append(s) log[#log+1] = s end
 	append('=== Upgrade from plugin.vumstar.com/download ===')
-	-- 直接使用固定下载地址（无需先拉取版本信息）
-	local url = 'https://plugin.vumstar.com/download/luci-app-uninstall.ipk'
-	append('> Download: ' .. url)
+
 	local ipk = '/tmp/luci-app-uninstall.ipk'
-	-- 优先 uclient-fetch（OpenWrt 常见），再回退 wget
-	local rc_dl = sys.call(string.format("uclient-fetch -O %q '%s' >/dev/null 2>&1", ipk, url))
-	if rc_dl ~= 0 then rc_dl = sys.call(string.format("wget -O %q '%s' >/dev/null 2>&1", ipk, url)) end
-	if rc_dl ~= 0 or not fs.stat(ipk) then
-		append('! 下载失败')
+
+	local function validate_ipk(path)
+		local st = fs.stat(path)
+		if not st or st.size <= 1024 then return false, '文件过小或不存在' end
+		local f = io.open(path, 'rb')
+		if not f then return false, '无法读取文件' end
+		local header = f:read(8) or ''
+		f:close()
+		if header ~= '!<arch>\n' then return false, '非有效 ipk（非 ar 档头）' end
+		return true
+	end
+
+	local function fetch(url)
+		append('> Download: ' .. url)
+		-- 清理旧文件
+		sys.call(string.format("rm -f %q >/dev/null 2>&1", ipk))
+		-- 优先 uclient-fetch，再尝试 wget，最后尝试 curl（若存在）
+		local rc = sys.call(string.format("uclient-fetch -L -O %q '%s' >/dev/null 2>&1", ipk, url))
+		if rc ~= 0 then rc = sys.call(string.format("wget --no-check-certificate -O %q '%s' >/dev/null 2>&1", ipk, url)) end
+		if rc ~= 0 then rc = sys.call(string.format("command -v curl >/dev/null 2>&1 && curl -L -o %q '%s' >/dev/null 2>&1 || true", ipk, url)) end
+		local ok, reason = validate_ipk(ipk)
+		if not ok then
+			append('! 下载内容无效：' .. (reason or ''))
+			return false
+		end
+		return true
+	end
+
+	-- 候选下载地址：1) 固定地址（旧约定） 2) 版本 JSON 中提供的 url（若可获取）
+	local candidates = {
+		'https://plugin.vumstar.com/download/luci-app-uninstall.ipk'
+	}
+	-- 尝试读取版本 JSON 获取精确 ipk 地址
+	do
+		local endpoints = { 'https://plugin.vumstar.com/download/version.json' }
+		for _, u in ipairs(endpoints) do
+			local body = sys.exec("wget -qO- '" .. u .. "' 2>/dev/null") or ''
+			if not body or #body == 0 then body = sys.exec("uclient-fetch -qO- '" .. u .. "' 2>/dev/null") or '' end
+			if body and #body > 0 then
+				local ok, data = pcall(json.parse, body)
+				if ok and type(data) == 'table' and data.url and #data.url > 0 then
+					-- 优先使用 JSON 提供的精确地址
+					table.insert(candidates, 1, tostring(data.url))
+					break
+				end
+			end
+		end
+	end
+
+	local got
+	for _, url in ipairs(candidates) do
+		if fetch(url) then got = url; break end
+	end
+	if not got then
+		append('! 下载失败（所有候选地址不可用）')
 		return json_response({ ok = false, log = table.concat(log, "\n") }, 500)
 	end
+
 	append('+ opkg install --force-reinstall ' .. ipk)
 	local tmpout = '/tmp/opkg-upgrade-uninstall.txt'
 	local rc = sys.call(string.format("opkg install --force-reinstall %q >%s 2>&1", ipk, tmpout))
