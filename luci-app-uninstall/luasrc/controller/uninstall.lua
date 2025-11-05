@@ -130,7 +130,7 @@ function action_check_update()
 	-- 固定下载地址（无需返回 url 给前端）
 	url = 'https://plugin.vumstar.com/download/luci-app-uninstall.ipk'
 	-- 若无法获取 latest，也不影响在线更新；为了前端确认，标记 available=true
-	json_response({ current = cur or '', latest = latest or '', available = true })
+	json_response({ current = cur or '', latest = latest or '', available = true, changelog = changelog or '' })
 end
 
 -- 在线升级 luci-app-uninstall（来源：plugin.vumstar.com/download）
