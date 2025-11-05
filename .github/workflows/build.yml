@@ -245,9 +245,9 @@ jobs:
           # Try cleanly remove old version to avoid HOLD/PREFER behavior
           opkg remove luci-app-uninstall >/dev/null 2>&1 || true
           opkg update >/dev/null 2>&1 || true
-          if ! opkg install --force-reinstall --force-downgrade "$BEST_IPK"; then
-            echo "Retrying with --force-depends"
-            opkg install --force-reinstall --force-downgrade --force-depends "$BEST_IPK"
+          if ! opkg install --force-reinstall --force-downgrade --force-overwrite "$BEST_IPK"; then
+            echo "Retrying with --force-depends and --force-overwrite"
+            opkg install --force-reinstall --force-downgrade --force-depends --force-overwrite "$BEST_IPK"
           fi
           echo "Installation finished."
           EOF
