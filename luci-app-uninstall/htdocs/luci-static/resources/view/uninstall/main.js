@@ -72,6 +72,94 @@ return view.extend({
 		var self = this;
 		var selectedPackages = {}; // 存储选中的包
 		var selectAllState = false; // 全选状态
+		
+		// 添加美化的复选框样式
+		var styleEl = E('style', {}, `
+			.custom-checkbox-wrapper {
+				position: relative;
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+			}
+			.custom-checkbox-wrapper input[type="checkbox"] {
+				position: absolute;
+				opacity: 0;
+				width: 0;
+				height: 0;
+				margin: 0;
+				padding: 0;
+			}
+			.custom-checkbox {
+				position: relative;
+				width: 22px;
+				height: 22px;
+				border: 2px solid #d1d5db;
+				border-radius: 6px;
+				background: #ffffff;
+				transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+			}
+			.custom-checkbox:hover {
+				border-color: #4f46e5;
+				box-shadow: 0 2px 4px rgba(79, 70, 229, 0.15);
+				transform: scale(1.05);
+			}
+			.custom-checkbox-wrapper input[type="checkbox"]:checked + .custom-checkbox {
+				background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+				border-color: #4f46e5;
+				box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+			}
+			.custom-checkbox-wrapper input[type="checkbox"]:checked + .custom-checkbox:hover {
+				background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+				box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+				transform: scale(1.08);
+			}
+			.custom-checkbox::after {
+				content: '';
+				position: absolute;
+				width: 5px;
+				height: 10px;
+				border: solid white;
+				border-width: 0 2px 2px 0;
+				transform: rotate(45deg) scale(0);
+				transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+				opacity: 0;
+			}
+			.custom-checkbox-wrapper input[type="checkbox"]:checked + .custom-checkbox::after {
+				transform: rotate(45deg) scale(1);
+				opacity: 1;
+			}
+			.custom-checkbox-wrapper input[type="checkbox"]:indeterminate + .custom-checkbox {
+				background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+				border-color: #6366f1;
+			}
+			.custom-checkbox-wrapper input[type="checkbox"]:indeterminate + .custom-checkbox::after {
+				content: '';
+				width: 10px;
+				height: 2px;
+				border: none;
+				background: white;
+				transform: scale(1);
+				opacity: 1;
+				border-radius: 1px;
+			}
+			.custom-checkbox-wrapper input[type="checkbox"]:focus + .custom-checkbox {
+				outline: 2px solid rgba(79, 70, 229, 0.3);
+				outline-offset: 2px;
+			}
+			.custom-checkbox-wrapper.pkg-checkbox-wrapper {
+				margin-right: 8px;
+			}
+			.custom-checkbox-wrapper.select-all-checkbox-wrapper {
+				display: inline-flex;
+			}
+		`);
+		document.head.appendChild(styleEl);
+		
 		var root = E('div', { 'class': 'cbi-map' }, [
 			E('h2', {}, _('高级卸载')),
 			E('div', { 'class': 'cbi-section-descr' }, _('选择要卸载的已安装软件包。可选地同时删除其配置文件。')),
@@ -93,13 +181,17 @@ return view.extend({
 					'style': 'margin:8px 0; display:flex; align-items:center; gap:12px; padding:10px 16px; background:linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border:1px solid #bae6fd; border-radius:12px; box-shadow:0 2px 4px rgba(0,0,0,0.05);'
 				}, []);
 				
-				// 全选复选框
-				var selectAllCheckbox = E('input', { type: 'checkbox', id: 'select-all', 'style': 'width:18px; height:18px; cursor:pointer; margin:0; padding:0; flex-shrink:0; vertical-align:middle; display:inline-block;' });
+				// 全选复选框 - 美化版本
+				var selectAllCheckbox = E('input', { type: 'checkbox', id: 'select-all' });
+				var selectAllCheckboxWrapper = E('div', { 'class': 'custom-checkbox-wrapper select-all-checkbox-wrapper' }, [
+					selectAllCheckbox,
+					E('span', { 'class': 'custom-checkbox' })
+				]);
 				var selectAllLabel = E('label', { 
 					'for': 'select-all',
-					'style': 'display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; color:#0369a1; user-select:none; line-height:1;'
+					'style': 'display:inline-flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; color:#0369a1; user-select:none; line-height:1;'
 				}, [
-					selectAllCheckbox,
+					selectAllCheckboxWrapper,
 					E('span', { 'style': 'line-height:1; display:inline-block; vertical-align:middle;' }, _('全选'))
 				]);
 				
@@ -370,14 +462,24 @@ return view.extend({
 				// install_time from backend is seconds since epoch
 				isNew = ((Date.now() / 1000) - pkg.install_time) < 259200; // 3 days
 			}
-			// 批量选择复选框
+			// 批量选择复选框 - 美化版本
 			var checkbox = E('input', { 
 				type: 'checkbox',
 				'class': 'pkg-checkbox',
-				'data-pkg-name': pkg.name,
-				'style': 'width:20px; height:20px; cursor:pointer; margin-right:8px;'
+				'data-pkg-name': pkg.name
 			});
 			checkbox.checked = selectedPackages[pkg.name] || false;
+			var checkboxWrapper = E('div', { 'class': 'custom-checkbox-wrapper pkg-checkbox-wrapper' }, [
+				checkbox,
+				E('span', { 'class': 'custom-checkbox' })
+			]);
+			// 点击包装器也能切换复选框
+			checkboxWrapper.addEventListener('click', function(ev){
+				ev.preventDefault();
+				ev.stopPropagation();
+				checkbox.checked = !checkbox.checked;
+				checkbox.dispatchEvent(new Event('change'));
+			});
 			checkbox.addEventListener('change', function(){
 				if (this.checked) {
 					selectedPackages[pkg.name] = { 
@@ -432,7 +534,7 @@ return view.extend({
 			var metaTop = E('div', { 'style': 'display:flex; align-items:center; gap:8px; flex-wrap:wrap;' }, [ title ]);
 			var metaCol = E('div', { 'class': 'pkg-meta', 'style': 'flex:1; display:flex; flex-direction:column; gap:6px;' }, [ metaTop, optionsRow ]);
 			var actions = E('div', { 'class': 'pkg-actions', 'style': 'display:flex; align-items:center; margin-left:auto;' }, [ btn ]);
-			var children = [ checkbox, img, metaCol, actions, verCorner ];
+			var children = [ checkboxWrapper, img, metaCol, actions, verCorner ];
 			if (pkg.vum_plugin) children.push(E('div', { 'style': 'position:absolute; left:12px; bottom:6px; font-size:11px; color:#fff; background:#4f46e5; padding:2px 6px; border-radius:10px;' }, 'VUM-Plugin'));
 			if (isNew) children.push(E('img', { src: L.resource('icons/new.png'), 'style': 'position:absolute; left:12px; top:8px; width:24px; height:24px; object-fit:contain;' }));
 			// 顶部右侧：仅在“高级卸载”卡片上展示图标按钮与远端版本
