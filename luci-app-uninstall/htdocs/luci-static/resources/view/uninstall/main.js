@@ -70,6 +70,8 @@ return view.extend({
 
 	render: function() {
 		var self = this;
+		var selectedPackages = {}; // 存储选中的包
+		var selectAllState = false; // 全选状态
 		var root = E('div', { 'class': 'cbi-map' }, [
 			E('h2', {}, _('高级卸载')),
 			E('div', { 'class': 'cbi-section-descr' }, _('选择要卸载的已安装软件包。可选地同时删除其配置文件。')),
@@ -83,6 +85,44 @@ return view.extend({
 				input.addEventListener('input', function(){ clearBtn.style.display = input.value ? 'inline-block' : 'none'; });
 				clearBtn.addEventListener('click', function(){ input.value=''; clearBtn.style.display='none'; input.dispatchEvent(new Event('input')); });
 				return wrap;
+			})(),
+			// 批量操作工具栏
+			(function(){
+				var toolbar = E('div', { 
+					id: 'batch-toolbar',
+					'style': 'margin:8px 0; display:flex; align-items:center; gap:12px; padding:10px 16px; background:linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border:1px solid #bae6fd; border-radius:12px; box-shadow:0 2px 4px rgba(0,0,0,0.05);'
+				}, []);
+				
+				// 全选复选框
+				var selectAllCheckbox = E('input', { type: 'checkbox', id: 'select-all', 'style': 'width:18px; height:18px; cursor:pointer;' });
+				var selectAllLabel = E('label', { 
+					'for': 'select-all',
+					'style': 'display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; color:#0369a1; user-select:none;'
+				}, [
+					selectAllCheckbox,
+					E('span', {}, _('全选'))
+				]);
+				
+				// 已选数量显示
+				var selectedCount = E('span', { 
+					id: 'selected-count',
+					'style': 'font-size:13px; color:#6b7280; padding:4px 12px; background:#ffffff; border:1px solid #e5e7eb; border-radius:999px;'
+				}, _('已选: 0'));
+				
+				// 批量卸载按钮
+				var batchUninstallBtn = E('button', {
+					id: 'batch-uninstall-btn',
+					type: 'button',
+					'class': 'btn cbi-button cbi-button-remove',
+					'style': 'margin-left:auto; opacity:0.5; cursor:not-allowed;',
+					disabled: true
+				}, _('批量卸载'));
+				
+				toolbar.appendChild(selectAllLabel);
+				toolbar.appendChild(selectedCount);
+				toolbar.appendChild(batchUninstallBtn);
+				
+				return toolbar;
 			})()
 		]);
 
@@ -330,6 +370,29 @@ return view.extend({
 				// install_time from backend is seconds since epoch
 				isNew = ((Date.now() / 1000) - pkg.install_time) < 259200; // 3 days
 			}
+			// 批量选择复选框
+			var checkbox = E('input', { 
+				type: 'checkbox',
+				'class': 'pkg-checkbox',
+				'data-pkg-name': pkg.name,
+				'style': 'width:20px; height:20px; cursor:pointer; margin-right:8px;'
+			});
+			checkbox.checked = selectedPackages[pkg.name] || false;
+			checkbox.addEventListener('change', function(){
+				if (this.checked) {
+					selectedPackages[pkg.name] = { 
+						name: pkg.name, 
+						version: pkg.version || '',
+						purge: purgeEl.checked,
+						deps: depsEl.checked,
+						cache: cacheEl.checked
+					};
+				} else {
+					delete selectedPackages[pkg.name];
+				}
+				updateBatchUI();
+			});
+			
 			var img = E('img', { src: packageIcon(pkg.name), alt: pkg.name, width: 56, height: 56, 'style': 'border-radius:10px;background:#f3f4f6;object-fit:contain;border:1px solid #e5e7eb;' });
 			img.addEventListener('error', function(){ img.src = DEFAULT_ICON; });
 			var titleCn = E('div', { 'style': 'font-weight:600;color:#111827;word-break:break-all;font-size:14px;' }, (pkg.display_name || displayName(pkg.name, pkg.category)));
@@ -369,7 +432,7 @@ return view.extend({
 			var metaTop = E('div', { 'style': 'display:flex; align-items:center; gap:8px; flex-wrap:wrap;' }, [ title ]);
 			var metaCol = E('div', { 'class': 'pkg-meta', 'style': 'flex:1; display:flex; flex-direction:column; gap:6px;' }, [ metaTop, optionsRow ]);
 			var actions = E('div', { 'class': 'pkg-actions', 'style': 'display:flex; align-items:center; margin-left:auto;' }, [ btn ]);
-			var children = [ img, metaCol, actions, verCorner ];
+			var children = [ checkbox, img, metaCol, actions, verCorner ];
 			if (pkg.vum_plugin) children.push(E('div', { 'style': 'position:absolute; left:12px; bottom:6px; font-size:11px; color:#fff; background:#4f46e5; padding:2px 6px; border-radius:10px;' }, 'VUM-Plugin'));
 			if (isNew) children.push(E('img', { src: L.resource('icons/new.png'), 'style': 'position:absolute; left:12px; top:8px; width:24px; height:24px; object-fit:contain;' }));
 			// 顶部右侧：仅在“高级卸载”卡片上展示图标按钮与远端版本
@@ -390,6 +453,36 @@ return view.extend({
 			return card;
 		}
 
+		// 更新批量操作UI
+		function updateBatchUI() {
+			var count = Object.keys(selectedPackages).length;
+			var countEl = document.getElementById('selected-count');
+			var batchBtn = document.getElementById('batch-uninstall-btn');
+			var selectAllCb = document.getElementById('select-all');
+			
+			if (countEl) countEl.textContent = _('已选: ') + count;
+			
+			if (batchBtn) {
+				if (count > 0) {
+					batchBtn.disabled = false;
+					batchBtn.style.opacity = '1';
+					batchBtn.style.cursor = 'pointer';
+				} else {
+					batchBtn.disabled = true;
+					batchBtn.style.opacity = '0.5';
+					batchBtn.style.cursor = 'not-allowed';
+				}
+			}
+			
+			// 更新全选复选框状态
+			if (selectAllCb) {
+				var allCheckboxes = document.querySelectorAll('.pkg-checkbox');
+				var checkedCount = document.querySelectorAll('.pkg-checkbox:checked').length;
+				selectAllCb.checked = allCheckboxes.length > 0 && checkedCount === allCheckboxes.length;
+				selectAllCb.indeterminate = checkedCount > 0 && checkedCount < allCheckboxes.length;
+			}
+		}
+		
 		function renderSection(title, items){
 			if (!items || items.length === 0) return;
 			var iconMap = {
@@ -708,6 +801,179 @@ return view.extend({
 			});
 		}
 
+		// 批量卸载函数
+		function batchUninstall() {
+			var packages = Object.values(selectedPackages);
+			if (packages.length === 0) {
+				ui.addNotification(null, E('p', {}, _('请先选择要卸载的软件包')), 'warning');
+				return;
+			}
+			
+			// 确认对话框
+			var confirmFn = function(){
+				return new Promise(function(resolve){
+					var titleRow = E('div', { 'style': 'display:flex; align-items:center; gap:8px;' }, [
+						E('span', { 'style': 'display:inline-flex;width:28px;height:28px;background:#fee2e2;color:#b91c1c;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '!'),
+						E('span', { 'style': 'font-weight:600;font-size:16px;color:#111827;' }, _('批量卸载确认'))
+					]);
+					
+					var pkgList = E('div', { 'style': 'max-height:200px; overflow:auto; margin:12px 0; padding:12px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px;' }, []);
+					packages.forEach(function(pkg, idx){
+						var zhName = displayName(pkg.name);
+						var fullName = zhName && zhName !== pkg.name ? (zhName + ' (' + pkg.name + ')') : pkg.name;
+						pkgList.appendChild(E('div', { 'style': 'padding:4px 0; color:#374151;' }, (idx + 1) + '. ' + fullName));
+					});
+					
+					var warnBar = E('div', { 'style': 'margin-top:8px; border-radius:8px; padding:8px 10px; background: linear-gradient(90deg, #fff1f2 0%, #ffe4e6 50%, #fecaca 100%); color:#7f1d1d; display:flex; align-items:center; gap:8px;' }, [
+						E('span', { 'style': 'display:inline-flex;width:20px;height:20px;background:#fca5a5;color:#7f1d1d;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '!'),
+						E('span', {}, _('即将卸载 ') + packages.length + _(' 个软件包，此操作不可撤销！'))
+					]);
+					
+					var cancelBtn = E('button', { 'class': 'btn', 'style': 'background:#eef2ff;color:#1f2937;border-radius:999px;padding:6px 14px;' }, _('取消'));
+					var okBtn = E('button', { 'class': 'btn', 'style': 'background:#dc2626;color:#fff;border-radius:999px;padding:6px 14px;' }, _('确定卸载'));
+					var footer = E('div', { 'style':'margin-top:12px;display:flex;gap:8px;justify-content:flex-end;' }, [ cancelBtn, okBtn ]);
+					
+					var modal = ui.showModal(_('批量卸载确认'), [ titleRow, pkgList, warnBar, footer ]);
+					var overlay = modal && modal.parentNode; if (overlay) { overlay.style.display = 'flex'; overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center'; }
+					
+					cancelBtn.addEventListener('click', function(){ ui.hideModal(modal); resolve(false); });
+					okBtn.addEventListener('click', function(){ ui.hideModal(modal); resolve(true); });
+				});
+			};
+			
+			return confirmFn().then(function(ok){
+				if (!ok) return;
+				
+				// 执行批量卸载
+				var currentIndex = 0;
+				var successCount = 0;
+				var failCount = 0;
+				
+				// 创建进度弹窗
+				var progressText = E('div', { 'style': 'font-size:15px; font-weight:600; color:#111827; margin-bottom:8px;' }, _('正在批量卸载...'));
+				var progressBar = E('div', { 'style': 'height:8px; background:#e5e7eb; border-radius:999px; overflow:hidden; margin-bottom:12px;' }, [
+					E('div', { id: 'batch-progress-bar', 'style': 'height:100%; width:0%; background:#22c55e; transition:width .3s ease;' })
+				]);
+				var statusText = E('div', { id: 'batch-status', 'style': 'font-size:13px; color:#6b7280; margin-bottom:8px;' }, '');
+				
+				var logExpanded = false;
+				var toggleLogBtn = E('button', { 
+					type: 'button',
+					'class': 'btn',
+					'style': 'font-size:12px; padding:4px 10px; background:#f3f4f6; border:1px solid #e5e7eb; color:#6b7280; border-radius:6px; cursor:pointer;'
+				}, _('展开日志'));
+				
+				var log = E('pre', { 'style': 'max-height:0;overflow:hidden;background:linear-gradient(180deg,#0b1024 0%,#0f1633 100%);color:#cbd5e1;padding:0 10px;border-radius:8px; box-shadow: inset 0 0 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06); transition: max-height .3s ease, padding .3s ease;' }, '');
+				
+				toggleLogBtn.addEventListener('click', function(){
+					logExpanded = !logExpanded;
+					if (logExpanded) {
+						log.style.maxHeight = '260px';
+						log.style.padding = '10px';
+						log.style.overflow = 'auto';
+						toggleLogBtn.textContent = _('折叠日志');
+						toggleLogBtn.style.background = '#e0f2fe';
+						toggleLogBtn.style.color = '#0369a1';
+					} else {
+						log.style.maxHeight = '0';
+						log.style.padding = '0 10px';
+						log.style.overflow = 'hidden';
+						toggleLogBtn.textContent = _('展开日志');
+						toggleLogBtn.style.background = '#f3f4f6';
+						toggleLogBtn.style.color = '#6b7280';
+					}
+				});
+				
+				var logSection = E('div', { 'style': 'display:flex; flex-direction:column; gap:8px;' }, [
+					E('div', { 'style': 'display:flex; align-items:center; justify-content:space-between;' }, [
+						E('span', { 'style': 'font-size:13px; color:#6b7280; font-weight:600;' }, _('执行日志')),
+						toggleLogBtn
+					]),
+					log
+				]);
+				
+				var closeBtn = E('button', { 'class': 'btn', disabled: true }, _('关闭'));
+				var modal = ui.showModal(_('批量卸载进度'), [
+					progressText,
+					progressBar,
+					statusText,
+					logSection,
+					E('div', { 'style':'margin-top:10px;display:flex;gap:8px;justify-content:flex-end;' }, [ closeBtn ])
+				]);
+				var overlay = modal && modal.parentNode; if (overlay) { overlay.style.display = 'flex'; overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center'; }
+				
+				function println(s){ log.appendChild(document.createTextNode(String(s) + '\n')); log.scrollTop = log.scrollHeight; }
+				
+				// 递归卸载每个包
+				function uninstallNext() {
+					if (currentIndex >= packages.length) {
+						// 全部完成
+						var progressBarEl = document.getElementById('batch-progress-bar');
+						if (progressBarEl) progressBarEl.style.width = '100%';
+						
+						progressText.textContent = _('批量卸载完成');
+						progressText.style.color = successCount === packages.length ? '#065f46' : '#92400e';
+						
+						var statusEl = document.getElementById('batch-status');
+						if (statusEl) {
+							statusEl.textContent = _('成功: ') + successCount + _(' 个，失败: ') + failCount + _(' 个');
+							statusEl.style.color = failCount > 0 ? '#dc2626' : '#059669';
+						}
+						
+						closeBtn.disabled = false;
+						closeBtn.textContent = _('完成');
+						closeBtn.addEventListener('click', function(){ 
+							ui.hideModal(modal); 
+							// 清空选择
+							selectedPackages = {};
+							window.location.reload();
+						});
+						return;
+					}
+					
+					var pkg = packages[currentIndex];
+					var zhName = displayName(pkg.name);
+					var fullName = zhName && zhName !== pkg.name ? (zhName + ' (' + pkg.name + ')') : pkg.name;
+					
+					var statusEl = document.getElementById('batch-status');
+					if (statusEl) statusEl.textContent = _('正在卸载: ') + fullName + ' (' + (currentIndex + 1) + '/' + packages.length + ')';
+					
+					println('\n[' + (currentIndex + 1) + '/' + packages.length + '] ' + _('开始卸载: ') + fullName);
+					
+					var token = (L.env && (L.env.token || L.env.csrf_token)) || '';
+					var removeUrl = L.url('admin/vum/uninstall/remove') + (token ? ('?token=' + encodeURIComponent(token)) : '');
+					var formBody = 'package=' + encodeURIComponent(pkg.name) + '&purge=' + (pkg.purge ? '1' : '0') + '&removeDeps=' + (pkg.deps ? '1' : '0') + '&clearCache=' + (pkg.cache ? '1' : '0');
+					
+					self._httpJson(removeUrl, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'Accept': 'application/json', 'X-CSRF-Token': token },
+						body: formBody
+					}).then(function(res){
+						if (res && res.ok) {
+							println('✓ ' + _('卸载成功: ') + fullName);
+							successCount++;
+						} else {
+							println('✗ ' + _('卸载失败: ') + fullName);
+							failCount++;
+						}
+						currentIndex++;
+						var progressBarEl = document.getElementById('batch-progress-bar');
+						if (progressBarEl) progressBarEl.style.width = ((currentIndex / packages.length) * 100) + '%';
+						uninstallNext();
+					}).catch(function(err){
+						println('✗ ' + _('卸载失败: ') + fullName + ' - ' + String(err));
+						failCount++;
+						currentIndex++;
+						var progressBarEl = document.getElementById('batch-progress-bar');
+						if (progressBarEl) progressBarEl.style.width = ((currentIndex / packages.length) * 100) + '%';
+						uninstallNext();
+					});
+				}
+				
+				uninstallNext();
+			});
+		}
+		
 		function uninstall(name, purge, removeDeps, version, clearCache) {
 			var confirmFn = function(msg, desc){
 				return new Promise(function(resolve){
@@ -928,9 +1194,29 @@ return view.extend({
 				searchTimer = setTimeout(refresh, 250);
 			}
 		});
+		// 全选/取消全选
+		root.addEventListener('change', function(ev){
+			if (ev.target && ev.target.id === 'select-all') {
+				var checked = ev.target.checked;
+				var checkboxes = document.querySelectorAll('.pkg-checkbox');
+				checkboxes.forEach(function(cb){
+					if (cb.checked !== checked) {
+						cb.checked = checked;
+						cb.dispatchEvent(new Event('change'));
+					}
+				});
+			}
+		});
+		
 		root.addEventListener('click', function(ev){
 			if (!ev.target) return;
 			var t = ev.target;
+			if (t.id === 'batch-uninstall-btn' || (t.closest && t.closest('#batch-uninstall-btn'))) {
+				ev.preventDefault();
+				ev.stopPropagation();
+				batchUninstall();
+				return;
+			}
 			if (t.id === 'filter-clear') { if (searchTimer) clearTimeout(searchTimer); searchTimer = setTimeout(refresh, 10); return; }
 			// 兼容点击图标或内部元素：优先用 closest
 			if (t.closest) {
