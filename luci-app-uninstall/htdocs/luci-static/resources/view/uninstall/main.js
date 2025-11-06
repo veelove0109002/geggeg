@@ -94,13 +94,13 @@ return view.extend({
 				}, []);
 				
 				// 全选复选框
-				var selectAllCheckbox = E('input', { type: 'checkbox', id: 'select-all', 'style': 'width:18px; height:18px; cursor:pointer;' });
+				var selectAllCheckbox = E('input', { type: 'checkbox', id: 'select-all', 'style': 'width:18px; height:18px; cursor:pointer; margin:0; flex-shrink:0;' });
 				var selectAllLabel = E('label', { 
 					'for': 'select-all',
 					'style': 'display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; color:#0369a1; user-select:none;'
 				}, [
 					selectAllCheckbox,
-					E('span', {}, _('全选'))
+					E('span', { 'style': 'line-height:18px;' }, _('全选'))
 				]);
 				
 				// 已选数量显示
@@ -1121,6 +1121,7 @@ return view.extend({
 				function enableClose(){
 					closeBtn.disabled = false;
 					closeBtn.textContent = opSuccess ? _('返回列表') : _('查看详情');
+				if (opSuccess) closeBtn.setAttribute('style', 'background:#22c55e; color:#fff; border:none; font-weight:600;');
 					closeBtn.addEventListener('click', function(){
 						if (opSuccess) { ui.hideModal(modal); window.location.reload(); }
 						else { log.style.maxHeight = '420px'; log.scrollTop = log.scrollHeight; }
@@ -1220,6 +1221,63 @@ return view.extend({
 		root.addEventListener('change', function(ev){
 			if (ev.target && ev.target.id === 'select-all') {
 				var checked = ev.target.checked;
+				// 全选时显示风险提示
+				if (checked) {
+					var totalCount = document.querySelectorAll('.pkg-checkbox').length;
+					if (totalCount > 0) {
+						var warnModal = ui.showModal(_('风险警告'), [
+							E('div', { 'style': 'display:flex; align-items:center; gap:12px; margin-bottom:16px;' }, [
+								E('span', { 'style': 'display:inline-flex;width:48px;height:48px;background:#fee2e2;color:#dc2626;border-radius:999px;align-items:center;justify-content:center;font-weight:700;font-size:24px;' }, '!'),
+								E('div', { 'style': 'flex:1;' }, [
+									E('div', { 'style': 'font-weight:600;font-size:16px;color:#111827;margin-bottom:4px;' }, _('全部卸载可能导致系统崩溃')),
+									E('div', { 'style': 'font-size:14px;color:#6b7280;' }, _('您即将卸载所有 ') + totalCount + _(' 个软件包'))
+								])
+							]),
+							E('div', { 'style': 'background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px;margin-bottom:16px;' }, [
+								E('div', { 'style': 'font-weight:600;color:#991b1b;margin-bottom:8px;' }, _('⚠️ 严重警告：')),
+								E('ul', { 'style': 'margin:0;padding-left:20px;color:#7f1d1d;' }, [
+									E('li', {}, _('卸载系统核心插件可能导致路由器无法正常工作')),
+									E('li', {}, _('可能需要重新刷机才能恢复系统')),
+									E('li', {}, _('建议仅卸载您确认不需要的插件'))
+								])
+							]),
+							E('div', { 'style':'margin-top:16px;display:flex;gap:8px;justify-content:flex-end;' }, [
+								E('button', { 'class': 'btn', id: 'cancel-select-all', 'style': 'background:#eef2ff;color:#1f2937;border-radius:999px;padding:6px 14px;' }, _('取消全选')),
+								E('button', { 'class': 'btn', id: 'confirm-select-all', 'style': 'background:#dc2626;color:#fff;border-radius:999px;padding:6px 14px;font-weight:600;' }, _('我知道风险，继续'))
+							])
+						]);
+						var warnOverlay = warnModal && warnModal.parentNode;
+						if (warnOverlay) { warnOverlay.style.display = 'flex'; warnOverlay.style.alignItems = 'center'; warnOverlay.style.justifyContent = 'center'; }
+						
+						var cancelBtn = warnModal.querySelector('#cancel-select-all');
+						var confirmBtn = warnModal.querySelector('#confirm-select-all');
+						
+						if (cancelBtn) {
+							cancelBtn.addEventListener('click', function() {
+								ui.hideModal(warnModal);
+								// 取消全选
+								ev.target.checked = false;
+								var checkboxes = document.querySelectorAll('.pkg-checkbox');
+								checkboxes.forEach(function(cb) { cb.checked = false; cb.dispatchEvent(new Event('change')); });
+							});
+						}
+						
+						if (confirmBtn) {
+							confirmBtn.addEventListener('click', function() {
+								ui.hideModal(warnModal);
+								// 继续全选
+								var checkboxes = document.querySelectorAll('.pkg-checkbox');
+								checkboxes.forEach(function(cb) {
+									if (cb.checked !== checked) {
+										cb.checked = checked;
+										cb.dispatchEvent(new Event('change'));
+									}
+								});
+							});
+						}
+						return; // 阻止默认的全选行为，等待用户确认
+					}
+				}
 				var checkboxes = document.querySelectorAll('.pkg-checkbox');
 				checkboxes.forEach(function(cb){
 					if (cb.checked !== checked) {
