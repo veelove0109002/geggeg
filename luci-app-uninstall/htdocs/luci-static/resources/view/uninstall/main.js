@@ -218,8 +218,8 @@ return view.extend({
 			})()
 		]);
 
-		// Default icon (inline SVG as data URI)
-		var DEFAULT_ICON = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="14" rx="2" ry="2"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>');
+		// Default icon (使用 wz.png)
+		var DEFAULT_ICON = L.resource('icons/wz.png');
 		// 特殊图标文件名映射（优先）
 		var SPECIAL_ICON_MAP = {
 			'luci-app-LingTiGameAcc': 'lingti-gameacc',
