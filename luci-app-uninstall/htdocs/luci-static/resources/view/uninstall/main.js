@@ -605,7 +605,7 @@ return view.extend({
 					})()
 				])
 			]);
-			var groupGrid = E('div', { 'style': 'display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:12px; margin-top:8px;' });
+			var groupGrid = E('div', { 'style': 'display:grid; grid-template-columns:repeat(auto-fill,minmax(380px,1fr)); gap:12px; margin-top:8px;' });
 			items.forEach(function(p){ groupGrid.appendChild(renderCard(p)); });
 			var section = E('div', { 'style': 'margin-bottom:8px;' }, [ header, groupGrid ]);
 			grid.appendChild(section);
