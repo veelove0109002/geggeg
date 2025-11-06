@@ -94,13 +94,13 @@ return view.extend({
 				}, []);
 				
 				// 全选复选框
-				var selectAllCheckbox = E('input', { type: 'checkbox', id: 'select-all', 'style': 'width:18px; height:18px; cursor:pointer; margin:0; flex-shrink:0;' });
+				var selectAllCheckbox = E('input', { type: 'checkbox', id: 'select-all', 'style': 'width:18px; height:18px; cursor:pointer; margin:0; padding:0; flex-shrink:0; vertical-align:middle; display:inline-block;' });
 				var selectAllLabel = E('label', { 
 					'for': 'select-all',
-					'style': 'display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; color:#0369a1; user-select:none;'
+					'style': 'display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; color:#0369a1; user-select:none; line-height:1;'
 				}, [
 					selectAllCheckbox,
-					E('span', { 'style': 'line-height:18px;' }, _('全选'))
+					E('span', { 'style': 'line-height:1; display:inline-block; vertical-align:middle;' }, _('全选'))
 				]);
 				
 				// 已选数量显示
@@ -922,6 +922,7 @@ return view.extend({
 						
 						closeBtn.disabled = false;
 						closeBtn.textContent = _('完成');
+						closeBtn.setAttribute('style', 'background:#22c55e; color:#fff; border:none; font-weight:600; border-radius:6px; padding:8px 16px;');
 						closeBtn.addEventListener('click', function(){ 
 							ui.hideModal(modal); 
 							// 清空选择

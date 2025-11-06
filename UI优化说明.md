@@ -117,4 +117,66 @@ function enableClose(){
 
 ---
 
+---
+
+## 后续修复（第二轮）
+
+### 4. 批量卸载完成按钮颜色优化 ✓
+
+**问题描述**：批量卸载完成后弹窗中的"完成"按钮不够醒目
+
+**修复方案**：
+- 为"完成"按钮添加醒目的绿色背景
+- 样式：`background:#22c55e; color:#fff; border:none; font-weight:600; border-radius:6px; padding:8px 16px;`
+- 使用与"返回列表"按钮相同的绿色主题
+- 增加圆角和内边距，提升视觉效果
+
+**修改位置**：`main.js` 第925行
+
+```javascript
+closeBtn.disabled = false;
+closeBtn.textContent = _('完成');
+closeBtn.setAttribute('style', 'background:#22c55e; color:#fff; border:none; font-weight:600; border-radius:6px; padding:8px 16px;');
+```
+
+---
+
+### 5. 全选复选框垂直对齐优化（增强版）✓
+
+**问题描述**：全选复选框仍然下移，没有和"全选"文字在同一水平线上
+
+**修复方案**：
+- 为复选框添加更多对齐样式：
+  - `padding:0` - 移除内边距
+  - `vertical-align:middle` - 垂直居中对齐
+  - `display:inline-block` - 设置为行内块元素
+- 将 label 的 `display:flex` 改为 `display:inline-flex`
+- 为 label 添加 `line-height:1` 确保行高一致
+- 为"全选"文字添加 `vertical-align:middle` 和 `display:inline-block`
+
+**修改位置**：`main.js` 第97-104行
+
+```javascript
+var selectAllCheckbox = E('input', { 
+    type: 'checkbox', 
+    id: 'select-all', 
+    'style': 'width:18px; height:18px; cursor:pointer; margin:0; padding:0; flex-shrink:0; vertical-align:middle; display:inline-block;' 
+});
+var selectAllLabel = E('label', { 
+    'for': 'select-all',
+    'style': 'display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; color:#0369a1; user-select:none; line-height:1;'
+}, [
+    selectAllCheckbox,
+    E('span', { 'style': 'line-height:1; display:inline-block; vertical-align:middle;' }, _('全选'))
+]);
+```
+
+**关键改进**：
+- 使用 `inline-flex` 替代 `flex`，避免块级元素的默认行为
+- 同时设置复选框和文字的 `vertical-align:middle`
+- 统一 `line-height:1` 确保行高一致
+
+---
+
 **修复完成时间**：2025-11-06
+**最后更新时间**：2025-11-06（第二轮修复）
