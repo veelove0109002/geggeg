@@ -944,12 +944,33 @@ return view.extend({
 					var removeUrl = L.url('admin/vum/uninstall/remove') + (token ? ('?token=' + encodeURIComponent(token)) : '');
 					var formBody = 'package=' + encodeURIComponent(pkg.name) + '&purge=' + (pkg.purge ? '1' : '0') + '&removeDeps=' + (pkg.deps ? '1' : '0') + '&clearCache=' + (pkg.cache ? '1' : '0');
 					
-					self._httpJson(removeUrl, {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'Accept': 'application/json', 'X-CSRF-Token': token },
-						body: formBody
-					}).then(function(res){
-						if (res && res.ok) {
+				println('> POST ' + removeUrl);
+				println('> body: ' + formBody);
+				
+				self._httpJson(removeUrl, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'Accept': 'application/json', 'X-CSRF-Token': token },
+					body: formBody
+				}).then(function(res){
+					println('< Response: ' + JSON.stringify(res));
+					if (res && res.ok) {
+						println('✓ ' + _('卸载成功: ') + fullName);
+						successCount++;
+						currentIndex++;
+						var progressBarEl = document.getElementById('batch-progress-bar');
+						if (progressBarEl) progressBarEl.style.width = ((currentIndex / packages.length) * 100) + '%';
+						uninstallNext();
+						return;
+					}
+					// POST失败，尝试GET
+					println('! POST 失败或返回非成功，尝试 GET…');
+					var getUrl = L.url('admin/vum/uninstall/remove') + '?' +
+						(token ? ('token=' + encodeURIComponent(token) + '&') : '') +
+						('package=' + encodeURIComponent(pkg.name) + '&purge=' + (pkg.purge ? '1' : '0') + '&removeDeps=' + (pkg.deps ? '1' : '0') + '&clearCache=' + (pkg.cache ? '1' : '0'));
+					println('> GET ' + getUrl);
+					return self._httpJson(getUrl, { method: 'GET', headers: { 'Accept': 'application/json' } }).then(function(r2){
+						println('< Response: ' + JSON.stringify(r2));
+						if (r2 && r2.ok) {
 							println('✓ ' + _('卸载成功: ') + fullName);
 							successCount++;
 						} else {
@@ -960,14 +981,15 @@ return view.extend({
 						var progressBarEl = document.getElementById('batch-progress-bar');
 						if (progressBarEl) progressBarEl.style.width = ((currentIndex / packages.length) * 100) + '%';
 						uninstallNext();
-					}).catch(function(err){
-						println('✗ ' + _('卸载失败: ') + fullName + ' - ' + String(err));
-						failCount++;
-						currentIndex++;
-						var progressBarEl = document.getElementById('batch-progress-bar');
-						if (progressBarEl) progressBarEl.style.width = ((currentIndex / packages.length) * 100) + '%';
-						uninstallNext();
 					});
+				}).catch(function(err){
+					println('! Error: ' + String(err));
+					failCount++;
+					currentIndex++;
+					var progressBarEl = document.getElementById('batch-progress-bar');
+					if (progressBarEl) progressBarEl.style.width = ((currentIndex / packages.length) * 100) + '%';
+					uninstallNext();
+				});
 				}
 				
 				uninstallNext();
