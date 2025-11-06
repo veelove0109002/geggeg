@@ -454,10 +454,45 @@ return view.extend({
 				E('div', { 'style': 'font-size:15px;font-weight:700;color:#e5e7eb;' }, _('luci-app-uninstall')),
 				progressTrack
 			]);
-			var log = E('pre', { 'style': 'max-height:260px;overflow:auto;background:linear-gradient(180deg,#0b1024 0%,#0f1633 100%);color:#cbd5e1;padding:10px;border-radius:8px; box-shadow: inset 0 0 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);' }, '');
+			// 日志折叠/展开按钮
+			var logExpanded = false;
+			var toggleLogBtn = E('button', { 
+				type: 'button',
+				'class': 'btn',
+				'style': 'font-size:12px; padding:4px 10px; background:#f3f4f6; border:1px solid #e5e7eb; color:#6b7280; border-radius:6px; cursor:pointer;'
+			}, _('展开日志'));
+			
+			var log = E('pre', { 'style': 'max-height:0;overflow:hidden;background:linear-gradient(180deg,#0b1024 0%,#0f1633 100%);color:#cbd5e1;padding:0 10px;border-radius:8px; box-shadow: inset 0 0 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06); transition: max-height .3s ease, padding .3s ease;' }, '');
+			
+			toggleLogBtn.addEventListener('click', function(){
+				logExpanded = !logExpanded;
+				if (logExpanded) {
+					log.style.maxHeight = '260px';
+					log.style.padding = '10px';
+					log.style.overflow = 'auto';
+					toggleLogBtn.textContent = _('折叠日志');
+					toggleLogBtn.style.background = '#e0f2fe';
+					toggleLogBtn.style.color = '#0369a1';
+				} else {
+					log.style.maxHeight = '0';
+					log.style.padding = '0 10px';
+					log.style.overflow = 'hidden';
+					toggleLogBtn.textContent = _('展开日志');
+					toggleLogBtn.style.background = '#f3f4f6';
+					toggleLogBtn.style.color = '#6b7280';
+				}
+			});
+			
 			function println(s){ log.appendChild(document.createTextNode(String(s) + '\n')); log.scrollTop = log.scrollHeight; }
 			var closeBtn = E('button', { 'class': 'btn', disabled: true }, _('关闭'));
-			var modal = ui.showModal(_('正在升级…') + ' luci-app-uninstall', [ statusBar, log, E('div', { 'style':'margin-top:10px;display:flex;gap:8px;justify-content:flex-end;' }, [ closeBtn ]) ]);
+			var logSection = E('div', { 'style': 'display:flex; flex-direction:column; gap:8px;' }, [
+				E('div', { 'style': 'display:flex; align-items:center; justify-content:space-between;' }, [
+					E('span', { 'style': 'font-size:13px; color:#6b7280; font-weight:600;' }, _('执行日志')),
+					toggleLogBtn
+				]),
+				log
+			]);
+			var modal = ui.showModal(_('正在升级…') + ' luci-app-uninstall', [ statusBar, logSection, E('div', { 'style':'margin-top:10px;display:flex;gap:8px;justify-content:flex-end;' }, [ closeBtn ]) ]);
 			var overlay = modal && modal.parentNode; if (overlay) { overlay.style.display = 'flex'; overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center'; }
 			var startTs = Date.now();
 			var timer = setInterval(function(){ var s = Math.floor((Date.now() - startTs) / 1000); elapsedEl.textContent = s + 's'; }, 1000);
@@ -726,8 +761,36 @@ return view.extend({
 						E('img', { src: packageIcon(name), 'style': 'width:24px; height:24px; border-radius:6px; background:#f3f4f6; border:1px solid #e5e7eb; object-fit:contain;' })
 					])
 				]);
-				var log = E('pre', { 'style': 'max-height:260px;overflow:auto;background:linear-gradient(180deg,#0b1024 0%,#0f1633 100%);color:#cbd5e1;padding:10px;border-radius:8px; box-shadow: inset 0 0 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06); transition: filter .15s ease;' }, '');
-				log.addEventListener('mouseenter', function(){ log.style.filter = 'brightness(1.08)'; });
+				// 日志折叠/展开按钮
+				var logExpanded = false;
+				var toggleLogBtn = E('button', { 
+					type: 'button',
+					'class': 'btn',
+					'style': 'font-size:12px; padding:4px 10px; background:#f3f4f6; border:1px solid #e5e7eb; color:#6b7280; border-radius:6px; cursor:pointer;'
+				}, _('展开日志'));
+				
+				var log = E('pre', { 'style': 'max-height:0;overflow:hidden;background:linear-gradient(180deg,#0b1024 0%,#0f1633 100%);color:#cbd5e1;padding:0 10px;border-radius:8px; box-shadow: inset 0 0 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06); transition: max-height .3s ease, padding .3s ease, filter .15s ease;' }, '');
+				
+				toggleLogBtn.addEventListener('click', function(){
+					logExpanded = !logExpanded;
+					if (logExpanded) {
+						log.style.maxHeight = '260px';
+						log.style.padding = '10px';
+						log.style.overflow = 'auto';
+						toggleLogBtn.textContent = _('折叠日志');
+						toggleLogBtn.style.background = '#e0f2fe';
+						toggleLogBtn.style.color = '#0369a1';
+					} else {
+						log.style.maxHeight = '0';
+						log.style.padding = '0 10px';
+						log.style.overflow = 'hidden';
+						toggleLogBtn.textContent = _('展开日志');
+						toggleLogBtn.style.background = '#f3f4f6';
+						toggleLogBtn.style.color = '#6b7280';
+					}
+				});
+				
+				log.addEventListener('mouseenter', function(){ if (logExpanded) log.style.filter = 'brightness(1.08)'; });
 				log.addEventListener('mouseleave', function(){ log.style.filter = 'none'; });
 				var closeBtn = E('button', { 'class': 'btn', disabled: true }, _('关闭'));
 				var zhName2 = displayName(name);
@@ -752,9 +815,16 @@ return view.extend({
 					E('div', { 'style': 'font-size:15px;font-weight:700;color:#e5e7eb;' }, fullName2),
 					progressTrack
 				]);
+				var logSection = E('div', { 'style': 'display:flex; flex-direction:column; gap:8px;' }, [
+					E('div', { 'style': 'display:flex; align-items:center; justify-content:space-between;' }, [
+						E('span', { 'style': 'font-size:13px; color:#6b7280; font-weight:600;' }, _('执行日志')),
+						toggleLogBtn
+					]),
+					log
+				]);
 				var modal = ui.showModal(_('正在卸载…') + ' ' + fullName2, [
 					statusBar,
-					log,
+					logSection,
 					E('div', { 'style':'margin-top:10px;display:flex;gap:8px;justify-content:flex-end;' }, [ closeBtn ])
 				]);
 				var overlay = modal && modal.parentNode; if (overlay) { overlay.style.display = 'flex'; overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center'; }
