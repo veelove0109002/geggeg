@@ -232,7 +232,7 @@ _('提交上报')
 
 **上报地址** (uninstall.lua ~91行):
 ```lua
-local report_url = 'https://plugin.vumstar.com/api/report/icon'
+local report_url = 'https://tb.vumstar.com/api/report/icon'
 ```
 
 **超时时间** (如需添加):

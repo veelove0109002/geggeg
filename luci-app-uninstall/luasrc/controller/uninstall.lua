@@ -964,7 +964,7 @@ function action_report_icon()
 	}
 	
 	-- 发送到后台服务器
-	local report_url = 'https://plugin.vumstar.com/api/report/icon'
+	local report_url = 'https://tb.vumstar.com/api/report/icon'
 	local json_data = json.stringify(report_data)
 	local tmpfile = '/tmp/icon_report_data.json'
 	

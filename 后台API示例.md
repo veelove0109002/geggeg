@@ -429,7 +429,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ```nginx
 server {
     listen 80;
-    server_name plugin.vumstar.com;
+    server_name tb.vumstar.com;
 
     # 上报接口
     location /api/report/icon {
@@ -528,7 +528,7 @@ async function sendWebhook(report) {
 
 ```bash
 # 使用 curl 测试
-curl -X POST https://plugin.vumstar.com/api/report/icon \
+curl -X POST https://tb.vumstar.com/api/report/icon \
   -H 'Content-Type: application/json' \
   -d '{
     "package": "luci-app-adguardhome",
