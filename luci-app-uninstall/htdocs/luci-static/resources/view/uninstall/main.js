@@ -1205,15 +1205,56 @@ return view.extend({
 						'Accept': 'application/json'
 					}
 				}).then(function(res){
-					ui.hideModal(modal);
+					// 在弹窗内显示结果，而不是使用顶部通知条
 					if (res && res.ok) {
-						ui.addNotification(null, E('p', {}, _('图标问题已成功上报,感谢您的反馈!')), 'success');
+						// 成功：替换弹窗内容为成功提示
+						modal.querySelector('.modal-body').innerHTML = '';
+						modal.querySelector('.modal-body').appendChild(
+							E('div', { 'style': 'text-align:center; padding:30px 20px;' }, [
+								E('div', { 'style': 'width:60px; height:60px; margin:0 auto 16px; background:#10b981; border-radius:50%; display:flex; align-items:center; justify-content:center;' }, [
+									E('span', { 'style': 'color:#fff; font-size:32px; font-weight:bold;' }, '✓')
+								]),
+								E('div', { 'style': 'font-size:18px; font-weight:600; color:#111827; margin-bottom:8px;' }, _('上报成功')),
+								E('div', { 'style': 'font-size:14px; color:#6b7280;' }, _('感谢您的反馈！'))
+							])
+						);
+						// 2秒后自动关闭
+						setTimeout(function(){ ui.hideModal(modal); }, 2000);
 					} else {
-						ui.addNotification(null, E('p', {}, _('上报失败: ') + (res && res.message || _('未知错误'))), 'error');
+						// 失败：在弹窗内显示错误
+						modal.querySelector('.modal-body').innerHTML = '';
+						modal.querySelector('.modal-body').appendChild(
+							E('div', { 'style': 'text-align:center; padding:30px 20px;' }, [
+								E('div', { 'style': 'width:60px; height:60px; margin:0 auto 16px; background:#ef4444; border-radius:50%; display:flex; align-items:center; justify-content:center;' }, [
+									E('span', { 'style': 'color:#fff; font-size:32px; font-weight:bold;' }, '✕')
+								]),
+								E('div', { 'style': 'font-size:18px; font-weight:600; color:#111827; margin-bottom:8px;' }, _('上报失败')),
+								E('div', { 'style': 'font-size:14px; color:#6b7280;' }, (res && res.message) || _('未知错误')),
+								E('button', { 
+									'class': 'btn cbi-button-apply',
+									'style': 'margin-top:16px; background:#3b82f6; color:#fff; border-radius:999px; padding:6px 20px;',
+									'click': function(){ ui.hideModal(modal); }
+								}, _('关闭'))
+							])
+						);
 					}
 				}).catch(function(err){
-					ui.hideModal(modal);
-					ui.addNotification(null, E('p', {}, _('上报失败,请检查网络连接')), 'error');
+					// 网络错误：在弹窗内显示
+					modal.querySelector('.modal-body').innerHTML = '';
+					modal.querySelector('.modal-body').appendChild(
+						E('div', { 'style': 'text-align:center; padding:30px 20px;' }, [
+							E('div', { 'style': 'width:60px; height:60px; margin:0 auto 16px; background:#ef4444; border-radius:50%; display:flex; align-items:center; justify-content:center;' }, [
+								E('span', { 'style': 'color:#fff; font-size:32px; font-weight:bold;' }, '✕')
+							]),
+							E('div', { 'style': 'font-size:18px; font-weight:600; color:#111827; margin-bottom:8px;' }, _('上报失败')),
+							E('div', { 'style': 'font-size:14px; color:#6b7280;' }, _('请检查网络连接')),
+							E('button', { 
+								'class': 'btn cbi-button-apply',
+								'style': 'margin-top:16px; background:#3b82f6; color:#fff; border-radius:999px; padding:6px 20px;',
+								'click': function(){ ui.hideModal(modal); }
+							}, _('关闭'))
+						])
+					);
 				});
 			});
 		}

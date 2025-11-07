@@ -27,23 +27,42 @@ if [ ! -f "luci-app-uninstall/luasrc/controller/uninstall.lua" ]; then
     exit 1
 fi
 
-# 步骤 1: 备份原文件
-echo -e "${YELLOW}[1/4] 备份原文件...${NC}"
-ssh root@$OPENWRT_IP "cp /usr/lib/lua/luci/controller/uninstall.lua /usr/lib/lua/luci/controller/uninstall.lua.backup.$(date +%Y%m%d_%H%M%S) 2>/dev/null" && \
-    echo -e "${GREEN}✓ 备份完成${NC}" || \
-    echo -e "${YELLOW}⚠ 备份失败或文件不存在（首次部署可忽略）${NC}"
-
-# 步骤 2: 上传新文件
-echo -e "${YELLOW}[2/4] 上传修复后的文件...${NC}"
-if scp luci-app-uninstall/luasrc/controller/uninstall.lua root@$OPENWRT_IP:/usr/lib/lua/luci/controller/; then
-    echo -e "${GREEN}✓ 文件上传成功${NC}"
-else
-    echo -e "${RED}✗ 文件上传失败${NC}"
+if [ ! -f "luci-app-uninstall/htdocs/luci-static/resources/view/uninstall/main.js" ]; then
+    echo -e "${RED}✗ 错误: 找不到 main.js 文件${NC}"
+    echo "  请确保在项目根目录运行此脚本"
     exit 1
 fi
 
-# 步骤 3: 清除 LuCI 缓存
-echo -e "${YELLOW}[3/4] 清除 LuCI 缓存...${NC}"
+# 步骤 1: 备份原文件
+echo -e "${YELLOW}[1/5] 备份原文件...${NC}"
+ssh root@$OPENWRT_IP "cp /usr/lib/lua/luci/controller/uninstall.lua /usr/lib/lua/luci/controller/uninstall.lua.backup.$(date +%Y%m%d_%H%M%S) 2>/dev/null" && \
+    echo -e "${GREEN}✓ 备份 Lua 文件完成${NC}" || \
+    echo -e "${YELLOW}⚠ 备份失败或文件不存在（首次部署可忽略）${NC}"
+
+ssh root@$OPENWRT_IP "cp /www/luci-static/resources/view/uninstall/main.js /www/luci-static/resources/view/uninstall/main.js.backup.$(date +%Y%m%d_%H%M%S) 2>/dev/null" && \
+    echo -e "${GREEN}✓ 备份 JS 文件完成${NC}" || \
+    echo -e "${YELLOW}⚠ 备份失败或文件不存在（首次部署可忽略）${NC}"
+
+# 步骤 2: 上传 Lua 控制器文件
+echo -e "${YELLOW}[2/5] 上传 Lua 控制器文件...${NC}"
+if scp luci-app-uninstall/luasrc/controller/uninstall.lua root@$OPENWRT_IP:/usr/lib/lua/luci/controller/; then
+    echo -e "${GREEN}✓ Lua 文件上传成功${NC}"
+else
+    echo -e "${RED}✗ Lua 文件上传失败${NC}"
+    exit 1
+fi
+
+# 步骤 3: 上传前端 JS 文件
+echo -e "${YELLOW}[3/5] 上传前端 JS 文件...${NC}"
+if scp luci-app-uninstall/htdocs/luci-static/resources/view/uninstall/main.js root@$OPENWRT_IP:/www/luci-static/resources/view/uninstall/; then
+    echo -e "${GREEN}✓ JS 文件上传成功${NC}"
+else
+    echo -e "${RED}✗ JS 文件上传失败${NC}"
+    exit 1
+fi
+
+# 步骤 4: 清除 LuCI 缓存
+echo -e "${YELLOW}[4/5] 清除 LuCI 缓存...${NC}"
 if ssh root@$OPENWRT_IP "rm -f /tmp/luci-* && /etc/init.d/uhttpd reload"; then
     echo -e "${GREEN}✓ 缓存清除成功${NC}"
 else
@@ -51,8 +70,8 @@ else
     exit 1
 fi
 
-# 步骤 4: 测试上报功能
-echo -e "${YELLOW}[4/4] 测试上报功能...${NC}"
+# 步骤 5: 测试上报功能
+echo -e "${YELLOW}[5/5] 测试上报功能...${NC}"
 echo ""
 
 # 发送测试请求
