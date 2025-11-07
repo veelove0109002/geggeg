@@ -1018,53 +1018,96 @@ function action_report_icon()
 	local success = false
 	local response = ''
 	
-	-- 优先使用 curl (支持 POST JSON)
+	-- 优先使用 curl (支持 POST JSON 并获取 HTTP 状态码)
 	local curl_cmd = string.format(
-		"curl -X POST -H 'Content-Type: application/json' -d @%q '%s' 2>&1",
+		"curl -w '\\nHTTP_CODE:%%{http_code}' -X POST -H 'Content-Type: application/json' -d @%q '%s' 2>&1",
 		tmpfile, report_url
 	)
 	local rc = sys.call(curl_cmd .. ' >/tmp/icon_report_response.txt 2>&1')
-	if rc == 0 then
+	
+	-- 读取响应
+	response = fs.readfile('/tmp/icon_report_response.txt') or ''
+	
+	-- 提取 HTTP 状态码
+	local http_code = response:match('HTTP_CODE:(%d+)')
+	
+	-- 记录详细日志
+	local log_msg = string.format(
+		"[REPORT_ICON] curl_rc=%d, http_code=%s, response_len=%d",
+		rc, tostring(http_code or 'nil'), #response
+	)
+	sys.exec("logger -t luci-app-uninstall '" .. log_msg .. "'")
+	
+	-- 判断是否成功: curl 返回码为0 且 HTTP状态码为 2xx
+	if rc == 0 and http_code and tonumber(http_code) >= 200 and tonumber(http_code) < 300 then
 		success = true
-		response = fs.readfile('/tmp/icon_report_response.txt') or ''
+		-- 移除状态码行，只保留响应体
+		response = response:gsub('\nHTTP_CODE:%d+$', '')
 	else
-		-- 回退到 wget
+		-- 如果 curl 失败，尝试 wget
 		local wget_cmd = string.format(
 			"wget --post-file=%q --header='Content-Type: application/json' -O /tmp/icon_report_response.txt '%s' 2>&1",
 			tmpfile, report_url
 		)
-		rc = sys.call(wget_cmd)
+		rc = sys.call(wget_cmd .. ' >/tmp/wget_output.txt 2>&1')
+		
 		if rc == 0 then
-			success = true
 			response = fs.readfile('/tmp/icon_report_response.txt') or ''
+			-- wget 成功下载表示 HTTP 请求成功
+			if #response > 0 then
+				success = true
+				sys.exec("logger -t luci-app-uninstall '[REPORT_ICON] wget success, response_len=" .. #response .. "'")
+			end
 		else
 			-- 最后尝试 uclient-fetch
 			local uclient_cmd = string.format(
 				"uclient-fetch --post-file=%q -O /tmp/icon_report_response.txt '%s' 2>&1",
 				tmpfile, report_url
 			)
-			rc = sys.call(uclient_cmd)
+			rc = sys.call(uclient_cmd .. ' >/tmp/uclient_output.txt 2>&1')
+			
 			if rc == 0 then
-				success = true
 				response = fs.readfile('/tmp/icon_report_response.txt') or ''
+				if #response > 0 then
+					success = true
+					sys.exec("logger -t luci-app-uninstall '[REPORT_ICON] uclient success, response_len=" .. #response .. "'")
+				end
 			end
 		end
 	end
 	
-	-- 清理临时文件
-	sys.call('rm -f ' .. tmpfile .. ' /tmp/icon_report_response.txt')
+	-- 保留临时文件用于调试 (可选，调试完成后可删除)
+	-- sys.call('rm -f ' .. tmpfile .. ' /tmp/icon_report_response.txt /tmp/wget_output.txt /tmp/uclient_output.txt')
 	
 	if success then
+		-- 尝试解析服务器响应，验证是否真的成功
+		local server_ok = false
+		local ok_result, server_data = pcall(json.parse, response)
+		if ok_result and server_data and type(server_data) == 'table' then
+			server_ok = server_data.ok or server_data.success
+		end
+		
+		-- 记录服务器响应
+		sys.exec("logger -t luci-app-uninstall '[REPORT_ICON] server_ok=" .. tostring(server_ok) .. ", response=" .. response:sub(1, 200) .. "'")
+		
 		return json_response({ 
 			ok = true, 
 			message = '图标问题已成功上报,感谢您的反馈!',
-			package = pkg_name
+			package = pkg_name,
+			debug = {
+				http_code = http_code,
+				server_response = server_ok
+			}
 		})
 	else
+		-- 记录失败详情
+		sys.exec("logger -t luci-app-uninstall '[REPORT_ICON] FAILED: " .. response:sub(1, 200) .. "'")
+		
 		return json_response({ 
 			ok = false, 
-			message = '上报失败,请检查网络连接',
-			details = response
+			message = '上报失败,请检查网络连接或服务器状态',
+			details = response:sub(1, 500),  -- 限制错误信息长度
+			http_code = http_code
 		}, 500)
 	end
 end
