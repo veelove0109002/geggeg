@@ -35,6 +35,10 @@ function index()
 	e = entry({ 'admin', 'vum', 'uninstall', 'upgrade' }, call('action_upgrade'))
 	e.leaf = true
 	e.acl_depends = { 'luci-app-uninstall' }
+
+	e = entry({ 'admin', 'vum', 'uninstall', 'report_icon' }, call('action_report_icon'))
+	e.leaf = true
+	e.acl_depends = { 'luci-app-uninstall' }
 end
 
 local http = require 'luci.http'
@@ -923,5 +927,106 @@ function action_remove()
 		removed_configs = removed_confs,
 		removed_caches = removed_caches,
 		removed_force = removed_force
-	})
+	})\nend
+
+-- 上报图标问题
+function action_report_icon()
+	local pkg_name = http.formvalue('package')
+	local user_comment = http.formvalue('comment') or ''
+	
+	-- 若表单未提供,则尝试解析 JSON 请求体
+	if not pkg_name or pkg_name == '' then
+		local body = http.content() or ''
+		if body and #body > 0 then
+			local ok, data = pcall(json.parse, body)
+			if ok and data then
+				pkg_name = data.package or pkg_name
+				user_comment = data.comment or user_comment
+			end
+		end
+	end
+	
+	if not pkg_name or pkg_name == '' then
+		return json_response({ ok = false, message = '缺少包名参数' }, 400)
+	end
+	
+	-- 构建上报数据
+	local report_data = {
+		package = pkg_name,
+		comment = user_comment,
+		timestamp = os.time(),
+		device_info = {
+			hostname = sys.hostname() or '',
+			model = sys.exec('uname -m 2>/dev/null'):gsub('%s+$','') or '',
+			system = sys.exec('uname -s 2>/dev/null'):gsub('%s+$','') or ''
+		}
+	}
+	
+	-- 发送到后台服务器
+	local report_url = 'https://plugin.vumstar.com/api/report/icon'
+	local json_data = json.stringify(report_data)
+	local tmpfile = '/tmp/icon_report_data.json'
+	
+	-- 写入临时文件
+	local f = io.open(tmpfile, 'w')
+	if f then
+		f:write(json_data)
+		f:close()
+	else
+		return json_response({ ok = false, message = '无法创建临时文件' }, 500)
+	end
+	
+	-- 尝试使用 curl/wget/uclient-fetch 发送请求
+	local success = false
+	local response = ''
+	
+	-- 优先使用 curl (支持 POST JSON)
+	local curl_cmd = string.format(
+		"curl -X POST -H 'Content-Type: application/json' -d @%q '%s' 2>&1",
+		tmpfile, report_url
+	)
+	local rc = sys.call(curl_cmd .. ' >/tmp/icon_report_response.txt 2>&1')
+	if rc == 0 then
+		success = true
+		response = fs.readfile('/tmp/icon_report_response.txt') or ''
+	else
+		-- 回退到 wget
+		local wget_cmd = string.format(
+			"wget --post-file=%q --header='Content-Type: application/json' -O /tmp/icon_report_response.txt '%s' 2>&1",
+			tmpfile, report_url
+		)
+		rc = sys.call(wget_cmd)
+		if rc == 0 then
+			success = true
+			response = fs.readfile('/tmp/icon_report_response.txt') or ''
+		else
+			-- 最后尝试 uclient-fetch
+			local uclient_cmd = string.format(
+				"uclient-fetch --post-file=%q -O /tmp/icon_report_response.txt '%s' 2>&1",
+				tmpfile, report_url
+			)
+			rc = sys.call(uclient_cmd)
+			if rc == 0 then
+				success = true
+				response = fs.readfile('/tmp/icon_report_response.txt') or ''
+			end
+		end
+	end
+	
+	-- 清理临时文件
+	sys.call('rm -f ' .. tmpfile .. ' /tmp/icon_report_response.txt')
+	
+	if success then
+		return json_response({ 
+			ok = true, 
+			message = '图标问题已成功上报,感谢您的反馈!',
+			package = pkg_name
+		})
+	else
+		return json_response({ 
+			ok = false, 
+			message = '上报失败,请检查网络连接',
+			details = response
+		}, 500)
+	end
 end

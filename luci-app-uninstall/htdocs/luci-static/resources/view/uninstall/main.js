@@ -497,6 +497,33 @@ return view.extend({
 			
 			var img = E('img', { src: packageIcon(pkg.name), alt: pkg.name, width: 56, height: 56, 'style': 'border-radius:10px;background:#f3f4f6;object-fit:contain;border:1px solid #e5e7eb;' });
 			img.addEventListener('error', function(){ img.src = DEFAULT_ICON; });
+			
+			// 图标容器：包含图标和上报按钮
+			var reportIconBtn = E('button', {
+				type: 'button',
+				title: _('上报图标问题'),
+				'style': 'position:absolute; bottom:0; right:0; width:18px; height:18px; padding:0; background:#ff6b6b; border:1px solid #fff; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.2); transition:all .15s ease;'
+			}, [
+				E('span', { 'style': 'color:#fff; font-size:12px; font-weight:700; line-height:1;' }, '!')
+			]);
+			reportIconBtn.addEventListener('mouseenter', function(){ 
+				this.style.transform = 'scale(1.15)'; 
+				this.style.background = '#fa5252';
+				this.style.boxShadow = '0 2px 6px rgba(255,107,107,0.4)';
+			});
+			reportIconBtn.addEventListener('mouseleave', function(){ 
+				this.style.transform = 'scale(1)'; 
+				this.style.background = '#ff6b6b';
+				this.style.boxShadow = '0 1px 3px rgba(0,0,0,0.2)';
+			});
+			reportIconBtn.addEventListener('click', function(ev){
+				ev.preventDefault();
+				ev.stopPropagation();
+				reportIcon(pkg.name);
+			});
+			
+			var imgWrapper = E('div', { 'style': 'position:relative; flex-shrink:0;' }, [img, reportIconBtn]);
+			
 			var titleCn = E('div', { 'style': 'font-weight:600;color:#111827;word-break:break-all;font-size:14px;' }, (pkg.display_name || displayName(pkg.name, pkg.category)));
 			var titleEn = E('div', { 'style': 'font-size:12px;color:#6b7280;word-break:break-all;' }, pkg.name);
 			var title = E('div', { 'style': 'display:flex; flex-direction:column; gap:2px;' }, [ titleCn, titleEn ]);
@@ -534,7 +561,7 @@ return view.extend({
 			var metaTop = E('div', { 'style': 'display:flex; align-items:center; gap:8px; flex-wrap:wrap;' }, [ title ]);
 			var metaCol = E('div', { 'class': 'pkg-meta', 'style': 'flex:1; display:flex; flex-direction:column; gap:6px;' }, [ metaTop, optionsRow ]);
 			var actions = E('div', { 'class': 'pkg-actions', 'style': 'display:flex; align-items:center; margin-left:auto;' }, [ btn ]);
-			var children = [ checkboxWrapper, img, metaCol, actions, verCorner ];
+			var children = [ checkboxWrapper, imgWrapper, metaCol, actions, verCorner ];
 			if (pkg.vum_plugin) children.push(E('div', { 'style': 'position:absolute; left:12px; bottom:6px; font-size:11px; color:#fff; background:#4f46e5; padding:2px 6px; border-radius:10px;' }, 'VUM-Plugin'));
 			if (isNew) children.push(E('img', { src: L.resource('icons/new.png'), 'style': 'position:absolute; left:12px; top:8px; width:24px; height:24px; object-fit:contain;' }));
 			// 顶部右侧：仅在“高级卸载”卡片上展示图标按钮与远端版本
@@ -1098,6 +1125,86 @@ return view.extend({
 				}
 				
 				uninstallNext();
+			});
+		}
+		
+		// 上报图标问题函数
+		function reportIcon(pkgName) {
+			var zhName = displayName(pkgName);
+			var fullName = zhName && zhName !== pkgName ? (zhName + ' (' + pkgName + ')') : pkgName;
+			
+			// 创建上报对话框
+			var inputComment = E('textarea', {
+				placeholder: _('可选:描述图标的问题,例如"图标显示不正确"、"缺少图标"等'),
+				'style': 'width:100%; min-height:80px; padding:8px; border:1px solid #e5e7eb; border-radius:6px; font-size:13px; resize:vertical; font-family:inherit;'
+			}, '');
+			
+			var titleRow = E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin-bottom:12px;' }, [
+				E('span', { 'style': 'display:inline-flex;width:28px;height:28px;background:#fff3cd;color:#856404;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '!'),
+				E('span', { 'style': 'font-weight:600;font-size:16px;color:#111827;' }, _('上报图标问题'))
+			]);
+			
+			var pkgInfo = E('div', { 'style': 'margin-bottom:12px; padding:10px; background:#f8f9fa; border:1px solid #e5e7eb; border-radius:8px;' }, [
+				E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin-bottom:6px;' }, [
+					E('img', { src: packageIcon(pkgName), 'style': 'width:32px; height:32px; border-radius:6px; background:#f3f4f6; border:1px solid #e5e7eb; object-fit:contain;' }),
+					E('div', {}, [
+						E('div', { 'style': 'font-weight:600; color:#111827;' }, fullName),
+						E('div', { 'style': 'font-size:12px; color:#6b7280;' }, pkgName)
+					])
+				]),
+				E('div', { 'style': 'font-size:12px; color:#6b7280; margin-top:4px;' }, _('将向开发者上报此应用的图标问题'))
+			]);
+			
+			var inputSection = E('div', { 'style': 'margin-bottom:12px;' }, [
+				E('label', { 'style': 'display:block; font-size:13px; color:#374151; margin-bottom:6px; font-weight:500;' }, _('问题描述')),
+				inputComment
+			]);
+			
+			var cancelBtn = E('button', { 'class': 'btn', 'style': 'background:#f3f4f6;color:#1f2937;border-radius:999px;padding:6px 14px;' }, _('取消'));
+			var submitBtn = E('button', { 'class': 'btn cbi-button-apply', 'style': 'background:#3b82f6;color:#fff;border-radius:999px;padding:6px 14px;' }, _('提交上报'));
+			var footer = E('div', { 'style':'margin-top:12px;display:flex;gap:8px;justify-content:flex-end;' }, [ cancelBtn, submitBtn ]);
+			
+			var modal = ui.showModal(_('上报图标问题'), [ titleRow, pkgInfo, inputSection, footer ]);
+			var overlay = modal && modal.parentNode; 
+			if (overlay) { 
+				overlay.style.display = 'flex'; 
+				overlay.style.alignItems = 'center'; 
+				overlay.style.justifyContent = 'center'; 
+			}
+			
+			cancelBtn.addEventListener('click', function(){ ui.hideModal(modal); });
+			submitBtn.addEventListener('click', function(){
+				var comment = inputComment.value.trim();
+				
+				// 禁用按钮防止重复提交
+				submitBtn.disabled = true;
+				submitBtn.textContent = _('提交中...');
+				submitBtn.style.opacity = '0.6';
+				
+				// 发送上报请求
+				var token = (L.env && (L.env.token || L.env.csrf_token)) || '';
+				var reportUrl = L.url('admin/vum/uninstall/report_icon') + (token ? ('?token=' + encodeURIComponent(token)) : '');
+				var formBody = 'package=' + encodeURIComponent(pkgName) + '&comment=' + encodeURIComponent(comment);
+				
+				self._httpJson(reportUrl, {
+					method: 'POST',
+					headers: { 
+						'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 
+						'Accept': 'application/json',
+						'X-CSRF-Token': token
+					},
+					body: formBody
+				}).then(function(res){
+					ui.hideModal(modal);
+					if (res && res.ok) {
+						ui.addNotification(null, E('p', {}, _('图标问题已成功上报,感谢您的反馈!')), 'success');
+					} else {
+						ui.addNotification(null, E('p', {}, _('上报失败: ') + (res && res.message || _('未知错误'))), 'error');
+					}
+				}).catch(function(err){
+					ui.hideModal(modal);
+					ui.addNotification(null, E('p', {}, _('上报失败,请检查网络连接')), 'error');
+				});
 			});
 		}
 		
