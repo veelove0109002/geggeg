@@ -927,7 +927,8 @@ function action_remove()
 		removed_configs = removed_confs,
 		removed_caches = removed_caches,
 		removed_force = removed_force
-	})\nend
+	})
+end
 
 -- 上报图标问题
 function action_report_icon()
