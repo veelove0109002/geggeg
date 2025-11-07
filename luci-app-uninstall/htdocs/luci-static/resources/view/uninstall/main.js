@@ -1091,7 +1091,7 @@ return view.extend({
 				println('> body: ' + formBody);
 				
 				self._httpJson(removeUrl, {
-					method: 'POST',
+					method: 'GET',
 					headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'Accept': 'application/json', 'X-CSRF-Token': token },
 					body: formBody
 				}).then(function(res){
@@ -1192,19 +1192,18 @@ return view.extend({
 				submitBtn.textContent = _('提交中...');
 				submitBtn.style.opacity = '0.6';
 				
-				// 发送上报请求
+				// 发送上报请求 - 使用 GET 方法 + URL 参数(更兼容)
 				var token = (L.env && (L.env.token || L.env.csrf_token)) || '';
-				var reportUrl = L.url('admin/vum/uninstall/report_icon') + (token ? ('?token=' + encodeURIComponent(token)) : '');
-				var formBody = 'package=' + encodeURIComponent(pkgName) + '&comment=' + encodeURIComponent(comment);
+				var reportUrl = L.url('admin/vum/uninstall/report_icon') + 
+					'?package=' + encodeURIComponent(pkgName) + 
+					'&comment=' + encodeURIComponent(comment) +
+					(token ? ('&token=' + encodeURIComponent(token)) : '');
 				
 				self._httpJson(reportUrl, {
-					method: 'POST',
+					method: 'GET',
 					headers: { 
-						'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 
-						'Accept': 'application/json',
-						'X-CSRF-Token': token
-					},
-					body: formBody
+						'Accept': 'application/json'
+					}
 				}).then(function(res){
 					ui.hideModal(modal);
 					if (res && res.ok) {
@@ -1359,7 +1358,7 @@ return view.extend({
 				println('> body: ' + formBody);
 				setProgress(25);
 				return self._httpJson(removeUrl, {
-					method: 'POST',
+					method: 'GET',
 					headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'Accept': 'application/json', 'X-CSRF-Token': token },
 					body: formBody
 				}).then(function(res){
