@@ -932,20 +932,57 @@ end
 
 -- 上报图标问题
 function action_report_icon()
-	local pkg_name = http.formvalue('package')
-	local user_comment = http.formvalue('comment') or ''
+	local pkg_name = nil
+	local user_comment = ''
 	
-	-- 若表单未提供,则尝试解析 JSON 请求体
+	-- 方法1: 尝试从表单获取
+	pkg_name = http.formvalue('package')
+	user_comment = http.formvalue('comment') or ''
+	
+	-- 方法2: 如果表单为空,尝试从 URL 参数获取
+	if not pkg_name or pkg_name == '' then
+		local params = http.formvalue()
+		if params and type(params) == 'table' then
+			pkg_name = params.package or params['package']
+			user_comment = params.comment or params['comment'] or ''
+		end
+	end
+	
+	-- 方法3: 尝试解析 JSON 请求体
 	if not pkg_name or pkg_name == '' then
 		local body = http.content() or ''
 		if body and #body > 0 then
+			-- 尝试解析 JSON
 			local ok, data = pcall(json.parse, body)
-			if ok and data then
+			if ok and data and type(data) == 'table' then
 				pkg_name = data.package or pkg_name
-				user_comment = data.comment or user_comment
+				user_comment = data.comment or user_comment or ''
+			else
+				-- 尝试解析 URL 编码的表单数据
+				for k, v in body:gmatch('([^&=]+)=([^&]*)') do
+					if k == 'package' then
+						pkg_name = v:gsub('+', ' '):gsub('%%(%x%x)', function(h)
+							return string.char(tonumber(h, 16))
+						end)
+					elseif k == 'comment' then
+						user_comment = v:gsub('+', ' '):gsub('%%(%x%x)', function(h)
+							return string.char(tonumber(h, 16))
+						end)
+					end
+				end
 			end
 		end
 	end
+	
+	-- 调试信息：记录接收到的参数
+	local debug_info = string.format(
+		"[REPORT_ICON] package=%s, comment=%s, content_type=%s, method=%s",
+		tostring(pkg_name or 'nil'),
+		tostring(user_comment or 'nil'),
+		tostring(http.getenv('CONTENT_TYPE') or 'nil'),
+		tostring(http.getenv('REQUEST_METHOD') or 'nil')
+	)
+	sys.exec("logger -t luci-app-uninstall '" .. debug_info .. "'")
 	
 	if not pkg_name or pkg_name == '' then
 		return json_response({ ok = false, message = '缺少包名参数' }, 400)
