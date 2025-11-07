@@ -541,16 +541,13 @@ return view.extend({
 		
 	// 在卡片左下角添加上报图标按钮(排除 luci-app-uninstall 自身)
 	if (pkg && pkg.name !== 'luci-app-uninstall') {
-		// 画画图标 SVG (画笔/调色板样式)
-		var paintIcon = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>');
-		
 		var reportIconBtn = E('button', {
 			type: 'button',
 			title: _('上报图标问题'),
-			'style': 'position:absolute; left:' + (pkg.vum_plugin ? '100px' : '12px') + '; bottom:6px; width:28px; height:28px; padding:0; background:#ffffff; border:1px solid #e5e7eb; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.1); transition:all .15s ease; color:#6b7280;'
+			'style': 'position:absolute; left:' + (pkg.vum_plugin ? '100px' : '12px') + '; bottom:6px; width:28px; height:28px; padding:0; background:#ffffff; border:1px solid #e5e7eb; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.1); transition:all .15s ease; color:#6b7280; overflow:hidden;'
 		}, [
 			E('img', { 
-				src: paintIcon, 
+				src: L.resource('icons/copy.png'), 
 				alt: 'report', 
 				width: 16, 
 				height: 16,
