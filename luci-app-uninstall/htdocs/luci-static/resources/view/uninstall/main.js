@@ -495,34 +495,8 @@ return view.extend({
 				updateBatchUI();
 			});
 			
-			var img = E('img', { src: packageIcon(pkg.name), alt: pkg.name, width: 56, height: 56, 'style': 'border-radius:10px;background:#f3f4f6;object-fit:contain;border:1px solid #e5e7eb;' });
-			img.addEventListener('error', function(){ img.src = DEFAULT_ICON; });
-			
-			// 图标容器：包含图标和上报按钮
-			var reportIconBtn = E('button', {
-				type: 'button',
-				title: _('上报图标问题'),
-				'style': 'position:absolute; bottom:0; right:0; width:18px; height:18px; padding:0; background:#ff6b6b; border:1px solid #fff; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.2); transition:all .15s ease;'
-			}, [
-				E('span', { 'style': 'color:#fff; font-size:12px; font-weight:700; line-height:1;' }, '!')
-			]);
-			reportIconBtn.addEventListener('mouseenter', function(){ 
-				this.style.transform = 'scale(1.15)'; 
-				this.style.background = '#fa5252';
-				this.style.boxShadow = '0 2px 6px rgba(255,107,107,0.4)';
-			});
-			reportIconBtn.addEventListener('mouseleave', function(){ 
-				this.style.transform = 'scale(1)'; 
-				this.style.background = '#ff6b6b';
-				this.style.boxShadow = '0 1px 3px rgba(0,0,0,0.2)';
-			});
-			reportIconBtn.addEventListener('click', function(ev){
-				ev.preventDefault();
-				ev.stopPropagation();
-				reportIcon(pkg.name);
-			});
-			
-			var imgWrapper = E('div', { 'style': 'position:relative; flex-shrink:0;' }, [img, reportIconBtn]);
+		var img = E('img', { src: packageIcon(pkg.name), alt: pkg.name, width: 56, height: 56, 'style': 'border-radius:10px;background:#f3f4f6;object-fit:contain;border:1px solid #e5e7eb;' });
+		img.addEventListener('error', function(){ img.src = DEFAULT_ICON; });
 			
 			var titleCn = E('div', { 'style': 'font-weight:600;color:#111827;word-break:break-all;font-size:14px;' }, (pkg.display_name || displayName(pkg.name, pkg.category)));
 			var titleEn = E('div', { 'style': 'font-size:12px;color:#6b7280;word-break:break-all;' }, pkg.name);
@@ -559,11 +533,39 @@ return view.extend({
 			var btn = E('button', { type: 'button', 'class': 'btn cbi-button cbi-button-remove' }, _('卸载'));
 			btn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); uninstall(pkg.name, purgeEl.checked, depsEl.checked, pkg.version || '', cacheEl.checked); });
 			var metaTop = E('div', { 'style': 'display:flex; align-items:center; gap:8px; flex-wrap:wrap;' }, [ title ]);
-			var metaCol = E('div', { 'class': 'pkg-meta', 'style': 'flex:1; display:flex; flex-direction:column; gap:6px;' }, [ metaTop, optionsRow ]);
-			var actions = E('div', { 'class': 'pkg-actions', 'style': 'display:flex; align-items:center; margin-left:auto;' }, [ btn ]);
-			var children = [ checkboxWrapper, imgWrapper, metaCol, actions, verCorner ];
-			if (pkg.vum_plugin) children.push(E('div', { 'style': 'position:absolute; left:12px; bottom:6px; font-size:11px; color:#fff; background:#4f46e5; padding:2px 6px; border-radius:10px;' }, 'VUM-Plugin'));
-			if (isNew) children.push(E('img', { src: L.resource('icons/new.png'), 'style': 'position:absolute; left:12px; top:8px; width:24px; height:24px; object-fit:contain;' }));
+		var metaCol = E('div', { 'class': 'pkg-meta', 'style': 'flex:1; display:flex; flex-direction:column; gap:6px;' }, [ metaTop, optionsRow ]);
+		var actions = E('div', { 'class': 'pkg-actions', 'style': 'display:flex; align-items:center; margin-left:auto;' }, [ btn ]);
+		var children = [ checkboxWrapper, img, metaCol, actions, verCorner ];
+		if (pkg.vum_plugin) children.push(E('div', { 'style': 'position:absolute; left:12px; bottom:6px; font-size:11px; color:#fff; background:#4f46e5; padding:2px 6px; border-radius:10px;' }, 'VUM-Plugin'));
+		if (isNew) children.push(E('img', { src: L.resource('icons/new.png'), 'style': 'position:absolute; left:12px; top:8px; width:24px; height:24px; object-fit:contain;' }));
+		
+		// 在卡片左下角添加上报图标按钮(排除 luci-app-uninstall 自身)
+		if (pkg && pkg.name !== 'luci-app-uninstall') {
+			var reportIconBtn = E('button', {
+				type: 'button',
+				title: _('上报图标问题'),
+				'style': 'position:absolute; left:' + (pkg.vum_plugin ? '100px' : '12px') + '; bottom:6px; height:20px; padding:0 8px; background:#ff6b6b; border:none; border-radius:10px; display:flex; align-items:center; gap:4px; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.2); transition:all .15s ease; font-size:11px; color:#fff; font-weight:500;'
+			}, [
+				E('span', { 'style': 'font-weight:700;' }, '!'),
+				E('span', {}, _('上报图标'))
+			]);
+			reportIconBtn.addEventListener('mouseenter', function(){ 
+				this.style.transform = 'translateY(-1px)'; 
+				this.style.background = '#fa5252';
+				this.style.boxShadow = '0 2px 6px rgba(255,107,107,0.4)';
+			});
+			reportIconBtn.addEventListener('mouseleave', function(){ 
+				this.style.transform = 'translateY(0)'; 
+				this.style.background = '#ff6b6b';
+				this.style.boxShadow = '0 1px 3px rgba(0,0,0,0.2)';
+			});
+			reportIconBtn.addEventListener('click', function(ev){
+				ev.preventDefault();
+				ev.stopPropagation();
+				reportIcon(pkg.name);
+			});
+			children.push(reportIconBtn);
+		}
 			// 顶部右侧：仅在“高级卸载”卡片上展示图标按钮与远端版本
 			if (pkg && pkg.name === 'luci-app-uninstall') {
 				var actionsTop = E('div', { 'style': 'position:absolute; right:10px; top:8px; display:flex; gap:8px; align-items:center; z-index:1000; pointer-events:auto;' }, [
