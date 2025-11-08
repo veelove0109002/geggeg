@@ -263,7 +263,9 @@ return view.extend({
 			'luci-app-ttyd': 'zd',
 			'luci-app-unishare': 'lh',
 			'luci-app-upnp': 'upnp',
-			'luci-app-wol': 'hx'
+			'luci-app-wol': 'hx',
+			'luci-app-openlist': 'openlist',
+			'luci-app-openlist2': 'openlist2'
 		};
 		function packageIcon(name){
 			// 从 app-icons 目录加载 PNG
@@ -405,6 +407,7 @@ return view.extend({
 			'luci-app-natpierce': _('皎月连内网穿透'),
 			'luci-app-mymind': _('MyMind思维导图'),
 			'luci-app-openlist': _('OpenList网盘'),
+			'luci-app-openlist2': _('OpenList网盘2'),
 			'luci-app-rclone': _('Rclone'),
 			'luci-app-syncdial': _('多线多拨'),
 			'luci-app-sunpanel': _('SunPanel导航页'),
