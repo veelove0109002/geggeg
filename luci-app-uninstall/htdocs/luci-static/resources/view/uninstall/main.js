@@ -157,6 +157,32 @@ return view.extend({
 			.custom-checkbox-wrapper.select-all-checkbox-wrapper {
 				display: inline-flex;
 			}
+			
+			/* 更新按钮闪烁动画 */
+			@keyframes update-pulse {
+				0%, 100% {
+					box-shadow: 0 2px 6px rgba(0,0,0,0.06), 0 0 0 0 rgba(59, 130, 246, 0.7);
+					transform: scale(1);
+				}
+				50% {
+					box-shadow: 0 2px 6px rgba(0,0,0,0.06), 0 0 0 6px rgba(59, 130, 246, 0);
+					transform: scale(1.05);
+				}
+			}
+			@keyframes update-glow {
+				0%, 100% {
+					filter: brightness(1);
+				}
+				50% {
+					filter: brightness(1.2);
+				}
+			}
+			#update-action {
+				animation: update-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+			}
+			#update-action img {
+				animation: update-glow 2s ease-in-out infinite;
+			}
 		`);
 		document.head.appendChild(styleEl);
 		
