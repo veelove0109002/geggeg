@@ -574,6 +574,41 @@ return view.extend({
 			reportIcon(pkg.name);
 		});
 		children.push(reportIconBtn);
+		
+		// 添加上报卸载问题按钮（在上报图标按钮右边）
+		var reportUninstallBtn = E('button', {
+			type: 'button',
+			title: _('上报卸载问题'),
+			'style': 'position:absolute; left:' + (pkg.vum_plugin ? '136px' : '48px') + '; bottom:6px; width:28px; height:28px; padding:0; background:#ffffff; border:1px solid #e5e7eb; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.1); transition:all .15s ease; color:#6b7280; overflow:hidden;'
+		}, [
+			E('img', { 
+				src: L.resource('icons/xzbc.png'), 
+				alt: 'report uninstall', 
+				width: 16, 
+				height: 16,
+				'style': 'display:block; object-fit:contain;'
+			})
+		]);
+		reportUninstallBtn.addEventListener('mouseenter', function(){ 
+			this.style.transform = 'translateY(-2px)'; 
+			this.style.background = '#f59e0b';
+			this.style.borderColor = '#f59e0b';
+			this.style.boxShadow = '0 3px 8px rgba(245,158,11,0.3)';
+			this.style.color = '#ffffff';
+		});
+		reportUninstallBtn.addEventListener('mouseleave', function(){ 
+			this.style.transform = 'translateY(0)'; 
+			this.style.background = '#ffffff';
+			this.style.borderColor = '#e5e7eb';
+			this.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+			this.style.color = '#6b7280';
+		});
+		reportUninstallBtn.addEventListener('click', function(ev){
+			ev.preventDefault();
+			ev.stopPropagation();
+			reportUninstall(pkg.name);
+		});
+		children.push(reportUninstallBtn);
 	}
 			// 顶部右侧：仅在“高级卸载”卡片上展示图标按钮与远端版本
 			if (pkg && pkg.name === 'luci-app-uninstall') {
@@ -1195,6 +1230,163 @@ return view.extend({
 				// 发送上报请求 - 使用 GET 方法 + URL 参数(更兼容)
 				var token = (L.env && (L.env.token || L.env.csrf_token)) || '';
 				var reportUrl = L.url('admin/vum/uninstall/report_icon') + 
+					'?package=' + encodeURIComponent(pkgName) + 
+					'&comment=' + encodeURIComponent(comment) +
+					(token ? ('&token=' + encodeURIComponent(token)) : '');
+				
+				self._httpJson(reportUrl, {
+					method: 'GET',
+					headers: { 
+						'Accept': 'application/json'
+					}
+				}).then(function(res){
+					// 关闭原弹窗
+					ui.hideModal(modal);
+					
+					if (res && res.ok) {
+						// 成功：创建新弹窗显示成功提示
+						var content = E('div', { 'style': 'text-align:center; padding:30px 20px;' }, [
+							E('div', { 'style': 'width:60px; height:60px; margin:0 auto 16px; background:#10b981; border-radius:50%; display:flex; align-items:center; justify-content:center;' }, [
+								E('span', { 'style': 'color:#fff; font-size:32px; font-weight:bold;' }, '✓')
+							]),
+							E('div', { 'style': 'font-size:18px; font-weight:600; color:#111827; margin-bottom:8px;' }, _('上报成功')),
+							E('div', { 'style': 'font-size:14px; color:#6b7280;' }, _('感谢您的反馈！'))
+						]);
+						
+						var resultModal = ui.showModal(_('上报结果'), [content]);
+						
+						// 设置弹窗居中样式
+						var overlay = resultModal && resultModal.parentNode;
+						if (overlay) {
+							overlay.style.display = 'flex';
+							overlay.style.alignItems = 'center';
+							overlay.style.justifyContent = 'center';
+						}
+						
+						// 2秒后自动关闭
+						setTimeout(function(){ ui.hideModal(resultModal); }, 2000);
+					} else {
+						// 失败：创建新弹窗显示错误
+						var content = E('div', { 'style': 'text-align:center; padding:30px 20px;' }, [
+							E('div', { 'style': 'width:60px; height:60px; margin:0 auto 16px; background:#ef4444; border-radius:50%; display:flex; align-items:center; justify-content:center;' }, [
+								E('span', { 'style': 'color:#fff; font-size:32px; font-weight:bold;' }, '✕')
+							]),
+							E('div', { 'style': 'font-size:18px; font-weight:600; color:#111827; margin-bottom:8px;' }, _('上报失败')),
+							E('div', { 'style': 'font-size:14px; color:#6b7280;' }, (res && res.message) || _('未知错误')),
+							E('button', { 
+								'class': 'btn cbi-button-apply',
+								'style': 'margin-top:16px; background:#3b82f6; color:#fff; border-radius:999px; padding:6px 20px;'
+							}, _('关闭'))
+						]);
+						
+						var resultModal = ui.showModal(_('上报结果'), [content]);
+						
+						// 设置弹窗居中样式
+						var overlay = resultModal && resultModal.parentNode;
+						if (overlay) {
+							overlay.style.display = 'flex';
+							overlay.style.alignItems = 'center';
+							overlay.style.justifyContent = 'center';
+						}
+						
+						// 为关闭按钮添加事件监听
+						var closeBtn = content.querySelector('button');
+						if (closeBtn) {
+							closeBtn.addEventListener('click', function(){ ui.hideModal(resultModal); });
+						}
+					}
+				}).catch(function(err){
+					// 关闭原弹窗
+					ui.hideModal(modal);
+					
+					// 网络错误：创建新弹窗显示错误
+					var content = E('div', { 'style': 'text-align:center; padding:30px 20px;' }, [
+						E('div', { 'style': 'width:60px; height:60px; margin:0 auto 16px; background:#ef4444; border-radius:50%; display:flex; align-items:center; justify-content:center;' }, [
+							E('span', { 'style': 'color:#fff; font-size:32px; font-weight:bold;' }, '✕')
+						]),
+						E('div', { 'style': 'font-size:18px; font-weight:600; color:#111827; margin-bottom:8px;' }, _('上报失败')),
+						E('div', { 'style': 'font-size:14px; color:#6b7280;' }, _('请检查网络连接')),
+						E('button', { 
+							'class': 'btn cbi-button-apply',
+							'style': 'margin-top:16px; background:#3b82f6; color:#fff; border-radius:999px; padding:6px 20px;'
+						}, _('关闭'))
+					]);
+					
+					var resultModal = ui.showModal(_('上报结果'), [content]);
+					
+					// 设置弹窗居中样式
+					var overlay = resultModal && resultModal.parentNode;
+					if (overlay) {
+						overlay.style.display = 'flex';
+						overlay.style.alignItems = 'center';
+						overlay.style.justifyContent = 'center';
+					}
+					
+					// 为关闭按钮添加事件监听
+					var closeBtn = content.querySelector('button');
+					if (closeBtn) {
+						closeBtn.addEventListener('click', function(){ ui.hideModal(resultModal); });
+					}
+				});
+			});
+		}
+		
+		// 上报卸载问题函数
+		function reportUninstall(pkgName) {
+			var zhName = displayName(pkgName);
+			var fullName = zhName && zhName !== pkgName ? (zhName + ' (' + pkgName + ')') : pkgName;
+			
+			// 创建上报对话框
+			var inputComment = E('textarea', {
+				placeholder: _('可选:描述卸载时遇到的问题,例如"卸载失败"、"卸载后仍有残留"等'),
+				'style': 'width:100%; min-height:80px; padding:8px; border:1px solid #e5e7eb; border-radius:6px; font-size:13px; resize:vertical; font-family:inherit;'
+			}, '');
+			
+			var titleRow = E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin-bottom:12px;' }, [
+				E('span', { 'style': 'display:inline-flex;width:28px;height:28px;background:#fef3c7;color:#92400e;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '!'),
+				E('span', { 'style': 'font-weight:600;font-size:16px;color:#111827;' }, _('上报卸载问题'))
+			]);
+			
+			var pkgInfo = E('div', { 'style': 'margin-bottom:12px; padding:10px; background:#f8f9fa; border:1px solid #e5e7eb; border-radius:8px;' }, [
+				E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin-bottom:6px;' }, [
+					E('img', { src: packageIcon(pkgName), 'style': 'width:32px; height:32px; border-radius:6px; background:#f3f4f6; border:1px solid #e5e7eb; object-fit:contain;' }),
+					E('div', {}, [
+						E('div', { 'style': 'font-weight:600; color:#111827;' }, fullName),
+						E('div', { 'style': 'font-size:12px; color:#6b7280;' }, pkgName)
+					])
+				]),
+				E('div', { 'style': 'font-size:12px; color:#6b7280; margin-top:4px;' }, _('将向开发者上报此应用的卸载问题'))
+			]);
+			
+			var inputSection = E('div', { 'style': 'margin-bottom:12px;' }, [
+				E('label', { 'style': 'display:block; font-size:13px; color:#374151; margin-bottom:6px; font-weight:500;' }, _('问题描述')),
+				inputComment
+			]);
+			
+			var cancelBtn = E('button', { 'class': 'btn', 'style': 'background:#f3f4f6;color:#1f2937;border-radius:999px;padding:6px 14px;' }, _('取消'));
+			var submitBtn = E('button', { 'class': 'btn cbi-button-apply', 'style': 'background:#f59e0b;color:#fff;border-radius:999px;padding:6px 14px;' }, _('提交上报'));
+			var footer = E('div', { 'style':'margin-top:12px;display:flex;gap:8px;justify-content:flex-end;' }, [ cancelBtn, submitBtn ]);
+			
+			var modal = ui.showModal(_('上报卸载问题'), [ titleRow, pkgInfo, inputSection, footer ]);
+			var overlay = modal && modal.parentNode; 
+			if (overlay) { 
+				overlay.style.display = 'flex'; 
+				overlay.style.alignItems = 'center'; 
+				overlay.style.justifyContent = 'center'; 
+			}
+			
+			cancelBtn.addEventListener('click', function(){ ui.hideModal(modal); });
+			submitBtn.addEventListener('click', function(){
+				var comment = inputComment.value.trim();
+				
+				// 禁用按钮防止重复提交
+				submitBtn.disabled = true;
+				submitBtn.textContent = _('提交中...');
+				submitBtn.style.opacity = '0.6';
+				
+				// 发送上报请求 - 使用 GET 方法 + URL 参数(更兼容)
+				var token = (L.env && (L.env.token || L.env.csrf_token)) || '';
+				var reportUrl = L.url('admin/vum/uninstall/report_uninstall') + 
 					'?package=' + encodeURIComponent(pkgName) + 
 					'&comment=' + encodeURIComponent(comment) +
 					(token ? ('&token=' + encodeURIComponent(token)) : '');

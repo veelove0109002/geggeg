@@ -39,6 +39,10 @@ function index()
 	e = entry({ 'admin', 'vum', 'uninstall', 'report_icon' }, call('action_report_icon'))
 	e.leaf = true
 	e.acl_depends = { 'luci-app-uninstall' }
+
+	e = entry({ 'admin', 'vum', 'uninstall', 'report_uninstall' }, call('action_report_uninstall'))
+	e.leaf = true
+	e.acl_depends = { 'luci-app-uninstall' }
 end
 
 local http = require 'luci.http'
@@ -1102,6 +1106,189 @@ function action_report_icon()
 	else
 		-- 记录失败详情
 		sys.exec("logger -t luci-app-uninstall '[REPORT_ICON] FAILED: " .. response:sub(1, 200) .. "'")
+		
+		return json_response({ 
+			ok = false, 
+			message = '上报失败,请检查网络连接或服务器状态',
+			details = response:sub(1, 500),  -- 限制错误信息长度
+			http_code = http_code
+		}, 500)
+	end
+end
+
+-- 上报卸载问题
+function action_report_uninstall()
+	local pkg_name = nil
+	local user_comment = ''
+	
+	-- 方法1: 尝试从表单获取
+	pkg_name = http.formvalue('package')
+	user_comment = http.formvalue('comment') or ''
+	
+	-- 方法2: 如果表单为空,尝试从 URL 参数获取
+	if not pkg_name or pkg_name == '' then
+		local params = http.formvalue()
+		if params and type(params) == 'table' then
+			pkg_name = params.package or params['package']
+			user_comment = params.comment or params['comment'] or ''
+		end
+	end
+	
+	-- 方法3: 尝试解析 JSON 请求体
+	if not pkg_name or pkg_name == '' then
+		local body = http.content() or ''
+		if body and #body > 0 then
+			-- 尝试解析 JSON
+			local ok, data = pcall(json.parse, body)
+			if ok and data and type(data) == 'table' then
+				pkg_name = data.package or pkg_name
+				user_comment = data.comment or user_comment or ''
+			else
+				-- 尝试解析 URL 编码的表单数据
+				for k, v in body:gmatch('([^&=]+)=([^&]*)') do
+					if k == 'package' then
+						pkg_name = v:gsub('+', ' '):gsub('%%(%x%x)', function(h)
+							return string.char(tonumber(h, 16))
+						end)
+					elseif k == 'comment' then
+						user_comment = v:gsub('+', ' '):gsub('%%(%x%x)', function(h)
+							return string.char(tonumber(h, 16))
+						end)
+					end
+				end
+			end
+		end
+	end
+	
+	-- 调试信息：记录接收到的参数
+	local debug_info = string.format(
+		"[REPORT_UNINSTALL] package=%s, comment=%s, content_type=%s, method=%s",
+		tostring(pkg_name or 'nil'),
+		tostring(user_comment or 'nil'),
+		tostring(http.getenv('CONTENT_TYPE') or 'nil'),
+		tostring(http.getenv('REQUEST_METHOD') or 'nil')
+	)
+	sys.exec("logger -t luci-app-uninstall '" .. debug_info .. "'")
+	
+	if not pkg_name or pkg_name == '' then
+		return json_response({ ok = false, message = '缺少包名参数' }, 400)
+	end
+	
+	-- 构建上报数据
+	local report_data = {
+		package = pkg_name,
+		comment = user_comment,
+		type = 'uninstall',  -- 标记为卸载问题
+		timestamp = os.time(),
+		device_info = {
+			hostname = sys.hostname() or '',
+			model = sys.exec('uname -m 2>/dev/null'):gsub('%s+$','') or '',
+			system = sys.exec('uname -s 2>/dev/null'):gsub('%s+$','') or ''
+		}
+	}
+	
+	-- 发送到后台服务器
+	local report_url = 'https://tb.vumstar.com/report.php'
+	local json_data = json.stringify(report_data)
+	local tmpfile = '/tmp/uninstall_report_data.json'
+	
+	-- 写入临时文件
+	local f = io.open(tmpfile, 'w')
+	if f then
+		f:write(json_data)
+		f:close()
+	else
+		return json_response({ ok = false, message = '无法创建临时文件' }, 500)
+	end
+	
+	-- 尝试使用 curl/wget/uclient-fetch 发送请求
+	local success = false
+	local response = ''
+	
+	-- 优先使用 curl (支持 POST JSON 并获取 HTTP 状态码)
+	local curl_cmd = string.format(
+		"curl -w '\\nHTTP_CODE:%%{http_code}' -X POST -H 'Content-Type: application/json' -d @%q '%s' 2>&1",
+		tmpfile, report_url
+	)
+	local rc = sys.call(curl_cmd .. ' >/tmp/uninstall_report_response.txt 2>&1')
+	
+	-- 读取响应
+	response = fs.readfile('/tmp/uninstall_report_response.txt') or ''
+	
+	-- 提取 HTTP 状态码
+	local http_code = response:match('HTTP_CODE:(%d+)')
+	
+	-- 记录详细日志
+	local log_msg = string.format(
+		"[REPORT_UNINSTALL] curl_rc=%d, http_code=%s, response_len=%d",
+		rc, tostring(http_code or 'nil'), #response
+	)
+	sys.exec("logger -t luci-app-uninstall '" .. log_msg .. "'")
+	
+	-- 判断是否成功: curl 返回码为0 且 HTTP状态码为 2xx
+	if rc == 0 and http_code and tonumber(http_code) >= 200 and tonumber(http_code) < 300 then
+		success = true
+		-- 移除状态码行，只保留响应体
+		response = response:gsub('\nHTTP_CODE:%d+$', '')
+	else
+		-- 如果 curl 失败，尝试 wget
+		local wget_cmd = string.format(
+			"wget --post-file=%q --header='Content-Type: application/json' -O /tmp/uninstall_report_response.txt '%s' 2>&1",
+			tmpfile, report_url
+		)
+		rc = sys.call(wget_cmd .. ' >/tmp/wget_output.txt 2>&1')
+		
+		if rc == 0 then
+			response = fs.readfile('/tmp/uninstall_report_response.txt') or ''
+			-- wget 成功下载表示 HTTP 请求成功
+			if #response > 0 then
+				success = true
+				sys.exec("logger -t luci-app-uninstall '[REPORT_UNINSTALL] wget success, response_len=" .. #response .. "'")
+			end
+		else
+			-- 最后尝试 uclient-fetch
+			local uclient_cmd = string.format(
+				"uclient-fetch --post-file=%q -O /tmp/uninstall_report_response.txt '%s' 2>&1",
+				tmpfile, report_url
+			)
+			rc = sys.call(uclient_cmd .. ' >/tmp/uclient_output.txt 2>&1')
+			
+			if rc == 0 then
+				response = fs.readfile('/tmp/uninstall_report_response.txt') or ''
+				if #response > 0 then
+					success = true
+					sys.exec("logger -t luci-app-uninstall '[REPORT_UNINSTALL] uclient success, response_len=" .. #response .. "'")
+				end
+			end
+		end
+	end
+	
+	-- 保留临时文件用于调试 (可选，调试完成后可删除)
+	-- sys.call('rm -f ' .. tmpfile .. ' /tmp/uninstall_report_response.txt /tmp/wget_output.txt /tmp/uclient_output.txt')
+	
+	if success then
+		-- 尝试解析服务器响应，验证是否真的成功
+		local server_ok = false
+		local ok_result, server_data = pcall(json.parse, response)
+		if ok_result and server_data and type(server_data) == 'table' then
+			server_ok = server_data.ok or server_data.success
+		end
+		
+		-- 记录服务器响应
+		sys.exec("logger -t luci-app-uninstall '[REPORT_UNINSTALL] server_ok=" .. tostring(server_ok) .. ", response=" .. response:sub(1, 200) .. "'")
+		
+		return json_response({ 
+			ok = true, 
+			message = '卸载问题已成功上报,感谢您的反馈!',
+			package = pkg_name,
+			debug = {
+				http_code = http_code,
+				server_response = server_ok
+			}
+		})
+	else
+		-- 记录失败详情
+		sys.exec("logger -t luci-app-uninstall '[REPORT_UNINSTALL] FAILED: " .. response:sub(1, 200) .. "'")
 		
 		return json_response({ 
 			ok = false, 
