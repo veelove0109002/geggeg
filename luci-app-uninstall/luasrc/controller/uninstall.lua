@@ -866,11 +866,17 @@ function action_remove()
 	if app then
 		sys.call(string.format("/etc/init.d/%q stop >/dev/null 2>&1", app))
 		-- 尝试卸载对应的语言包（如 luci-i18n-<app>-zh-cn 等）
+		-- 注意：这里只是尝试，如果失败也不会阻止主包卸载，因为 autoremove 会处理
 		local status_path = fs.stat('/usr/lib/opkg/status') and '/usr/lib/opkg/status' or (fs.stat('/var/lib/opkg/status') and '/var/lib/opkg/status' or nil)
 		if status_path then
 			local s = fs.readfile(status_path) or ''
 			for name in s:gmatch('Package:%s*(luci%-i18n%-' .. app .. '%-[%w%-%_]+)') do
-				sys.call(string.format("opkg remove '%s' >/dev/null 2>&1", name))
+				-- 先尝试正常卸载，如果失败（可能是 prerm 脚本问题），使用 --force-remove
+				local i18n_rc = sys.call(string.format("opkg remove '%s' >/dev/null 2>&1", name))
+				if i18n_rc ~= 0 and is_installed(name) then
+					-- 如果仍然安装，尝试强制移除（可能 prerm 脚本失败）
+					sys.call(string.format("opkg remove --force-remove '%s' >/dev/null 2>&1", name))
+				end
 			end
 		end
 	end
@@ -882,11 +888,31 @@ function action_remove()
 		local out = fs.readfile(tmpout) or ''
 		return rc, out
 	end
+	
+	-- 检测输出中是否包含 prerm 脚本失败的错误
+	local function detect_prerm_failure(output)
+		if not output then return false end
+		local lower_output = output:lower()
+		-- 检测各种 prerm 脚本失败的错误模式
+		return lower_output:match('prerm script failed') ~= nil or
+		       lower_output:match('prerm.*failed') ~= nil or
+		       lower_output:match('failed prerm scripts') ~= nil or
+		       lower_output:match('pkg_run_script.*failed') ~= nil or
+		       lower_output:match('opkg_remove_pkg.*prerm script failed') ~= nil or
+		       lower_output:match('not removing package.*prerm script failed') ~= nil or
+		       output:match('--force%-remove') ~= nil or  -- 如果输出提示使用 --force-remove
+		       lower_output:match('no packages removed') ~= nil  -- 如果没有包被移除，可能是 prerm 失败
+	end
+	
 	-- 先尝试正常卸载
 	local cmd = string.format("opkg remove --autoremove '%s' >%s 2>&1", pkg, tmpout)
 	local rc, output = run_remove(cmd)
 	local success = (rc == 0) or (not is_installed(pkg))
-	-- 若提示依赖阻塞，则强制卸载（仅针对 luci-app-*）。若选择“同时卸载相关依赖”，按强制策略处理。
+	
+	-- 检测 prerm 脚本失败
+	local prerm_failed = detect_prerm_failure(output)
+	
+	-- 若提示依赖阻塞，则强制卸载（仅针对 luci-app-*）。若选择"同时卸载相关依赖"，按强制策略处理。
 	if (not success) then
 		local is_app = pkg:match('^luci%-app%-.+') ~= nil
 		local dependent_warn = output:lower():match('dependent') or output:match('print_dependents_warning')
@@ -894,15 +920,48 @@ function action_remove()
 			local force_cmd = string.format("opkg remove --autoremove --force-depends --force-removal-of-dependent-packages '%s' >%s 2>&1", pkg, tmpout)
 			rc, output = run_remove(force_cmd)
 			success = (rc == 0) or (not is_installed(pkg))
+			prerm_failed = detect_prerm_failure(output) or prerm_failed
 		end
 	end
+	
+	-- 如果检测到 prerm 脚本失败，使用 --force-remove 绕过 prerm 脚本
+	if (not success) and prerm_failed then
+		local force_remove_cmd = string.format("opkg remove --autoremove --force-remove '%s' >%s 2>&1", pkg, tmpout)
+		rc, output = run_remove(force_remove_cmd)
+		success = (rc == 0) or (not is_installed(pkg))
+		-- 如果仍然失败且是 luci-app，尝试组合所有强制选项
+		if (not success) and pkg:match('^luci%-app%-.+') then
+			force_remove_cmd = string.format("opkg remove --autoremove --force-remove --force-depends --force-removal-of-dependent-packages '%s' >%s 2>&1", pkg, tmpout)
+			rc, output = run_remove(force_remove_cmd)
+			success = (rc == 0) or (not is_installed(pkg))
+		end
+	end
+	
 	-- 若选择同时卸载依赖且目标包已卸载成功，则继续卸载关联包
 	if success and remove_deps then
 		local rel = collect_related_packages(pkg)
 		for _, name in ipairs(rel) do
 			if is_installed(name) then
-				local cmd2 = string.format("opkg remove --autoremove --force-depends --force-removal-of-dependent-packages '%s' >%s 2>&1", name, tmpout)
+				-- 先尝试正常卸载
+				local cmd2 = string.format("opkg remove --autoremove '%s' >%s 2>&1", name, tmpout)
 				local rc2, out2 = run_remove(cmd2)
+				local dep_success = (rc2 == 0) or (not is_installed(name))
+				-- 如果失败，尝试强制卸载
+				if not dep_success then
+					local dep_prerm_failed = detect_prerm_failure(out2)
+					if dep_prerm_failed then
+						-- prerm 脚本失败，使用 --force-remove
+						cmd2 = string.format("opkg remove --autoremove --force-remove '%s' >%s 2>&1", name, tmpout)
+						rc2, out2 = run_remove(cmd2)
+						dep_success = (rc2 == 0) or (not is_installed(name))
+					end
+					-- 如果还是失败，尝试所有强制选项
+					if not dep_success then
+						cmd2 = string.format("opkg remove --autoremove --force-depends --force-removal-of-dependent-packages --force-remove '%s' >%s 2>&1", name, tmpout)
+						rc2, out2 = run_remove(cmd2)
+						dep_success = (rc2 == 0) or (not is_installed(name))
+					end
+				end
 				output = (output or '') .. "\n[dep] " .. (out2 or '')
 			end
 		end
