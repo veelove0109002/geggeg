@@ -996,6 +996,7 @@ function action_report_icon()
 	local report_data = {
 		package = pkg_name,
 		comment = user_comment,
+		type = 'icon',  -- 标记为图标问题
 		timestamp = os.time(),
 		device_info = {
 			hostname = sys.hostname() or '',
