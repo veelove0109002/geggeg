@@ -714,6 +714,77 @@ local function purge_everything(app)
 	return removed
 end
 
+-- 清理 iStore 相关的缓存和状态文件
+local function clear_istore_state(pkg)
+	local removed = {}
+	-- 1) 从 /etc/istoreos/installed.list 文件中移除包名
+	local installed_list_path = '/etc/istoreos/installed.list'
+	if fs.stat(installed_list_path) then
+		local content = fs.readfile(installed_list_path) or ''
+		local lines = {}
+		local modified = false
+		-- 按行处理，保留空行和注释
+		for line in content:gmatch('[^\n\r]*') do
+			-- 匹配包名（忽略前导空格，忽略注释行）
+			local name = line:match('^%s*([^%s#]+)')
+			if name and name == pkg then
+				modified = true
+				-- 不添加这一行（移除包名）
+			else
+				-- 保留这一行（包括空行、注释等）
+				lines[#lines+1] = line
+			end
+		end
+		-- 如果有修改，重写文件
+		if modified then
+			-- 重建文件内容，保留原有的换行符
+			local new_content = table.concat(lines, '\n')
+			-- 如果原文件以换行符结尾，保持这个格式
+			if content:match('\n%s*$') or content:match('\r\n%s*$') then
+				if #new_content > 0 and not new_content:match('\n%s*$') then
+					new_content = new_content .. '\n'
+				end
+			end
+			local ok, err = pcall(function()
+				-- 使用临时文件确保原子性写入
+				local tmp_path = installed_list_path .. '.tmp'
+				fs.writefile(tmp_path, new_content)
+				sys.call(string.format("mv %q %q >/dev/null 2>&1", tmp_path, installed_list_path))
+			end)
+			if ok then
+				removed[#removed+1] = installed_list_path .. ' (removed ' .. pkg .. ')'
+			end
+		end
+	end
+	
+	-- 2) 清理 iStore 相关的缓存文件
+	local istore_cache_paths = {
+		'/tmp/istoreos_installed_response.txt',
+		'/tmp/istore_cache',
+		'/var/cache/istore',
+	}
+	for _, path in ipairs(istore_cache_paths) do
+		if fs.stat(path) then
+			if fs.stat(path).type == 'dir' then
+				sys.call(string.format("rm -rf %q >/dev/null 2>&1", path))
+			else
+				fs.remove(path)
+			end
+			removed[#removed+1] = path
+		end
+	end
+	-- 清理通配符匹配的缓存文件
+	sys.call("rm -f /tmp/istore_*.json >/dev/null 2>&1")
+	sys.call("rm -f /tmp/*istore*.cache >/dev/null 2>&1")
+	sys.call("rm -f /var/cache/istore* >/dev/null 2>&1")
+	
+	-- 3) 清理 LuCI 缓存（确保 iStore 页面能刷新）
+	sys.call('rm -f /tmp/luci-indexcache >/dev/null 2>&1')
+	sys.call('rm -rf /tmp/luci-modulecache/* >/dev/null 2>&1')
+	
+	return removed
+end
+
 local function clear_caches(app)
 	local removed = {}
 	-- 1) 清理 LuCI 相关缓存
@@ -860,8 +931,26 @@ function action_remove()
 		files = collect_conffiles(pkg)
 	end
 
-	-- 尝试停止 init 脚本（兼容 luci-app- 前缀）
+	-- 在卸载前收集所有相关的包名（用于后续清理 iStore 状态）
+	local related_pkgs_for_istore = { pkg }
 	local app = pkg:match('^luci%-app%-(.+)$')
+	if app then
+		-- 添加 app-meta-* 包
+		related_pkgs_for_istore[#related_pkgs_for_istore+1] = 'app-meta-' .. app
+		
+		-- 收集语言包
+		local status_path = fs.stat('/usr/lib/opkg/status') and '/usr/lib/opkg/status' or (fs.stat('/var/lib/opkg/status') and '/var/lib/opkg/status' or nil)
+		if status_path then
+			local s = fs.readfile(status_path) or ''
+			for name in s:gmatch('Package:%s*(luci%-i18n%-' .. app .. '%-[%w%-%_]+)') do
+				if is_installed(name) then
+					related_pkgs_for_istore[#related_pkgs_for_istore+1] = name
+				end
+			end
+		end
+	end
+
+	-- 尝试停止 init 脚本（兼容 luci-app- 前缀）
 	sys.call(string.format("/etc/init.d/%q stop >/dev/null 2>&1", pkg))
 	if app then
 		sys.call(string.format("/etc/init.d/%q stop >/dev/null 2>&1", app))
@@ -969,6 +1058,22 @@ function action_remove()
 	-- 自动清理未使用依赖
 	sys.call('opkg autoremove >/dev/null 2>&1')
 
+	-- 清理 iStore 相关状态（如果卸载成功）
+	local removed_istore = {}
+	if success then
+		-- 清理所有相关的包（包括主包、app-meta-*, luci-i18n-* 等）
+		for _, related_pkg in ipairs(related_pkgs_for_istore) do
+			local pkg_removed = clear_istore_state(related_pkg)
+			for _, item in ipairs(pkg_removed) do
+				removed_istore[#removed_istore+1] = item
+			end
+		end
+		
+		-- 重载 web 服务器以确保 iStore 页面刷新
+		sys.call('[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd reload >/dev/null 2>&1')
+		sys.call('[ -x /etc/init.d/nginx ] && /etc/init.d/nginx reload >/dev/null 2>&1')
+	end
+
 	local removed_caches = {}
 	if success and clear_cache then
 		local appname = pkg:match('^luci%-app%-(.+)$') or pkg
@@ -989,7 +1094,8 @@ function action_remove()
 		message = output or '',
 		removed_configs = removed_confs,
 		removed_caches = removed_caches,
-		removed_force = removed_force
+		removed_force = removed_force,
+		removed_istore = removed_istore
 	})
 end
 
