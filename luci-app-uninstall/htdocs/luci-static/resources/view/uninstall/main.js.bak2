@@ -1205,9 +1205,7 @@ return view.extend({
 						'Accept': 'application/json'
 					}
 				}).then(function(res){
-					// 关闭原弹窗并显示结果
-					ui.hideModal(modal);
-					
+					// 在弹窗内显示结果，而不是使用顶部通知条
 					if (res && res.ok) {
 						// 成功：替换弹窗内容为成功提示
 						var modalBody = modal.querySelector('.modal-body');
