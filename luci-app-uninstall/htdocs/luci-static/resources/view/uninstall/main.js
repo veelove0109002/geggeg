@@ -1036,32 +1036,59 @@ return view.extend({
 			// 创建折叠/展开按钮
 			var collapseBtn = null;
 			if (canCollapse) {
-				// 渐变色背景
-				var gradientBg = 'linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%)';
-				var gradientBgHover = 'linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #7c3aed 100%)';
+				// 展开状态的渐变色（蓝色渐变）
+				var gradientBgExpanded = 'linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%)';
+				var gradientBgExpandedHover = 'linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #7c3aed 100%)';
+				// 折叠状态的渐变色（灰色渐变）
+				var gradientBgCollapsed = 'linear-gradient(135deg, #6b7280 0%, #4b5563 50%, #374151 100%)';
+				var gradientBgCollapsedHover = 'linear-gradient(135deg, #4b5563 0%, #374151 50%, #1f2937 100%)';
+				
+				// 根据初始状态选择渐变色
+				var currentGradient = isCollapsed ? gradientBgCollapsed : gradientBgExpanded;
+				var currentGradientHover = isCollapsed ? gradientBgCollapsedHover : gradientBgExpandedHover;
 				
 				collapseBtn = E('button', {
 					type: 'button',
-					'style': 'display:flex; align-items:center; justify-content:center; width:32px; height:32px; background:' + gradientBg + '; border:1px solid rgba(255,255,255,0.3); border-radius:8px; cursor:pointer; transition:all 0.2s; padding:0; box-shadow:0 2px 8px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.2);'
+					'style': 'display:flex; align-items:center; justify-content:center; width:32px; height:32px; background:' + currentGradient + '; border:1px solid rgba(255,255,255,0.3); border-radius:8px; cursor:pointer; transition:all 0.2s; padding:0; box-shadow:0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.2);'
 				}, [
 					E('span', {
 						'style': 'display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:8px solid #ffffff; transition:transform 0.2s; transform:rotate(' + (isCollapsed ? '180' : '0') + 'deg); filter:drop-shadow(0 1px 2px rgba(0,0,0,0.1));'
 					})
 				]);
 				
+				// 更新按钮样式的函数
+				function updateButtonStyle(collapsed) {
+					var gradient = collapsed ? gradientBgCollapsed : gradientBgExpanded;
+					var gradientHover = collapsed ? gradientBgCollapsedHover : gradientBgExpandedHover;
+					collapseBtn.style.background = gradient;
+					// 更新悬停时使用的渐变色和当前状态
+					collapseBtn._gradientHover = gradientHover;
+					collapseBtn._currentGradient = gradient;
+					collapseBtn._isCollapsed = collapsed;
+				}
+				
+				// 初始化按钮样式
+				updateButtonStyle(isCollapsed);
+				
 				// 添加悬停效果
 				collapseBtn.addEventListener('mouseenter', function() {
-					this.style.background = gradientBgHover;
+					var hoverGradient = this._gradientHover || (this._isCollapsed ? gradientBgCollapsedHover : gradientBgExpandedHover);
+					this.style.background = hoverGradient;
 					this.style.borderColor = 'rgba(255,255,255,0.4)';
-					this.style.boxShadow = '0 4px 12px rgba(99,102,241,0.4), inset 0 1px 0 rgba(255,255,255,0.3)';
+					this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.3)';
 					this.style.transform = 'scale(1.05)';
 				});
 				collapseBtn.addEventListener('mouseleave', function() {
-					this.style.background = gradientBg;
+					// 使用保存的当前渐变色
+					var currentGradient = this._currentGradient || (this._isCollapsed ? gradientBgCollapsed : gradientBgExpanded);
+					this.style.background = currentGradient;
 					this.style.borderColor = 'rgba(255,255,255,0.3)';
-					this.style.boxShadow = '0 2px 8px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
+					this.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.2)';
 					this.style.transform = 'scale(1)';
 				});
+				
+				// 保存更新函数供后续使用
+				collapseBtn._updateStyle = updateButtonStyle;
 			}
 			
 			var header = E('div', { 'style': 'display:flex; align-items:center; justify-content:space-between;' }, [
@@ -1130,6 +1157,11 @@ return view.extend({
 				collapseBtn.addEventListener('click', function() {
 					isCollapsed = !isCollapsed;
 					applyCollapseState(isCollapsed);
+					
+					// 更新按钮渐变色
+					if (collapseBtn._updateStyle) {
+						collapseBtn._updateStyle(isCollapsed);
+					}
 					
 					// 保存状态到 localStorage
 					try {
@@ -1680,7 +1712,24 @@ return view.extend({
 			]);
 			
 			var cancelBtn = E('button', { 'class': 'btn', 'style': 'background:#f3f4f6;color:#1f2937;border-radius:999px;padding:6px 14px;' }, _('取消'));
-			var submitBtn = E('button', { 'class': 'btn cbi-button-apply', 'style': 'background:#3b82f6;color:#fff;border-radius:999px;padding:6px 14px;' }, _('提交上报'));
+			// 图标上报按钮使用蓝色渐变
+			var submitBtnGradient = 'linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%)';
+			var submitBtnGradientHover = 'linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #7c3aed 100%)';
+			var submitBtn = E('button', { 
+				'class': 'btn cbi-button-apply', 
+				'style': 'background:' + submitBtnGradient + ';color:#fff;border:none;border-radius:999px;padding:6px 14px;box-shadow:0 2px 8px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.2);transition:all 0.2s;font-weight:500;' 
+			}, _('提交上报'));
+			// 添加悬停效果
+			submitBtn.addEventListener('mouseenter', function() {
+				this.style.background = submitBtnGradientHover;
+				this.style.boxShadow = '0 4px 12px rgba(99,102,241,0.4), inset 0 1px 0 rgba(255,255,255,0.3)';
+				this.style.transform = 'translateY(-1px)';
+			});
+			submitBtn.addEventListener('mouseleave', function() {
+				this.style.background = submitBtnGradient;
+				this.style.boxShadow = '0 2px 8px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
+				this.style.transform = 'translateY(0)';
+			});
 			var footer = E('div', { 'style':'margin-top:12px;display:flex;gap:8px;justify-content:flex-end;' }, [ cancelBtn, submitBtn ]);
 			
 			var modal = ui.showModal(_('上报图标问题'), [ titleRow, pkgInfo, inputSection, footer ]);
@@ -1837,7 +1886,24 @@ return view.extend({
 			]);
 			
 			var cancelBtn = E('button', { 'class': 'btn', 'style': 'background:#f3f4f6;color:#1f2937;border-radius:999px;padding:6px 14px;' }, _('取消'));
-			var submitBtn = E('button', { 'class': 'btn cbi-button-apply', 'style': 'background:#f59e0b;color:#fff;border-radius:999px;padding:6px 14px;' }, _('提交上报'));
+			// 卸载问题上报按钮使用橙色渐变
+			var submitBtnGradient = 'linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ea580c 100%)';
+			var submitBtnGradientHover = 'linear-gradient(135deg, #d97706 0%, #ea580c 50%, #dc2626 100%)';
+			var submitBtn = E('button', { 
+				'class': 'btn cbi-button-apply', 
+				'style': 'background:' + submitBtnGradient + ';color:#fff;border:none;border-radius:999px;padding:6px 14px;box-shadow:0 2px 8px rgba(249,115,22,0.3), inset 0 1px 0 rgba(255,255,255,0.2);transition:all 0.2s;font-weight:500;' 
+			}, _('提交上报'));
+			// 添加悬停效果
+			submitBtn.addEventListener('mouseenter', function() {
+				this.style.background = submitBtnGradientHover;
+				this.style.boxShadow = '0 4px 12px rgba(249,115,22,0.4), inset 0 1px 0 rgba(255,255,255,0.3)';
+				this.style.transform = 'translateY(-1px)';
+			});
+			submitBtn.addEventListener('mouseleave', function() {
+				this.style.background = submitBtnGradient;
+				this.style.boxShadow = '0 2px 8px rgba(249,115,22,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
+				this.style.transform = 'translateY(0)';
+			});
 			var footer = E('div', { 'style':'margin-top:12px;display:flex;gap:8px;justify-content:flex-end;' }, [ cancelBtn, submitBtn ]);
 			
 			var modal = ui.showModal(_('上报卸载问题'), [ titleRow, pkgInfo, inputSection, footer ]);
