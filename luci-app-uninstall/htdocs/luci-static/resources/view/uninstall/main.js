@@ -183,6 +183,110 @@ return view.extend({
 			#update-action img {
 				animation: update-glow 2s ease-in-out infinite;
 			}
+			
+			/* 移动端响应式样式 */
+			@media screen and (max-width: 768px) {
+				#batch-toolbar {
+					flex-wrap: wrap;
+					padding: 8px 12px;
+					gap: 8px;
+				}
+				
+				#batch-toolbar > div:first-child {
+					flex: 1 1 100%;
+					justify-content: flex-start;
+					flex-wrap: wrap;
+					gap: 8px;
+				}
+				
+				#selected-count {
+					font-size: 12px;
+					padding: 3px 10px;
+				}
+				
+				#batch-toolbar > div:nth-child(2) {
+					flex: 1 1 100%;
+					margin: 0;
+					order: 3;
+					min-width: 0;
+				}
+				
+				#filter {
+					font-size: 14px;
+				}
+				
+				#history-log-btn {
+					margin-left: 0;
+					flex: 0 0 auto;
+					padding: 6px 12px;
+					font-size: 13px;
+					white-space: nowrap;
+				}
+				
+				#history-log-btn span {
+					display: none;
+				}
+				
+				#history-log-btn img {
+					margin: 0;
+				}
+			}
+			
+			@media screen and (max-width: 480px) {
+				#batch-toolbar {
+					padding: 6px 10px;
+					gap: 6px;
+				}
+				
+				#batch-toolbar > div:first-child {
+					gap: 6px;
+				}
+				
+				#batch-toolbar label[for="select-all"] {
+					font-size: 13px;
+				}
+				
+				#batch-toolbar label[for="select-all"] span {
+					font-size: 13px;
+				}
+				
+				#selected-count {
+					font-size: 11px;
+					padding: 2px 8px;
+				}
+				
+				#batch-uninstall-btn {
+					font-size: 12px;
+					padding: 4px 10px;
+				}
+				
+				#batch-toolbar > div:nth-child(2) {
+					padding: 5px 10px;
+				}
+				
+				#batch-toolbar > div:nth-child(2) img {
+					width: 16px;
+					height: 16px;
+				}
+				
+				#filter {
+					font-size: 13px;
+				}
+				
+				#filter::placeholder {
+					font-size: 12px;
+				}
+				
+				#filter-clear {
+					font-size: 11px;
+					padding: 2px 6px;
+				}
+				
+				#history-log-btn {
+					padding: 5px 10px;
+					min-width: 36px;
+				}
+			}
 		`);
 		document.head.appendChild(styleEl);
 		
@@ -193,7 +297,7 @@ return view.extend({
 			(function(){
 				var toolbar = E('div', { 
 					id: 'batch-toolbar',
-					'style': 'margin:8px 0; display:flex; align-items:center; gap:12px; padding:10px 16px; background:linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border:1px solid #bae6fd; border-radius:12px; box-shadow:0 2px 4px rgba(0,0,0,0.05); position:sticky; top:0; z-index:100; backdrop-filter:saturate(160%) blur(6px); -webkit-backdrop-filter:saturate(160%) blur(6px);'
+					'style': 'margin:8px 0; display:flex; align-items:center; gap:12px; padding:10px 16px; background:linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border:1px solid #bae6fd; border-radius:12px; box-shadow:0 2px 4px rgba(0,0,0,0.05); position:sticky; top:0; z-index:100; backdrop-filter:saturate(160%) blur(6px); -webkit-backdrop-filter:saturate(160%) blur(6px); flex-wrap:nowrap;'
 				}, []);
 				
 				// 左侧：批量操作区域（缩短）
