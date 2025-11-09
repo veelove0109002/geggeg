@@ -213,6 +213,13 @@ return view.extend({
 				
 				#filter {
 					font-size: 14px;
+					min-width: 0;
+				}
+				
+				#filter::placeholder {
+					overflow: hidden;
+					text-overflow: ellipsis;
+					white-space: nowrap;
 				}
 				
 				#history-log-btn {
@@ -271,10 +278,14 @@ return view.extend({
 				
 				#filter {
 					font-size: 13px;
+					min-width: 0;
 				}
 				
 				#filter::placeholder {
 					font-size: 12px;
+					overflow: hidden;
+					text-overflow: ellipsis;
+					white-space: nowrap;
 				}
 				
 				#filter-clear {
@@ -362,6 +373,26 @@ return view.extend({
 				searchSection.appendChild(clearBtn);
 				searchInput.addEventListener('input', function(){ clearBtn.style.display = searchInput.value ? 'inline-block' : 'none'; });
 				clearBtn.addEventListener('click', function(){ searchInput.value=''; clearBtn.style.display='none'; searchInput.dispatchEvent(new Event('input')); });
+				
+				// 根据屏幕宽度动态调整 placeholder 文字
+				function updatePlaceholder() {
+					var width = window.innerWidth || document.documentElement.clientWidth;
+					if (width <= 480) {
+						searchInput.placeholder = _('搜索…');
+					} else if (width <= 768) {
+						searchInput.placeholder = _('搜索包名或文件名…');
+					} else {
+						searchInput.placeholder = _('按包名或文件名搜索…');
+					}
+				}
+				// 初始化
+				updatePlaceholder();
+				// 监听窗口大小变化
+				var resizeTimer;
+				window.addEventListener('resize', function() {
+					clearTimeout(resizeTimer);
+					resizeTimer = setTimeout(updatePlaceholder, 100);
+				});
 				
 				// 右侧：查看历史更新日志按钮
 				var historyLogBtn = E('button', {
