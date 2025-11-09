@@ -291,7 +291,16 @@ return view.extend({
 			'luci-app-upnp': 'upnp',
 			'luci-app-wol': 'hx',
 			'luci-app-openlist': 'openlist',
-			'luci-app-openlist2': 'openlist2'
+			'luci-app-openlist2': 'openlist2',
+			'luci-app-homeproxy': 'homeproxy',
+			'luci-app-ipsec-vpnd': 'ipsec-vpnd',
+			'luci-app-natmap': 'natmap',
+			'luci-app-nastools': 'nastools',
+			'luci-app-dufs': 'dufs',
+			'luci-app-easytier': 'easytier',
+			'luci-app-mosdns': 'mosdns',
+			'luci-app-openvpn': 'openvpn',
+			'luci-app-openvpn-server': 'openvpn-server'
 		};
 		function packageIcon(name){
 			// 从 app-icons 目录加载 PNG
@@ -333,8 +342,16 @@ return view.extend({
 			'luci-app-wol': _('网络唤醒'),
 			'luci-app-firewall': _('防火墙'),
 			'luci-app-transmission': _('BT下载'),
-			'luci-app-openvpn': _('OpenVPN'),
+			'luci-app-openvpn': _('OpenVpn'),
 			'luci-app-wireguard': _('WireGuard'),
+			'luci-app-homeproxy': _('Homeproxy'),
+			'luci-app-ipsec-vpnd': _('IPsec VPN'),
+			'luci-app-natmap': _('NatMap'),
+			'luci-app-nastools': _('NasTools'),
+			'luci-app-dufs': _('Dufs'),
+			'luci-app-easytier': _('Easytier'),
+			'luci-app-mosdns': _('Mosdns'),
+			'luci-app-openvpn-server': _('OpenVpn Server'),
 			'luci-app-sqm': _('智能队列管理'),
 			'luci-app-adguardhome': _('AdguardHome'),
 			'luci-app-passwall': _('PassWall'),
