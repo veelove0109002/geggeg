@@ -349,13 +349,50 @@ return view.extend({
 				}, _('已选: 0'));
 				
 				// 批量卸载按钮
+				var batchUninstallGradient = 'linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
+				var batchUninstallGradientHover = 'linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #ef4444 100%)';
 				var batchUninstallBtn = E('button', {
 					id: 'batch-uninstall-btn',
 					type: 'button',
 					'class': 'btn cbi-button cbi-button-remove',
-					'style': 'opacity:0.5; cursor:not-allowed;',
+					'style': 'opacity:0.5; cursor:not-allowed; background:' + batchUninstallGradient + '; color:#fff; border:none; box-shadow:0 2px 8px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s;',
 					disabled: true
 				}, _('批量卸载'));
+				// 为批量卸载按钮添加悬停效果（在按钮启用后）
+				setTimeout(function() {
+					var btn = document.getElementById('batch-uninstall-btn');
+					if (btn) {
+						var addHoverEffect = function() {
+							if (btn.disabled || btn._hoverAdded) return;
+							btn._hoverAdded = true;
+							btn.addEventListener('mouseenter', function() {
+								if (!this.disabled) {
+									this.style.background = batchUninstallGradientHover;
+									this.style.boxShadow = '0 4px 12px rgba(220,38,38,0.4), inset 0 1px 0 rgba(255,255,255,0.3)';
+									this.style.transform = 'translateY(-1px)';
+								}
+							});
+							btn.addEventListener('mouseleave', function() {
+								if (!this.disabled) {
+									this.style.background = batchUninstallGradient;
+									this.style.boxShadow = '0 2px 8px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
+									this.style.transform = 'translateY(0)';
+								}
+							});
+						};
+						// 监听按钮状态变化
+						var observer = new MutationObserver(function() {
+							if (!btn.disabled) {
+								addHoverEffect();
+							}
+						});
+						observer.observe(btn, { attributes: true, attributeFilter: ['disabled'] });
+						// 立即检查一次
+						if (!btn.disabled) {
+							addHoverEffect();
+						}
+					}
+				}, 100);
 				
 				batchSection.appendChild(selectAllLabel);
 				batchSection.appendChild(selectedCount);
@@ -501,11 +538,13 @@ return view.extend({
 				});
 				
 				// 右侧：查看历史更新日志按钮
+				var historyLogGradient = 'linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%)';
+				var historyLogGradientHover = 'linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #7c3aed 100%)';
 				var historyLogBtn = E('button', {
 					id: 'history-log-btn',
 					type: 'button',
 					'class': 'btn',
-					'style': 'margin-left:auto; background:#6366f1; color:#fff; border:none; border-radius:8px; padding:6px 16px; font-weight:500; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:6px;'
+					'style': 'margin-left:auto; background:' + historyLogGradient + '; color:#fff; border:none; border-radius:8px; padding:6px 16px; font-weight:500; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:6px; box-shadow:0 2px 8px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.2);'
 				}, [
 					E('img', { 
 						src: L.resource('icons/update.svg'), 
@@ -519,14 +558,14 @@ return view.extend({
 				
 				// 按钮悬停效果
 				historyLogBtn.addEventListener('mouseenter', function(){ 
-					this.style.background = '#4f46e5';
+					this.style.background = historyLogGradientHover;
 					this.style.transform = 'translateY(-1px)';
-					this.style.boxShadow = '0 4px 8px rgba(99, 102, 241, 0.3)';
+					this.style.boxShadow = '0 4px 12px rgba(99,102,241,0.4), inset 0 1px 0 rgba(255,255,255,0.3)';
 				});
 				historyLogBtn.addEventListener('mouseleave', function(){ 
-					this.style.background = '#6366f1';
+					this.style.background = historyLogGradient;
 					this.style.transform = 'translateY(0)';
-					this.style.boxShadow = 'none';
+					this.style.boxShadow = '0 2px 8px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
 				});
 				
 				toolbar.appendChild(batchSection);
@@ -878,7 +917,24 @@ return view.extend({
 			var cacheEl = E('input', { type: 'checkbox', checked: true, 'style': 'display:none;' });
 			var cacheLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px auto auto; align-items:center; column-gap:6px; line-height:20px;' }, [ optionIcon(ICON_CACHE), _('清空插件缓存'), makeSwitch(cacheEl) ]);
 			var optionsRow = E('div', { 'style': 'display:flex; gap:12px; align-items:center; flex-wrap:wrap;' }, [ purgeLabel, depsLabel, cacheLabel ]);
-			var btn = E('button', { type: 'button', 'class': 'btn cbi-button cbi-button-remove' }, _('卸载'));
+			// 卸载按钮使用红色渐变
+			var uninstallGradient = 'linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
+			var uninstallGradientHover = 'linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #ef4444 100%)';
+			var btn = E('button', { 
+				type: 'button', 
+				'class': 'btn cbi-button cbi-button-remove',
+				'style': 'background:' + uninstallGradient + '; color:#fff; border:none; box-shadow:0 2px 8px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s;'
+			}, _('卸载'));
+			btn.addEventListener('mouseenter', function() {
+				this.style.background = uninstallGradientHover;
+				this.style.boxShadow = '0 4px 12px rgba(220,38,38,0.4), inset 0 1px 0 rgba(255,255,255,0.3)';
+				this.style.transform = 'translateY(-1px)';
+			});
+			btn.addEventListener('mouseleave', function() {
+				this.style.background = uninstallGradient;
+				this.style.boxShadow = '0 2px 8px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
+				this.style.transform = 'translateY(0)';
+			});
 			btn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); uninstall(pkg.name, purgeEl.checked, depsEl.checked, pkg.version || '', cacheEl.checked); });
 			var metaTop = E('div', { 'style': 'display:flex; align-items:center; gap:8px; flex-wrap:wrap;' }, [ title ]);
 		var metaCol = E('div', { 'class': 'pkg-meta', 'style': 'flex:1; display:flex; flex-direction:column; gap:6px;' }, [ metaTop, optionsRow ]);
@@ -986,14 +1042,17 @@ return view.extend({
 			if (countEl) countEl.textContent = _('已选: ') + count;
 			
 			if (batchBtn) {
+				var batchUninstallGradient = 'linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
 				if (count > 0) {
 					batchBtn.disabled = false;
 					batchBtn.style.opacity = '1';
 					batchBtn.style.cursor = 'pointer';
+					batchBtn.style.background = batchUninstallGradient;
 				} else {
 					batchBtn.disabled = true;
 					batchBtn.style.opacity = '0.5';
 					batchBtn.style.cursor = 'not-allowed';
+					batchBtn.style.background = batchUninstallGradient;
 				}
 			}
 			
@@ -1325,7 +1384,26 @@ return view.extend({
 						msg,
 						E('div', { 'style':'margin-top:10px;display:flex;gap:8px;justify-content:flex-end;' }, [
 							E('button', { 'class': 'btn', id: 'cancel-upgrade' }, _('取消')),
-							E('button', { 'class': 'btn cbi-button cbi-button-apply', id: 'confirm-upgrade' }, _('立即升级'))
+							(function(){
+								var upgradeGradient = 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)';
+								var upgradeGradientHover = 'linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%)';
+								var upgradeBtn = E('button', { 
+									'class': 'btn cbi-button cbi-button-apply', 
+									id: 'confirm-upgrade',
+									'style': 'background:' + upgradeGradient + '; color:#fff; border:none; border-radius:999px; padding:6px 14px; box-shadow:0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s; font-weight:500;'
+								}, _('立即升级'));
+								upgradeBtn.addEventListener('mouseenter', function() {
+									this.style.background = upgradeGradientHover;
+									this.style.boxShadow = '0 4px 12px rgba(16,185,129,0.4), inset 0 1px 0 rgba(255,255,255,0.3)';
+									this.style.transform = 'translateY(-1px)';
+								});
+								upgradeBtn.addEventListener('mouseleave', function() {
+									this.style.background = upgradeGradient;
+									this.style.boxShadow = '0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
+									this.style.transform = 'translateY(0)';
+								});
+								return upgradeBtn;
+							})()
 						])
 					]);
 					var overlay = modal && modal.parentNode; if (overlay) { overlay.style.display = 'flex'; overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center'; }
@@ -1343,7 +1421,26 @@ return view.extend({
 						msg2,
 						E('div', { 'style':'margin-top:10px;display:flex;gap:8px;justify-content:flex-end;' }, [
 							E('button', { 'class': 'btn', id: 'cancel-upgrade' }, _('取消')),
-							E('button', { 'class': 'btn cbi-button cbi-button-apply', id: 'confirm-upgrade' }, _('立即升级'))
+							(function(){
+								var upgradeGradient = 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)';
+								var upgradeGradientHover = 'linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%)';
+								var upgradeBtn = E('button', { 
+									'class': 'btn cbi-button cbi-button-apply', 
+									id: 'confirm-upgrade',
+									'style': 'background:' + upgradeGradient + '; color:#fff; border:none; border-radius:999px; padding:6px 14px; box-shadow:0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s; font-weight:500;'
+								}, _('立即升级'));
+								upgradeBtn.addEventListener('mouseenter', function() {
+									this.style.background = upgradeGradientHover;
+									this.style.boxShadow = '0 4px 12px rgba(16,185,129,0.4), inset 0 1px 0 rgba(255,255,255,0.3)';
+									this.style.transform = 'translateY(-1px)';
+								});
+								upgradeBtn.addEventListener('mouseleave', function() {
+									this.style.background = upgradeGradient;
+									this.style.boxShadow = '0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
+									this.style.transform = 'translateY(0)';
+								});
+								return upgradeBtn;
+							})()
 						])
 					]);
 					var overlay2 = modal2 && modal2.parentNode; if (overlay2) { overlay2.style.display = 'flex'; overlay2.style.alignItems = 'center'; overlay2.style.justifyContent = 'center'; }
@@ -1376,7 +1473,26 @@ return view.extend({
 						msg,
 						E('div', { 'style':'margin-top:10px;display:flex;gap:8px;justify-content:flex-end;' }, [
 							E('button', { 'class': 'btn', id: 'cancel-upgrade' }, _('取消')),
-							E('button', { 'class': 'btn cbi-button cbi-button-apply', id: 'confirm-upgrade' }, _('立即升级'))
+							(function(){
+								var upgradeGradient = 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)';
+								var upgradeGradientHover = 'linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%)';
+								var upgradeBtn = E('button', { 
+									'class': 'btn cbi-button cbi-button-apply', 
+									id: 'confirm-upgrade',
+									'style': 'background:' + upgradeGradient + '; color:#fff; border:none; border-radius:999px; padding:6px 14px; box-shadow:0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s; font-weight:500;'
+								}, _('立即升级'));
+								upgradeBtn.addEventListener('mouseenter', function() {
+									this.style.background = upgradeGradientHover;
+									this.style.boxShadow = '0 4px 12px rgba(16,185,129,0.4), inset 0 1px 0 rgba(255,255,255,0.3)';
+									this.style.transform = 'translateY(-1px)';
+								});
+								upgradeBtn.addEventListener('mouseleave', function() {
+									this.style.background = upgradeGradient;
+									this.style.boxShadow = '0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
+									this.style.transform = 'translateY(0)';
+								});
+								return upgradeBtn;
+							})()
 						])
 					]);
 					var overlay = modal && modal.parentNode; if (overlay) { overlay.style.display = 'flex'; overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center'; }
@@ -1394,7 +1510,26 @@ return view.extend({
 						msg2,
 						E('div', { 'style':'margin-top:10px;display:flex;gap:8px;justify-content:flex-end;' }, [
 							E('button', { 'class': 'btn', id: 'cancel-upgrade' }, _('取消')),
-							E('button', { 'class': 'btn cbi-button cbi-button-apply', id: 'confirm-upgrade' }, _('立即升级'))
+							(function(){
+								var upgradeGradient = 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)';
+								var upgradeGradientHover = 'linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%)';
+								var upgradeBtn = E('button', { 
+									'class': 'btn cbi-button cbi-button-apply', 
+									id: 'confirm-upgrade',
+									'style': 'background:' + upgradeGradient + '; color:#fff; border:none; border-radius:999px; padding:6px 14px; box-shadow:0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s; font-weight:500;'
+								}, _('立即升级'));
+								upgradeBtn.addEventListener('mouseenter', function() {
+									this.style.background = upgradeGradientHover;
+									this.style.boxShadow = '0 4px 12px rgba(16,185,129,0.4), inset 0 1px 0 rgba(255,255,255,0.3)';
+									this.style.transform = 'translateY(-1px)';
+								});
+								upgradeBtn.addEventListener('mouseleave', function() {
+									this.style.background = upgradeGradient;
+									this.style.boxShadow = '0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
+									this.style.transform = 'translateY(0)';
+								});
+								return upgradeBtn;
+							})()
 						])
 					]);
 					var overlay2 = modal2 && modal2.parentNode; if (overlay2) { overlay2.style.display = 'flex'; overlay2.style.alignItems = 'center'; overlay2.style.justifyContent = 'center'; }
@@ -1504,7 +1639,23 @@ return view.extend({
 					]);
 					
 					var cancelBtn = E('button', { 'class': 'btn', 'style': 'background:#eef2ff;color:#1f2937;border-radius:999px;padding:6px 14px;' }, _('取消'));
-					var okBtn = E('button', { 'class': 'btn', 'style': 'background:#dc2626;color:#fff;border-radius:999px;padding:6px 14px;' }, _('确定卸载'));
+					// 批量卸载确定按钮使用红色渐变
+					var batchConfirmGradient = 'linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
+					var batchConfirmGradientHover = 'linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #ef4444 100%)';
+					var okBtn = E('button', { 
+						'class': 'btn', 
+						'style': 'background:' + batchConfirmGradient + '; color:#fff; border:none; border-radius:999px; padding:6px 14px; box-shadow:0 2px 8px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s; font-weight:500;' 
+					}, _('确定卸载'));
+					okBtn.addEventListener('mouseenter', function() {
+						this.style.background = batchConfirmGradientHover;
+						this.style.boxShadow = '0 4px 12px rgba(220,38,38,0.4), inset 0 1px 0 rgba(255,255,255,0.3)';
+						this.style.transform = 'translateY(-1px)';
+					});
+					okBtn.addEventListener('mouseleave', function() {
+						this.style.background = batchConfirmGradient;
+						this.style.boxShadow = '0 2px 8px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
+						this.style.transform = 'translateY(0)';
+					});
 					var footer = E('div', { 'style':'margin-top:12px;display:flex;gap:8px;justify-content:flex-end;' }, [ cancelBtn, okBtn ]);
 					
 					var modal = ui.showModal(_('批量卸载确认'), [ titleRow, pkgList, warnBar, footer ]);
@@ -2052,7 +2203,23 @@ return view.extend({
 						desc ? E('div', { 'style': 'margin-top:4px;color:#6b7280;' }, desc) : ''
 					]);
 					var cancelBtn = E('button', { 'class': 'btn', 'style': 'background:#eef2ff;color:#1f2937;border-radius:999px;padding:6px 14px;' }, _('取消'));
-					var okBtn = E('button', { 'class': 'btn', 'style': 'background:#2563eb;color:#fff;border-radius:999px;padding:6px 14px;' }, _('确定'));
+					// 单个卸载确定按钮使用蓝色渐变
+					var uninstallConfirmGradient = 'linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%)';
+					var uninstallConfirmGradientHover = 'linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #7c3aed 100%)';
+					var okBtn = E('button', { 
+						'class': 'btn', 
+						'style': 'background:' + uninstallConfirmGradient + '; color:#fff; border:none; border-radius:999px; padding:6px 14px; box-shadow:0 2px 8px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s; font-weight:500;' 
+					}, _('确定'));
+					okBtn.addEventListener('mouseenter', function() {
+						this.style.background = uninstallConfirmGradientHover;
+						this.style.boxShadow = '0 4px 12px rgba(99,102,241,0.4), inset 0 1px 0 rgba(255,255,255,0.3)';
+						this.style.transform = 'translateY(-1px)';
+					});
+					okBtn.addEventListener('mouseleave', function() {
+						this.style.background = uninstallConfirmGradient;
+						this.style.boxShadow = '0 2px 8px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
+						this.style.transform = 'translateY(0)';
+					});
 					var footer = E('div', { 'style':'margin-top:12px;display:flex;gap:8px;justify-content:flex-end;' }, [ cancelBtn, okBtn ]);
 					var modal = ui.showModal(headerName, [ titleRow, headerInfo, warnBar, body, footer ]);
 					var overlay = modal && modal.parentNode; if (overlay) { overlay.style.display = 'flex'; overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center'; }
