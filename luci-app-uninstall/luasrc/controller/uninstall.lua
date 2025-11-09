@@ -43,6 +43,10 @@ function index()
 	e = entry({ 'admin', 'vum', 'uninstall', 'report_uninstall' }, call('action_report_uninstall'))
 	e.leaf = true
 	e.acl_depends = { 'luci-app-uninstall' }
+
+	e = entry({ 'admin', 'vum', 'uninstall', 'history_log' }, call('action_history_log'))
+	e.leaf = true
+	e.acl_depends = { 'luci-app-uninstall' }
 end
 
 local http = require 'luci.http'
@@ -1642,4 +1646,91 @@ function action_report_uninstall()
 			http_code = http_code
 		}, 500)
 	end
+end
+
+-- 获取历史更新日志
+function action_history_log()
+	local logs = {}
+	
+	-- 尝试从远程服务器获取历史更新日志
+	local endpoints = {
+		'https://plugin.vumstar.com/download/history.json',
+		'https://plugin.vumstar.com/download/changelog.json'
+	}
+	
+	local body = ''
+	for _, u in ipairs(endpoints) do
+		body = sys.exec("wget -qO- '" .. u .. "' 2>/dev/null") or ''
+		if not body or #body == 0 then 
+			body = sys.exec("uclient-fetch -qO- '" .. u .. "' 2>/dev/null") or '' 
+		end
+		if body and #body > 0 then
+			local ok, data = pcall(json.parse, body)
+			if ok and type(data) == 'table' then
+				-- 支持多种数据格式
+				if data.logs and type(data.logs) == 'table' then
+					logs = data.logs
+				elseif data.history and type(data.history) == 'table' then
+					logs = data.history
+				elseif data.changelog and type(data.changelog) == 'table' then
+					logs = data.changelog
+				elseif type(data) == 'table' and #data > 0 then
+					-- 如果是数组格式
+					logs = data
+				end
+				if #logs > 0 then break end
+			end
+		end
+	end
+	
+	-- 如果远程获取失败，尝试从当前版本信息中获取最新日志
+	if #logs == 0 then
+		local latest, changelog
+		local version_url = 'https://plugin.vumstar.com/download/version.json'
+		local version_body = sys.exec("wget -qO- '" .. version_url .. "' 2>/dev/null") or ''
+		if not version_body or #version_body == 0 then 
+			version_body = sys.exec("uclient-fetch -qO- '" .. version_url .. "' 2>/dev/null") or '' 
+		end
+		if version_body and #version_body > 0 then
+			local ok, data = pcall(json.parse, version_body)
+			if ok and type(data) == 'table' then
+				latest = data.latest or data.version
+				changelog = data.changelog
+				if latest and changelog then
+					logs = {{
+						version = latest,
+						date = os.date('%Y-%m-%d'),
+						changelog = changelog
+					}}
+				end
+			end
+		end
+	end
+	
+	-- 如果仍然没有日志，返回空列表
+	if #logs == 0 then
+		return json_response({ 
+			ok = true, 
+			logs = {},
+			message = '暂无历史更新日志'
+		})
+	end
+	
+	-- 确保日志格式正确
+	local formatted_logs = {}
+	for _, log in ipairs(logs) do
+		if type(log) == 'table' then
+			table.insert(formatted_logs, {
+				version = tostring(log.version or log.ver or ''),
+				date = tostring(log.date or log.time or ''),
+				changelog = tostring(log.changelog or log.content or log.text or '')
+			})
+		end
+	end
+	
+	return json_response({ 
+		ok = true, 
+		logs = formatted_logs,
+		count = #formatted_logs
+	})
 end

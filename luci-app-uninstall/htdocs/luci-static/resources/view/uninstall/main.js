@@ -207,6 +207,11 @@ return view.extend({
 					'style': 'margin:8px 0; display:flex; align-items:center; gap:12px; padding:10px 16px; background:linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border:1px solid #bae6fd; border-radius:12px; box-shadow:0 2px 4px rgba(0,0,0,0.05); position:sticky; top:0; z-index:100; backdrop-filter:saturate(160%) blur(6px); -webkit-backdrop-filter:saturate(160%) blur(6px);'
 				}, []);
 				
+				// 左侧：批量操作区域（缩短）
+				var batchSection = E('div', { 
+					'style': 'display:flex; align-items:center; gap:12px; flex:0 0 auto;'
+				}, []);
+				
 				// 全选复选框 - 美化版本
 				var selectAllCheckbox = E('input', { type: 'checkbox', id: 'select-all' });
 				var selectAllCheckboxWrapper = E('div', { 'class': 'custom-checkbox-wrapper select-all-checkbox-wrapper' }, [
@@ -232,13 +237,45 @@ return view.extend({
 					id: 'batch-uninstall-btn',
 					type: 'button',
 					'class': 'btn cbi-button cbi-button-remove',
-					'style': 'margin-left:auto; opacity:0.5; cursor:not-allowed;',
+					'style': 'opacity:0.5; cursor:not-allowed;',
 					disabled: true
 				}, _('批量卸载'));
 				
-				toolbar.appendChild(selectAllLabel);
-				toolbar.appendChild(selectedCount);
-				toolbar.appendChild(batchUninstallBtn);
+				batchSection.appendChild(selectAllLabel);
+				batchSection.appendChild(selectedCount);
+				batchSection.appendChild(batchUninstallBtn);
+				
+				// 右侧：查看历史更新日志按钮
+				var historyLogBtn = E('button', {
+					id: 'history-log-btn',
+					type: 'button',
+					'class': 'btn',
+					'style': 'margin-left:auto; background:#6366f1; color:#fff; border:none; border-radius:8px; padding:6px 16px; font-weight:500; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:6px;'
+				}, [
+					E('img', { 
+						src: L.resource('icons/update.svg'), 
+						alt: 'history', 
+						width: 16, 
+						height: 16,
+						'style': 'display:block; object-fit:contain; filter:brightness(0) invert(1);'
+					}),
+					E('span', {}, _('查看历史更新日志'))
+				]);
+				
+				// 按钮悬停效果
+				historyLogBtn.addEventListener('mouseenter', function(){ 
+					this.style.background = '#4f46e5';
+					this.style.transform = 'translateY(-1px)';
+					this.style.boxShadow = '0 4px 8px rgba(99, 102, 241, 0.3)';
+				});
+				historyLogBtn.addEventListener('mouseleave', function(){ 
+					this.style.background = '#6366f1';
+					this.style.transform = 'translateY(0)';
+					this.style.boxShadow = 'none';
+				});
+				
+				toolbar.appendChild(batchSection);
+				toolbar.appendChild(historyLogBtn);
 				
 				return toolbar;
 			})()
@@ -1826,6 +1863,173 @@ return view.extend({
 			}
 		});
 		
+		// 查看历史更新日志函数
+		function showHistoryLog() {
+			// 显示加载状态
+			var loadingContent = E('div', { 'style': 'text-align:center; padding:40px 20px;' }, [
+				E('div', { 'style': 'width:48px; height:48px; margin:0 auto 16px; border:4px solid #e5e7eb; border-top-color:#6366f1; border-radius:50%; animation:spin 1s linear infinite;' }),
+				E('div', { 'style': 'font-size:14px; color:#6b7280;' }, _('正在加载历史更新日志...'))
+			]);
+			var loadingModal = ui.showModal(_('历史更新日志'), [loadingContent]);
+			var overlay = loadingModal && loadingModal.parentNode;
+			if (overlay) {
+				overlay.style.display = 'flex';
+				overlay.style.alignItems = 'center';
+				overlay.style.justifyContent = 'center';
+			}
+			
+			// 添加旋转动画
+			var styleEl = document.createElement('style');
+			styleEl.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+			document.head.appendChild(styleEl);
+			
+			// 获取历史更新日志
+			self._httpJson(L.url('admin/vum/uninstall/history_log'), { 
+				headers: { 'Accept': 'application/json' } 
+			}).then(function(res){
+				ui.hideModal(loadingModal);
+				document.head.removeChild(styleEl);
+				
+				if (res && res.ok && res.logs && res.logs.length > 0) {
+					// 显示历史日志
+					var logs = res.logs;
+					var logContent = E('div', { 'style': 'max-width:800px; max-height:70vh; overflow-y:auto;' }, []);
+					
+					// 添加标题和说明
+					var header = E('div', { 'style': 'margin-bottom:16px; padding-bottom:12px; border-bottom:2px solid #e5e7eb;' }, [
+						E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin-bottom:8px;' }, [
+							E('img', { 
+								src: packageIcon('luci-app-uninstall'), 
+								'style': 'width:32px; height:32px; border-radius:6px; background:#f3f4f6; border:1px solid #e5e7eb; object-fit:contain;' 
+							}),
+							E('div', { 'style': 'flex:1;' }, [
+								E('div', { 'style': 'font-size:18px; font-weight:700; color:#111827;' }, _('高级卸载')),
+								E('div', { 'style': 'font-size:13px; color:#6b7280;' }, _('历史更新日志'))
+							])
+						])
+					]);
+					logContent.appendChild(header);
+					
+					// 添加日志列表
+					var logList = E('div', { 'style': 'display:flex; flex-direction:column; gap:12px;' }, []);
+					logs.forEach(function(log, idx){
+						var version = log.version || '';
+						var date = log.date || '';
+						var changelog = log.changelog || log.content || '';
+						
+						var logItem = E('div', { 
+							'style': 'padding:16px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:12px; transition:all 0.2s;'
+						}, [
+							E('div', { 'style': 'display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;' }, [
+								E('div', { 'style': 'display:flex; align-items:center; gap:8px;' }, [
+									E('span', { 
+										'style': 'font-size:14px; font-weight:700; color:#6366f1; background:#eef2ff; padding:4px 10px; border-radius:6px;'
+									}, version || _('未知版本')),
+									date ? E('span', { 
+										'style': 'font-size:12px; color:#6b7280;'
+									}, date) : null
+								])
+							]),
+							changelog ? E('pre', { 
+								'style': 'margin:0; padding:12px; background:#ffffff; border:1px solid #e5e7eb; border-radius:8px; font-size:13px; line-height:1.6; color:#374151; white-space:pre-wrap; word-wrap:break-word; font-family:inherit;'
+							}, changelog) : E('div', { 'style': 'font-size:13px; color:#9ca3af; font-style:italic;' }, _('暂无更新说明'))
+						]);
+						
+						logItem.addEventListener('mouseenter', function(){
+							this.style.background = '#f3f4f6';
+							this.style.borderColor = '#d1d5db';
+							this.style.transform = 'translateY(-2px)';
+							this.style.boxShadow = '0 4px 8px rgba(0,0,0,0.08)';
+						});
+						logItem.addEventListener('mouseleave', function(){
+							this.style.background = '#f9fafb';
+							this.style.borderColor = '#e5e7eb';
+							this.style.transform = 'translateY(0)';
+							this.style.boxShadow = 'none';
+						});
+						
+						logList.appendChild(logItem);
+					});
+					logContent.appendChild(logList);
+					
+					var closeBtn = E('button', { 
+						'class': 'btn cbi-button-apply',
+						'style': 'margin-top:16px; background:#6366f1; color:#fff; border-radius:8px; padding:8px 24px; font-weight:500;'
+					}, _('关闭'));
+					closeBtn.addEventListener('click', function(){ ui.hideModal(historyModal); });
+					
+					var historyModal = ui.showModal(_('历史更新日志'), [
+						logContent,
+						E('div', { 'style': 'margin-top:16px; display:flex; justify-content:flex-end;' }, [closeBtn])
+					]);
+					
+					var historyOverlay = historyModal && historyModal.parentNode;
+					if (historyOverlay) {
+						historyOverlay.style.display = 'flex';
+						historyOverlay.style.alignItems = 'center';
+						historyOverlay.style.justifyContent = 'center';
+					}
+				} else {
+					// 没有日志或加载失败
+					var emptyContent = E('div', { 'style': 'text-align:center; padding:40px 20px;' }, [
+						E('div', { 'style': 'width:64px; height:64px; margin:0 auto 16px; background:#f3f4f6; border-radius:50%; display:flex; align-items:center; justify-content:center;' }, [
+							E('span', { 'style': 'font-size:32px; color:#9ca3af;' }, '📋')
+						]),
+						E('div', { 'style': 'font-size:16px; font-weight:600; color:#111827; margin-bottom:8px;' }, _('暂无历史更新日志')),
+						E('div', { 'style': 'font-size:14px; color:#6b7280;' }, res && res.message ? res.message : _('无法获取历史更新日志，请稍后重试'))
+					]);
+					
+					var closeBtn2 = E('button', { 
+						'class': 'btn',
+						'style': 'margin-top:16px; background:#f3f4f6; color:#374151; border-radius:8px; padding:8px 24px;'
+					}, _('关闭'));
+					closeBtn2.addEventListener('click', function(){ ui.hideModal(emptyModal); });
+					
+					var emptyModal = ui.showModal(_('历史更新日志'), [
+						emptyContent,
+						E('div', { 'style': 'margin-top:16px; display:flex; justify-content:flex-end;' }, [closeBtn2])
+					]);
+					
+					var emptyOverlay = emptyModal && emptyModal.parentNode;
+					if (emptyOverlay) {
+						emptyOverlay.style.display = 'flex';
+						emptyOverlay.style.alignItems = 'center';
+						emptyOverlay.style.justifyContent = 'center';
+					}
+				}
+			}).catch(function(err){
+				ui.hideModal(loadingModal);
+				document.head.removeChild(styleEl);
+				
+				// 显示错误
+				var errorContent = E('div', { 'style': 'text-align:center; padding:40px 20px;' }, [
+					E('div', { 'style': 'width:64px; height:64px; margin:0 auto 16px; background:#fee2e2; border-radius:50%; display:flex; align-items:center; justify-content:center;' }, [
+						E('span', { 'style': 'font-size:32px; color:#dc2626;' }, '✕')
+					]),
+					E('div', { 'style': 'font-size:16px; font-weight:600; color:#111827; margin-bottom:8px;' }, _('加载失败')),
+					E('div', { 'style': 'font-size:14px; color:#6b7280;' }, _('无法获取历史更新日志，请检查网络连接'))
+				]);
+				
+				var closeBtn3 = E('button', { 
+					'class': 'btn',
+					'style': 'margin-top:16px; background:#f3f4f6; color:#374151; border-radius:8px; padding:8px 24px;'
+				}, _('关闭'));
+				closeBtn3.addEventListener('click', function(){ ui.hideModal(errorModal); });
+				
+				var errorModal = ui.showModal(_('历史更新日志'), [
+					errorContent,
+					E('div', { 'style': 'margin-top:16px; display:flex; justify-content:flex-end;' }, [closeBtn3])
+				]);
+				
+				var errorOverlay = errorModal && errorModal.parentNode;
+				if (errorOverlay) {
+					errorOverlay.style.display = 'flex';
+					errorOverlay.style.alignItems = 'center';
+					errorOverlay.style.justifyContent = 'center';
+				}
+			});
+		}
+		
 		root.addEventListener('click', function(ev){
 			if (!ev.target) return;
 			var t = ev.target;
@@ -1833,6 +2037,12 @@ return view.extend({
 				ev.preventDefault();
 				ev.stopPropagation();
 				batchUninstall();
+				return;
+			}
+			if (t.id === 'history-log-btn' || (t.closest && t.closest('#history-log-btn'))) {
+				ev.preventDefault();
+				ev.stopPropagation();
+				showHistoryLog();
 				return;
 			}
 			if (t.id === 'filter-clear') { if (searchTimer) clearTimeout(searchTimer); searchTimer = setTimeout(refresh, 10); return; }
