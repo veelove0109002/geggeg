@@ -1855,8 +1855,13 @@ function action_history_log()
 	local formatted_logs = {}
 	for _, log in ipairs(logs) do
 		if type(log) == 'table' then
+			-- 支持 latest 字段，转换为 version
+			local version = log.version or log.ver or log.latest or ''
+			if version and version:sub(1, 1) ~= 'v' then
+				version = 'v' .. tostring(version)
+			end
 			table.insert(formatted_logs, {
-				version = tostring(log.version or log.ver or ''),
+				version = tostring(version),
 				date = tostring(log.date or log.time or ''),
 				changelog = tostring(log.changelog or log.content or log.text or '')
 			})
