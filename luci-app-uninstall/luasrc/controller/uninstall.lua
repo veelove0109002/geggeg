@@ -1724,30 +1724,41 @@ end
 function action_history_log()
 	local logs = {}
 	
-	-- 优先从 xz.vumstar.com 获取更新日志
-	local website_url = 'https://xz.vumstar.com/'
-	local html_body = sys.exec("wget -qO- '" .. website_url .. "' 2>/dev/null") or ''
-	if not html_body or #html_body == 0 then 
-		html_body = sys.exec("uclient-fetch -qO- '" .. website_url .. "' 2>/dev/null") or '' 
+	-- 优先从 xzversion.json 获取更新日志
+	local xzversion_url = 'https://plugin.vumstar.com/download/xzversion.json'
+	local xzversion_body = sys.exec("wget -qO- '" .. xzversion_url .. "' 2>/dev/null") or ''
+	if not xzversion_body or #xzversion_body == 0 then 
+		xzversion_body = sys.exec("uclient-fetch -qO- '" .. xzversion_url .. "' 2>/dev/null") or '' 
 	end
 	
-	if html_body and #html_body > 0 then
-		-- 提取更新日志部分（查找"更新日志"后面的内容）
-		local changelog_start = html_body:find('更新日志')
-		if changelog_start then
-			-- 提取从"更新日志"开始到页面结束或特定标记之间的内容
-			local changelog_section = html_body:sub(changelog_start)
-			-- 限制提取范围，避免提取过多内容
-			local changelog_end = changelog_section:find('</section>') or changelog_section:find('</div>') or changelog_section:find('<footer') or 50000
-			if changelog_end then
-				changelog_section = changelog_section:sub(1, changelog_end)
+	if xzversion_body and #xzversion_body > 0 then
+		local ok, data = pcall(json.parse, xzversion_body)
+		if ok and type(data) == 'table' then
+			-- 支持多种数据格式
+			if data.logs and type(data.logs) == 'table' then
+				-- 如果是 logs 数组格式
+				logs = data.logs
+			elseif data.history and type(data.history) == 'table' then
+				-- 如果是 history 数组格式
+				logs = data.history
+			elseif data.changelog and type(data.changelog) == 'table' then
+				-- 如果是 changelog 数组格式
+				logs = data.changelog
+			elseif type(data) == 'table' and #data > 0 then
+				-- 如果是数组格式
+				logs = data
+			elseif data.latest and data.changelog then
+				-- 如果是单个版本格式，转换为数组
+				logs = {{
+					version = 'v' .. tostring(data.latest),
+					date = data.date or os.date('%Y-%m-%d'),
+					changelog = tostring(data.changelog)
+				}}
 			end
-			
-			logs = parse_changelog_from_html(changelog_section)
 		end
 	end
 	
-	-- 如果从网站获取失败，尝试从JSON API获取
+	-- 如果从 xzversion.json 获取失败，尝试从其他 JSON API 获取
 	if #logs == 0 then
 		local endpoints = {
 			'https://plugin.vumstar.com/download/history.json',
