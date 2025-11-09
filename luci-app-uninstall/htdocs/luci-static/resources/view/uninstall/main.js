@@ -1036,25 +1036,31 @@ return view.extend({
 			// 创建折叠/展开按钮
 			var collapseBtn = null;
 			if (canCollapse) {
+				// 渐变色背景
+				var gradientBg = 'linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%)';
+				var gradientBgHover = 'linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #7c3aed 100%)';
+				
 				collapseBtn = E('button', {
 					type: 'button',
-					'style': 'display:flex; align-items:center; justify-content:center; width:32px; height:32px; background:#3b82f6; border:1px solid #2563eb; border-radius:8px; cursor:pointer; transition:all 0.2s; padding:0; box-shadow:0 2px 4px rgba(59,130,246,0.2);'
+					'style': 'display:flex; align-items:center; justify-content:center; width:32px; height:32px; background:' + gradientBg + '; border:1px solid rgba(255,255,255,0.3); border-radius:8px; cursor:pointer; transition:all 0.2s; padding:0; box-shadow:0 2px 8px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.2);'
 				}, [
 					E('span', {
-						'style': 'display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:8px solid #ffffff; transition:transform 0.2s; transform:rotate(' + (isCollapsed ? '180' : '0') + 'deg);'
+						'style': 'display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:8px solid #ffffff; transition:transform 0.2s; transform:rotate(' + (isCollapsed ? '180' : '0') + 'deg); filter:drop-shadow(0 1px 2px rgba(0,0,0,0.1));'
 					})
 				]);
 				
 				// 添加悬停效果
 				collapseBtn.addEventListener('mouseenter', function() {
-					this.style.background = '#2563eb';
-					this.style.borderColor = '#1d4ed8';
-					this.style.boxShadow = '0 4px 8px rgba(59,130,246,0.3)';
+					this.style.background = gradientBgHover;
+					this.style.borderColor = 'rgba(255,255,255,0.4)';
+					this.style.boxShadow = '0 4px 12px rgba(99,102,241,0.4), inset 0 1px 0 rgba(255,255,255,0.3)';
+					this.style.transform = 'scale(1.05)';
 				});
 				collapseBtn.addEventListener('mouseleave', function() {
-					this.style.background = '#3b82f6';
-					this.style.borderColor = '#2563eb';
-					this.style.boxShadow = '0 2px 4px rgba(59,130,246,0.2)';
+					this.style.background = gradientBg;
+					this.style.borderColor = 'rgba(255,255,255,0.3)';
+					this.style.boxShadow = '0 2px 8px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
+					this.style.transform = 'scale(1)';
 				});
 			}
 			
