@@ -1018,28 +1018,43 @@ return view.extend({
 			
 			// 判断是否可以折叠（除了 VUM-Plugin类 都可以折叠）
 			var canCollapse = title !== _('VUM-Plugin类');
+			
+			// 从 localStorage 读取折叠状态
+			var storageKey = 'uninstall_collapse_' + title;
 			var isCollapsed = false;
+			if (canCollapse) {
+				try {
+					var savedState = localStorage.getItem(storageKey);
+					if (savedState === 'true') {
+						isCollapsed = true;
+					}
+				} catch (e) {
+					// localStorage 不可用时忽略
+				}
+			}
 			
 			// 创建折叠/展开按钮
 			var collapseBtn = null;
 			if (canCollapse) {
 				collapseBtn = E('button', {
 					type: 'button',
-					'style': 'display:flex; align-items:center; justify-content:center; width:32px; height:32px; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:8px; cursor:pointer; transition:all 0.2s; padding:0;'
+					'style': 'display:flex; align-items:center; justify-content:center; width:32px; height:32px; background:#3b82f6; border:1px solid #2563eb; border-radius:8px; cursor:pointer; transition:all 0.2s; padding:0; box-shadow:0 2px 4px rgba(59,130,246,0.2);'
 				}, [
 					E('span', {
-						'style': 'display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:8px solid #6b7280; transition:transform 0.2s; transform:rotate(0deg);'
+						'style': 'display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:8px solid #ffffff; transition:transform 0.2s; transform:rotate(' + (isCollapsed ? '180' : '0') + 'deg);'
 					})
 				]);
 				
 				// 添加悬停效果
 				collapseBtn.addEventListener('mouseenter', function() {
-					this.style.background = '#e5e7eb';
-					this.style.borderColor = '#d1d5db';
+					this.style.background = '#2563eb';
+					this.style.borderColor = '#1d4ed8';
+					this.style.boxShadow = '0 4px 8px rgba(59,130,246,0.3)';
 				});
 				collapseBtn.addEventListener('mouseleave', function() {
-					this.style.background = '#f3f4f6';
-					this.style.borderColor = '#e5e7eb';
+					this.style.background = '#3b82f6';
+					this.style.borderColor = '#2563eb';
+					this.style.boxShadow = '0 2px 4px rgba(59,130,246,0.2)';
 				});
 			}
 			
@@ -1067,10 +1082,10 @@ return view.extend({
 				// 保存展开时的高度
 				var expandedHeight = null;
 				
-				collapseBtn.addEventListener('click', function() {
-					isCollapsed = !isCollapsed;
-					if (isCollapsed) {
-						// 折叠
+				// 初始化折叠状态
+				function applyCollapseState(collapsed) {
+					if (collapsed) {
+						// 折叠状态
 						if (expandedHeight === null) {
 							// 首次折叠，保存当前高度
 							expandedHeight = groupGrid.scrollHeight + 'px';
@@ -1080,7 +1095,7 @@ return view.extend({
 						groupGrid.style.opacity = '0';
 						arrow.style.transform = 'rotate(180deg)';
 					} else {
-						// 展开
+						// 展开状态
 						// 先设置为 auto 以获取实际高度
 						groupGrid.style.maxHeight = 'none';
 						var height = groupGrid.scrollHeight;
@@ -1090,6 +1105,31 @@ return view.extend({
 						groupGrid.style.marginTop = '8px';
 						groupGrid.style.opacity = '1';
 						arrow.style.transform = 'rotate(0deg)';
+					}
+				}
+				
+				// 如果初始状态是折叠的，应用折叠状态
+				if (isCollapsed) {
+					// 使用 setTimeout 确保 DOM 已渲染
+					setTimeout(function() {
+						applyCollapseState(true);
+					}, 50);
+				} else {
+					// 确保展开状态下的高度被保存
+					setTimeout(function() {
+						expandedHeight = groupGrid.scrollHeight + 'px';
+					}, 50);
+				}
+				
+				collapseBtn.addEventListener('click', function() {
+					isCollapsed = !isCollapsed;
+					applyCollapseState(isCollapsed);
+					
+					// 保存状态到 localStorage
+					try {
+						localStorage.setItem(storageKey, isCollapsed ? 'true' : 'false');
+					} catch (e) {
+						// localStorage 不可用时忽略
 					}
 				});
 			}
