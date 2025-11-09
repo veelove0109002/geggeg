@@ -1564,21 +1564,21 @@ return view.extend({
 			}
 			window.collapseStateCache[section] = collapsed;
 			
-			// 保存到服务器
-			var state = {};
-			state[section] = collapsed;
+			// 保存到服务器（使用 URL 编码的表单方式，更兼容 LuCI）
+			var formData = 'section=' + encodeURIComponent(section) + '&collapsed=' + (collapsed ? 'true' : 'false');
 			
+			// 使用表单方式发送
 			self._httpJson(L.url('admin/vum/uninstall/save_collapse_state'), {
 				method: 'POST',
 				headers: { 
-					'Content-Type': 'application/json',
+					'Content-Type': 'application/x-www-form-urlencoded',
 					'Accept': 'application/json'
 				},
-				body: JSON.stringify(state)
+				body: formData
 			}).then(function(res) {
 				// 保存成功，无需操作
 				if (res && !res.ok) {
-					console.warn('保存折叠状态失败:', res.message || '未知错误');
+					console.warn('保存折叠状态失败:', res.message || '未知错误', res.debug || '');
 				}
 			}).catch(function(err) {
 				// 保存失败，输出错误信息便于调试

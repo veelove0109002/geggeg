@@ -1902,29 +1902,44 @@ function action_save_collapse_state()
 	
 	local data = {}
 	
-	-- 读取请求体
-	local post_data = http.content()
-	if post_data and #post_data > 0 then
-		local ok, state = pcall(json.parse, post_data)
-		if ok and type(state) == 'table' then
-			data = state
+	-- 方法1: 优先从表单获取（LuCI 对表单支持更好）
+	local section = http.formvalue('section') or ''
+	local collapsed = http.formvalue('collapsed') or 'false'
+	if section and #section > 0 then
+		data[section] = (collapsed == 'true' or collapsed == true)
+	end
+	
+	-- 方法2: 如果表单为空，尝试解析 JSON 请求体
+	if not data or not next(data) then
+		local body = http.content() or ''
+		if body and #body > 0 then
+			-- 尝试解析 JSON
+			local ok, state = pcall(json.parse, body)
+			if ok and state and type(state) == 'table' then
+				-- JSON 数据可能是 { "sectionName": true } 格式
+				for k, v in pairs(state) do
+					if type(k) == 'string' then
+						data[k] = (v == true or v == 'true')
+					end
+				end
+			end
 		end
 	end
 	
-	-- 如果请求体为空，尝试从URL参数获取
+	-- 如果没有数据，返回错误（添加调试信息）
 	if not data or not next(data) then
-		local section = http.formvalue('section') or ''
-		local collapsed = http.formvalue('collapsed') or 'false'
-		if section and #section > 0 then
-			data[section] = (collapsed == 'true')
-		end
-	end
-	
-	-- 如果没有数据，返回错误
-	if not data or not next(data) then
+		local content_type = http.getenv('CONTENT_TYPE') or 'unknown'
+		local request_method = http.getenv('REQUEST_METHOD') or 'unknown'
+		local body_len = body and #body or 0
 		return json_response({ 
 			ok = false, 
-			message = '没有接收到数据'
+			message = '没有接收到数据',
+			debug = {
+				content_type = content_type,
+				request_method = request_method,
+				body_length = body_len,
+				body_preview = body and body:sub(1, 100) or ''
+			}
 		}, 400)
 	end
 	
