@@ -1249,7 +1249,7 @@ return view.extend({
 			var statusTextEl = E('span', { 'style': 'font-weight:600;color:#f59e0b;' }, _('正在升级'));
 			var elapsedEl = E('span', { 'style': 'font-size:12px;color:#6b7280;' }, '0s');
 			var progressTrack = E('div', { 'style': 'height:6px;border-radius:999px;background:#0f1838;overflow:hidden;' });
-			var progressBar = E('div', { 'style': 'height:6px;width:0%;background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.6);transition: width .25s ease;' });
+			var progressBar = E('div', { 'style': 'height:6px;width:0%;background:linear-gradient(90deg, #10b981 0%, #22c55e 50%, #34d399 100%);box-shadow:0 0 8px rgba(34,197,94,.6);transition: width .25s ease;' });
 			progressTrack.appendChild(progressBar);
 			function setProgress(p){ progressBar.style.width = Math.max(0, Math.min(100, p)) + '%'; }
 			var topRow = E('div', { 'style': 'display:flex; align-items:center; justify-content:space-between; gap:8px;' }, [
@@ -1294,7 +1294,8 @@ return view.extend({
 			});
 			
 			function println(s){ log.appendChild(document.createTextNode(String(s) + '\n')); log.scrollTop = log.scrollHeight; }
-			var closeBtn = E('button', { 'class': 'btn', disabled: true }, _('关闭'));
+			var closeBtn = E('button', { 'class': 'btn', disabled: true, 'style': 'background:linear-gradient(135deg, #6b7280 0%, #4b5563 50%, #374151 100%); color:#fff; border:none; font-weight:600; border-radius:6px; padding:8px 16px; box-shadow:0 2px 8px rgba(107,114,128,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s; opacity:0.5; cursor:not-allowed;' }, _('关闭'));
+			var closeBtnGradient = 'linear-gradient(135deg, #6b7280 0%, #4b5563 50%, #374151 100%)';
 			var logSection = E('div', { 'style': 'display:flex; flex-direction:column; gap:8px;' }, [
 				E('div', { 'style': 'display:flex; align-items:center; justify-content:space-between;' }, [
 					E('span', { 'style': 'font-size:13px; color:#6b7280; font-weight:600;' }, _('执行日志')),
@@ -1324,10 +1325,14 @@ return view.extend({
 					statusTextEl.setAttribute('style', 'font-weight:600;color:#065f46;');
 					closeBtn.disabled = false;
 					closeBtn.textContent = _('返回页面');
+					var returnGradient = 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)';
+					closeBtn.setAttribute('style', 'background:' + returnGradient + '; color:#fff; border:none; font-weight:600; border-radius:6px; padding:8px 16px; box-shadow:0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s;');
+					closeBtn.addEventListener('mouseenter', function(){ this.style.background = 'linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%)'; this.style.boxShadow = '0 4px 12px rgba(16,185,129,0.4), inset 0 1px 0 rgba(255,255,255,0.2)'; });
+					closeBtn.addEventListener('mouseleave', function(){ this.style.background = returnGradient; this.style.boxShadow = '0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2)'; });
 					closeBtn.addEventListener('click', function(){ ui.hideModal(modal); window.location.reload(); });
 				} else {
 					setProgress(100);
-					progressBar.style.background = '#ef4444';
+					progressBar.style.background = 'linear-gradient(90deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
 					progressBar.style.boxShadow = '0 0 8px rgba(239,68,68,.6)';
 					statusIconEl.textContent = '✕';
 					statusIconEl.setAttribute('style', 'display:inline-flex;width:22px;height:22px;background:#fee2e2;color:#7f1d1d;border-radius:999px;align-items:center;justify-content:center;font-weight:700;');
@@ -1335,6 +1340,9 @@ return view.extend({
 					statusTextEl.setAttribute('style', 'font-weight:600;color:#7f1d1d;');
 					closeBtn.disabled = false;
 					closeBtn.textContent = _('关闭');
+					closeBtn.setAttribute('style', 'background:' + closeBtnGradient + '; color:#fff; border:none; font-weight:600; border-radius:6px; padding:8px 16px; box-shadow:0 2px 8px rgba(107,114,128,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s; opacity:1; cursor:pointer;');
+					closeBtn.addEventListener('mouseenter', function(){ this.style.background = 'linear-gradient(135deg, #4b5563 0%, #374151 50%, #1f2937 100%)'; this.style.boxShadow = '0 4px 12px rgba(107,114,128,0.4), inset 0 1px 0 rgba(255,255,255,0.2)'; });
+					closeBtn.addEventListener('mouseleave', function(){ this.style.background = closeBtnGradient; this.style.boxShadow = '0 2px 8px rgba(107,114,128,0.3), inset 0 1px 0 rgba(255,255,255,0.2)'; });
 					closeBtn.addEventListener('click', function(){ ui.hideModal(modal); });
 				}
 			}).catch(function(err){
@@ -1342,7 +1350,7 @@ return view.extend({
 				clearInterval(timer);
 				println('! ' + String(err));
 				setProgress(100);
-				progressBar.style.background = '#ef4444';
+				progressBar.style.background = 'linear-gradient(90deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
 				progressBar.style.boxShadow = '0 0 8px rgba(239,68,68,.6)';
 				statusIconEl.textContent = '✕';
 				statusIconEl.setAttribute('style', 'display:inline-flex;width:22px;height:22px;background:#fee2e2;color:#7f1d1d;border-radius:999px;align-items:center;justify-content:center;font-weight:700;');
@@ -1350,6 +1358,9 @@ return view.extend({
 				statusTextEl.setAttribute('style', 'font-weight:600;color:#7f1d1d;');
 				closeBtn.disabled = false;
 				closeBtn.textContent = _('关闭');
+				closeBtn.setAttribute('style', 'background:' + closeBtnGradient + '; color:#fff; border:none; font-weight:600; border-radius:6px; padding:8px 16px; box-shadow:0 2px 8px rgba(107,114,128,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s; opacity:1; cursor:pointer;');
+				closeBtn.addEventListener('mouseenter', function(){ this.style.background = 'linear-gradient(135deg, #4b5563 0%, #374151 50%, #1f2937 100%)'; this.style.boxShadow = '0 4px 12px rgba(107,114,128,0.4), inset 0 1px 0 rgba(255,255,255,0.2)'; });
+				closeBtn.addEventListener('mouseleave', function(){ this.style.background = closeBtnGradient; this.style.boxShadow = '0 2px 8px rgba(107,114,128,0.3), inset 0 1px 0 rgba(255,255,255,0.2)'; });
 				closeBtn.addEventListener('click', function(){ ui.hideModal(modal); });
 			});
 		}
@@ -1721,7 +1732,7 @@ return view.extend({
 				// 创建进度弹窗
 				var progressText = E('div', { 'style': 'font-size:15px; font-weight:600; color:#111827; margin-bottom:8px;' }, _('正在批量卸载...'));
 				var progressBar = E('div', { 'style': 'height:8px; background:#e5e7eb; border-radius:999px; overflow:hidden; margin-bottom:12px;' }, [
-					E('div', { id: 'batch-progress-bar', 'style': 'height:100%; width:0%; background:#22c55e; transition:width .3s ease;' })
+					E('div', { id: 'batch-progress-bar', 'style': 'height:100%; width:0%; background:linear-gradient(90deg, #10b981 0%, #22c55e 50%, #34d399 100%); transition:width .3s ease; box-shadow:0 0 8px rgba(34,197,94,.4);' })
 				]);
 				var statusText = E('div', { id: 'batch-status', 'style': 'font-size:13px; color:#6b7280; margin-bottom:8px;' }, '');
 				
@@ -1761,7 +1772,10 @@ return view.extend({
 					log
 				]);
 				
-				var closeBtn = E('button', { 'class': 'btn', disabled: true }, _('关闭'));
+				var closeBtn = E('button', { 'class': 'btn', disabled: true, 'style': 'background:linear-gradient(135deg, #6b7280 0%, #4b5563 50%, #374151 100%); color:#fff; border:none; font-weight:600; border-radius:6px; padding:8px 16px; box-shadow:0 2px 8px rgba(107,114,128,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s;' }, _('关闭'));
+				var closeBtnGradient = 'linear-gradient(135deg, #6b7280 0%, #4b5563 50%, #374151 100%)';
+				closeBtn.addEventListener('mouseenter', function(){ if (!this.disabled) { this.style.background = 'linear-gradient(135deg, #4b5563 0%, #374151 50%, #1f2937 100%)'; this.style.boxShadow = '0 4px 12px rgba(107,114,128,0.4), inset 0 1px 0 rgba(255,255,255,0.2)'; } });
+				closeBtn.addEventListener('mouseleave', function(){ if (!this.disabled) { this.style.background = closeBtnGradient; this.style.boxShadow = '0 2px 8px rgba(107,114,128,0.3), inset 0 1px 0 rgba(255,255,255,0.2)'; } });
 				var modal = ui.showModal(_('批量卸载进度'), [
 					progressText,
 					progressBar,
@@ -1791,7 +1805,10 @@ return view.extend({
 						
 						closeBtn.disabled = false;
 						closeBtn.textContent = _('完成');
-						closeBtn.setAttribute('style', 'background:#22c55e; color:#fff; border:none; font-weight:600; border-radius:6px; padding:8px 16px;');
+						var completeGradient = 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)';
+						closeBtn.setAttribute('style', 'background:' + completeGradient + '; color:#fff; border:none; font-weight:600; border-radius:6px; padding:8px 16px; box-shadow:0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s;');
+						closeBtn.addEventListener('mouseenter', function(){ this.style.background = 'linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%)'; this.style.boxShadow = '0 4px 12px rgba(16,185,129,0.4), inset 0 1px 0 rgba(255,255,255,0.2)'; });
+						closeBtn.addEventListener('mouseleave', function(){ this.style.background = completeGradient; this.style.boxShadow = '0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2)'; });
 						closeBtn.addEventListener('click', function(){ 
 							ui.hideModal(modal); 
 							// 清空选择
@@ -2322,14 +2339,17 @@ return view.extend({
 				
 				log.addEventListener('mouseenter', function(){ if (logExpanded) log.style.filter = 'brightness(1.08)'; });
 				log.addEventListener('mouseleave', function(){ log.style.filter = 'none'; });
-				var closeBtn = E('button', { 'class': 'btn', disabled: true }, _('关闭'));
+				var closeBtn = E('button', { 'class': 'btn', disabled: true, 'style': 'background:linear-gradient(135deg, #6b7280 0%, #4b5563 50%, #374151 100%); color:#fff; border:none; font-weight:600; border-radius:6px; padding:8px 16px; box-shadow:0 2px 8px rgba(107,114,128,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s;' }, _('关闭'));
+				var closeBtnGradient = 'linear-gradient(135deg, #6b7280 0%, #4b5563 50%, #374151 100%)';
+				closeBtn.addEventListener('mouseenter', function(){ if (!this.disabled) { this.style.background = 'linear-gradient(135deg, #4b5563 0%, #374151 50%, #1f2937 100%)'; this.style.boxShadow = '0 4px 12px rgba(107,114,128,0.4), inset 0 1px 0 rgba(255,255,255,0.2)'; } });
+				closeBtn.addEventListener('mouseleave', function(){ if (!this.disabled) { this.style.background = closeBtnGradient; this.style.boxShadow = '0 2px 8px rgba(107,114,128,0.3), inset 0 1px 0 rgba(255,255,255,0.2)'; } });
 				var zhName2 = displayName(name);
 				var fullName2 = zhName2 && zhName2 !== name ? (zhName2 + ' (' + name + ')') : name;
 				var startTs = Date.now();
 				var elapsedEl = E('span', { 'style': 'font-size:12px;color:#6b7280;' }, '0s');
 				var timer = setInterval(function(){ var s = Math.floor((Date.now() - startTs) / 1000); elapsedEl.textContent = s + 's'; }, 1000);
 				var progressTrack = E('div', { 'style': 'height:6px;border-radius:999px;background:#0f1838;overflow:hidden;' });
-				var progressBar = E('div', { 'style': 'height:6px;width:0%;background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.6);transition: width .25s ease;' });
+				var progressBar = E('div', { 'style': 'height:6px;width:0%;background:linear-gradient(90deg, #10b981 0%, #22c55e 50%, #34d399 100%);box-shadow:0 0 8px rgba(34,197,94,.6);transition: width .25s ease;' });
 				progressTrack.appendChild(progressBar);
 				function setProgress(p){ progressBar.style.width = Math.max(0, Math.min(100, p)) + '%'; }
 				var statusIconEl = E('span', { 'style': 'display:inline-flex;width:22px;height:22px;background:#fde68a;color:#92400e;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '…');
@@ -2363,7 +2383,14 @@ return view.extend({
 				function enableClose(){
 					closeBtn.disabled = false;
 					closeBtn.textContent = opSuccess ? _('返回列表') : _('查看详情');
-				if (opSuccess) closeBtn.setAttribute('style', 'background:#22c55e; color:#fff; border:none; font-weight:600;');
+					if (opSuccess) {
+						var returnListGradient = 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)';
+						closeBtn.setAttribute('style', 'background:' + returnListGradient + '; color:#fff; border:none; font-weight:600; border-radius:6px; padding:8px 16px; box-shadow:0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s;');
+						closeBtn.addEventListener('mouseenter', function(){ this.style.background = 'linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%)'; this.style.boxShadow = '0 4px 12px rgba(16,185,129,0.4), inset 0 1px 0 rgba(255,255,255,0.2)'; });
+						closeBtn.addEventListener('mouseleave', function(){ this.style.background = returnListGradient; this.style.boxShadow = '0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2)'; });
+					} else {
+						closeBtn.setAttribute('style', 'background:' + closeBtnGradient + '; color:#fff; border:none; font-weight:600; border-radius:6px; padding:8px 16px; box-shadow:0 2px 8px rgba(107,114,128,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s;');
+					}
 					closeBtn.addEventListener('click', function(){
 						if (opSuccess) { ui.hideModal(modal); window.location.reload(); }
 						else { log.style.maxHeight = '420px'; log.scrollTop = log.scrollHeight; }
@@ -2422,7 +2449,7 @@ return view.extend({
 						} else {
 							setProgress(100);
 							clearInterval(timer);
-							progressBar.style.background = '#ef4444';
+							progressBar.style.background = 'linear-gradient(90deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
 							progressBar.style.boxShadow = '0 0 8px rgba(239,68,68,.6)';
 							println(_('卸载失败'));
 							statusIconEl.textContent = '✕';
@@ -2436,7 +2463,7 @@ return view.extend({
 					println('! Error: ' + String(err));
 					setProgress(100);
 					clearInterval(timer);
-					progressBar.style.background = '#ef4444';
+					progressBar.style.background = 'linear-gradient(90deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
 					progressBar.style.boxShadow = '0 0 8px rgba(239,68,68,.6)';
 					statusIconEl.textContent = '✕';
 					statusIconEl.setAttribute('style', 'display:inline-flex;width:22px;height:22px;background:#fee2e2;color:#7f1d1d;border-radius:999px;align-items:center;justify-content:center;font-weight:700;');
@@ -2488,7 +2515,18 @@ return view.extend({
 							]),
 							E('div', { 'style':'margin-top:16px;display:flex;gap:8px;justify-content:flex-end;' }, [
 								E('button', { 'class': 'btn', id: 'cancel-select-all', 'style': 'background:#eef2ff;color:#1f2937;border-radius:999px;padding:6px 14px;' }, _('取消全选')),
-								E('button', { 'class': 'btn', id: 'confirm-select-all', 'style': 'background:#dc2626;color:#fff;border-radius:999px;padding:6px 14px;font-weight:600;' }, _('我知道风险，继续'))
+								(function(){
+									var riskGradient = 'linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
+									var riskGradientHover = 'linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #ef4444 100%)';
+									var riskBtn = E('button', { 
+										'class': 'btn', 
+										id: 'confirm-select-all', 
+										'style': 'background:' + riskGradient + '; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:600; box-shadow:0 2px 8px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s;'
+									}, _('我知道风险，继续'));
+									riskBtn.addEventListener('mouseenter', function(){ this.style.background = riskGradientHover; this.style.boxShadow = '0 4px 12px rgba(220,38,38,0.4), inset 0 1px 0 rgba(255,255,255,0.2)'; });
+									riskBtn.addEventListener('mouseleave', function(){ this.style.background = riskGradient; this.style.boxShadow = '0 2px 8px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.2)'; });
+									return riskBtn;
+								})()
 							])
 						]);
 						var warnOverlay = warnModal && warnModal.parentNode;
