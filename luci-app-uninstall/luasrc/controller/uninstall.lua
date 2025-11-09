@@ -47,6 +47,14 @@ function index()
 	e = entry({ 'admin', 'vum', 'uninstall', 'history_log' }, call('action_history_log'))
 	e.leaf = true
 	e.acl_depends = { 'luci-app-uninstall' }
+
+	e = entry({ 'admin', 'vum', 'uninstall', 'save_collapse_state' }, call('action_save_collapse_state'))
+	e.leaf = true
+	e.acl_depends = { 'luci-app-uninstall' }
+
+	e = entry({ 'admin', 'vum', 'uninstall', 'get_collapse_state' }, call('action_get_collapse_state'))
+	e.leaf = true
+	e.acl_depends = { 'luci-app-uninstall' }
 end
 
 local http = require 'luci.http'
@@ -1872,5 +1880,91 @@ function action_history_log()
 		ok = true, 
 		logs = formatted_logs,
 		count = #formatted_logs
+	})
+end
+
+-- 保存折叠状态到系统文件
+function action_save_collapse_state()
+	-- 使用 /etc 目录下的配置文件，确保持久化（即使重启也能保留，系统级别，跨浏览器）
+	local state_dir = '/etc/luci-app-uninstall'
+	local state_file = state_dir .. '/collapse-state.json'
+	
+	-- 确保目录存在
+	if not fs.stat(state_dir) then
+		fs.mkdir(state_dir, 0755)
+	end
+	
+	local data = {}
+	
+	-- 读取请求体
+	local post_data = http.content()
+	if post_data and #post_data > 0 then
+		local ok, state = pcall(json.parse, post_data)
+		if ok and type(state) == 'table' then
+			data = state
+		end
+	end
+	
+	-- 如果请求体为空，尝试从URL参数获取
+	if not data or not next(data) then
+		local section = http.formvalue('section') or ''
+		local collapsed = http.formvalue('collapsed') or 'false'
+		if section and #section > 0 then
+			data[section] = (collapsed == 'true')
+		end
+	end
+	
+	-- 读取现有状态
+	local existing_state = {}
+	if fs.stat(state_file) then
+		local content = fs.readfile(state_file) or '{}'
+		local ok, parsed = pcall(json.parse, content)
+		if ok and type(parsed) == 'table' then
+			existing_state = parsed
+		end
+	end
+	
+	-- 合并新状态
+	for k, v in pairs(data) do
+		existing_state[k] = v
+	end
+	
+	-- 保存到文件
+	local ok, err = pcall(function()
+		local content = json.stringify(existing_state)
+		fs.writefile(state_file, content)
+	end)
+	
+	if ok then
+		return json_response({ 
+			ok = true, 
+			message = '状态已保存'
+		})
+	else
+		return json_response({ 
+			ok = false, 
+			message = '保存失败: ' .. tostring(err)
+		}, 500)
+	end
+end
+
+-- 从系统文件读取折叠状态（系统级别，跨浏览器）
+function action_get_collapse_state()
+	-- 使用 /etc 目录下的配置文件，确保持久化
+	local state_dir = '/etc/luci-app-uninstall'
+	local state_file = state_dir .. '/collapse-state.json'
+	local state = {}
+	
+	if fs.stat(state_file) then
+		local content = fs.readfile(state_file) or '{}'
+		local ok, parsed = pcall(json.parse, content)
+		if ok and type(parsed) == 'table' then
+			state = parsed
+		end
+	end
+	
+	return json_response({ 
+		ok = true, 
+		state = state
 	})
 end

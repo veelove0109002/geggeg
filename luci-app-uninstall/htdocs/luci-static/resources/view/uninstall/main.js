@@ -1078,17 +1078,12 @@ return view.extend({
 			// 判断是否可以折叠（除了 VUM-Plugin类 都可以折叠）
 			var canCollapse = title !== _('VUM-Plugin类');
 			
-			// 从 localStorage 读取折叠状态
-			var storageKey = 'uninstall_collapse_' + title;
+			// 从服务器读取折叠状态（系统级别，跨浏览器）
 			var isCollapsed = false;
 			if (canCollapse) {
-				try {
-					var savedState = localStorage.getItem(storageKey);
-					if (savedState === 'true') {
-						isCollapsed = true;
-					}
-				} catch (e) {
-					// localStorage 不可用时忽略
+				// 同步获取服务器状态（在渲染时已加载）
+				if (window.collapseStateCache && window.collapseStateCache[title] === true) {
+					isCollapsed = true;
 				}
 			}
 			
@@ -1222,12 +1217,8 @@ return view.extend({
 						collapseBtn._updateStyle(isCollapsed);
 					}
 					
-					// 保存状态到 localStorage
-					try {
-						localStorage.setItem(storageKey, isCollapsed ? 'true' : 'false');
-					} catch (e) {
-						// localStorage 不可用时忽略
-					}
+					// 保存状态到服务器（系统级别，跨浏览器）
+					saveCollapseStateToServer(title, isCollapsed);
 				});
 			}
 			
@@ -1546,9 +1537,58 @@ return view.extend({
 		var searchSeq = 0;
 		// 将 refresh 函数暴露到全局作用域，以便清空按钮可以直接调用
 		window.refreshUninstallList = null;
+		// 折叠状态缓存（从服务器加载）
+		window.collapseStateCache = {};
+		
+		// 从服务器加载折叠状态
+		function loadCollapseStateFromServer() {
+			return self._httpJson(L.url('admin/vum/uninstall/get_collapse_state'), { 
+				headers: { 'Accept': 'application/json' } 
+			}).then(function(res) {
+				if (res && res.ok && res.state) {
+					window.collapseStateCache = res.state || {};
+				}
+				return window.collapseStateCache;
+			}).catch(function(err) {
+				// 如果加载失败，使用空对象
+				window.collapseStateCache = {};
+				return window.collapseStateCache;
+			});
+		}
+		
+		// 保存折叠状态到服务器
+		function saveCollapseStateToServer(section, collapsed) {
+			// 更新本地缓存
+			if (!window.collapseStateCache) {
+				window.collapseStateCache = {};
+			}
+			window.collapseStateCache[section] = collapsed;
+			
+			// 保存到服务器
+			var state = {};
+			state[section] = collapsed;
+			
+			self._httpJson(L.url('admin/vum/uninstall/save_collapse_state'), {
+				method: 'POST',
+				headers: { 
+					'Content-Type': 'application/json',
+					'Accept': 'application/json'
+				},
+				body: JSON.stringify(state)
+			}).then(function(res) {
+				// 保存成功，无需操作
+			}).catch(function(err) {
+				// 保存失败，静默处理
+			});
+		}
+		
 		function refresh() {
 			var curSeq = (++searchSeq);
-			self.pollList().then(function(data){
+			// 先加载折叠状态（从服务器，系统级别，跨浏览器）
+			loadCollapseStateFromServer().then(function() {
+				// 然后加载包列表并渲染
+				return self.pollList();
+			}).then(function(data){
 				if (curSeq !== searchSeq) return; // 已过期
 				var pkgs = (data && data.packages) || [];
 				var filterInput = document.getElementById('filter');
