@@ -190,6 +190,18 @@ return view.extend({
 					flex-wrap: wrap;
 					padding: 8px 12px;
 					gap: 8px;
+					position: relative;
+				}
+				
+				#search-section.search-expanded {
+					z-index: 200;
+					box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+					background: #ffffff !important;
+					border-color: #3b82f6 !important;
+				}
+				
+				#search-section.search-expanded #filter {
+					font-size: 16px !important;
 				}
 				
 				#batch-toolbar > div:first-child {
@@ -351,7 +363,8 @@ return view.extend({
 				
 				// 中间：搜索框
 				var searchSection = E('div', { 
-					'style': 'flex:1; display:flex; align-items:center; gap:8px; background:#ffffff; border:1px solid #bae6fd; border-radius:999px; padding:6px 12px; margin:0 12px;'
+					id: 'search-section',
+					'style': 'flex:1; display:flex; align-items:center; gap:8px; background:#ffffff; border:1px solid #bae6fd; border-radius:999px; padding:6px 12px; margin:0 12px; transition:all 0.3s ease;'
 				}, []);
 				var searchIcon = E('img', { 
 					src: L.resource('icons/ss.svg'), 
@@ -372,7 +385,84 @@ return view.extend({
 				searchSection.appendChild(searchInput);
 				searchSection.appendChild(clearBtn);
 				searchInput.addEventListener('input', function(){ clearBtn.style.display = searchInput.value ? 'inline-block' : 'none'; });
-				clearBtn.addEventListener('click', function(){ searchInput.value=''; clearBtn.style.display='none'; searchInput.dispatchEvent(new Event('input')); });
+				clearBtn.addEventListener('click', function(e){
+					e.stopPropagation(); // 阻止事件冒泡，避免触发搜索区域的点击事件
+					searchInput.value=''; 
+					clearBtn.style.display='none'; 
+					searchInput.dispatchEvent(new Event('input'));
+					// 在手机上，清除后保持展开状态并聚焦
+					if (checkMobile() && !isExpanded) {
+						expandSearch();
+					} else if (checkMobile()) {
+						searchInput.focus();
+					}
+				});
+				
+				// 手机上点击搜索框时自动展开
+				var isExpanded = false;
+				function checkMobile() {
+					return window.innerWidth <= 768;
+				}
+				function expandSearch() {
+					if (!checkMobile() || isExpanded) return;
+					isExpanded = true;
+					searchSection.classList.add('search-expanded');
+					// 隐藏其他元素，让搜索框占据更多空间
+					var batchSection = toolbar.querySelector('div:first-child');
+					var historyBtn = document.getElementById('history-log-btn');
+					if (batchSection) batchSection.style.display = 'none';
+					if (historyBtn) historyBtn.style.display = 'none';
+					// 让搜索框占据全宽
+					searchSection.style.flex = '1 1 100%';
+					searchSection.style.margin = '0';
+					searchSection.style.order = '1';
+					// 聚焦到输入框
+					setTimeout(function() { searchInput.focus(); }, 100);
+				}
+				function collapseSearch() {
+					if (!isExpanded) return;
+					isExpanded = false;
+					searchSection.classList.remove('search-expanded');
+					// 恢复其他元素
+					var batchSection = toolbar.querySelector('div:first-child');
+					var historyBtn = document.getElementById('history-log-btn');
+					if (batchSection) batchSection.style.display = '';
+					if (historyBtn) historyBtn.style.display = '';
+					// 恢复搜索框样式
+					searchSection.style.flex = '';
+					searchSection.style.margin = '';
+					searchSection.style.order = '';
+				}
+				// 点击搜索区域时展开（如果还没展开）
+				searchSection.addEventListener('click', function(e) {
+					if (checkMobile() && !isExpanded && e.target !== clearBtn) {
+						expandSearch();
+					}
+				});
+				searchInput.addEventListener('focus', function() {
+					if (checkMobile() && !isExpanded) {
+						expandSearch();
+					}
+				});
+				// 点击外部区域时收起（仅在手机上）
+				document.addEventListener('click', function(e) {
+					if (checkMobile() && isExpanded) {
+						// 检查点击的目标是否在搜索区域内
+						var target = e.target;
+						if (target !== searchSection && !searchSection.contains(target) && target !== searchInput && target !== clearBtn) {
+							// 如果输入框有内容，不收起；如果没有内容，收起
+							if (!searchInput.value || searchInput.value.trim() === '') {
+								collapseSearch();
+							}
+						}
+					}
+				});
+				// 监听窗口大小变化，如果从手机切换到桌面，自动收起
+				window.addEventListener('resize', function() {
+					if (!checkMobile() && isExpanded) {
+						collapseSearch();
+					}
+				});
 				
 				// 根据屏幕宽度动态调整 placeholder 文字
 				function updatePlaceholder() {
