@@ -835,16 +835,52 @@ function action_remove()
 	local purge = (http.formvalue('purge') == '1')
 	local remove_deps = (http.formvalue('removeDeps') == '1')
 	local clear_cache = (http.formvalue('clearCache') == '1')
+	
+	-- 如果表单中没有 package，尝试从 URL 查询参数获取
+	if (not pkg or pkg == '') then
+		local query = http.getenv('QUERY_STRING') or ''
+		if query and #query > 0 then
+			for pair in query:gmatch('([^&]+)') do
+				local key, val = pair:match('([^=]+)=?(.*)')
+				if key == 'package' then
+					pkg = val
+				elseif key == 'purge' then
+					purge = (val == '1')
+				elseif key == 'removeDeps' then
+					remove_deps = (val == '1')
+				elseif key == 'clearCache' then
+					clear_cache = (val == '1')
+				end
+			end
+		end
+	end
+	
 	-- 若表单未提供，则尝试解析 JSON 请求体
 	if (not pkg or pkg == '') then
 		local body = http.content() or ''
 		if body and #body > 0 then
+			-- 尝试解析 JSON
 			local ok, data = pcall(json.parse, body)
 			if ok and data then
 				pkg = data.package or pkg
 				if data.purge ~= nil then purge = data.purge and true or false end
 				if data.removeDeps ~= nil then remove_deps = data.removeDeps and true or false end
 				if data.clearCache ~= nil then clear_cache = data.clearCache and true or false end
+			else
+				-- 尝试解析 URL 编码的表单数据（application/x-www-form-urlencoded）
+				for key, val in body:gmatch('([^&=]+)=([^&]*)') do
+					key = key:gsub('+', ' '):gsub('%%(%x%x)', function(h) return string.char(tonumber(h, 16)) end)
+					val = val:gsub('+', ' '):gsub('%%(%x%x)', function(h) return string.char(tonumber(h, 16)) end)
+					if key == 'package' then
+						pkg = val
+					elseif key == 'purge' then
+						purge = (val == '1')
+					elseif key == 'removeDeps' then
+						remove_deps = (val == '1')
+					elseif key == 'clearCache' then
+						clear_cache = (val == '1')
+					end
+				end
 			end
 		end
 	end
@@ -958,21 +994,22 @@ function action_remove()
 	
 	-- 对于 luci-app-* 包，先尝试移除相关的语言包和 meta 包（避免 autoremove 时 prerm 失败）
 	-- 这样可以避免 autoremove 时因为语言包的 prerm 脚本失败而导致整个操作失败
+	-- 注意：必须使用 --force-depends --force-removal-of-dependent-packages --force-remove 来处理依赖关系
 	if app then
 		local status_path = fs.stat('/usr/lib/opkg/status') and '/usr/lib/opkg/status' or (fs.stat('/var/lib/opkg/status') and '/var/lib/opkg/status' or nil)
 		if status_path then
 			local s = fs.readfile(status_path) or ''
-			-- 先移除语言包（使用 --force-remove 以避免 prerm 脚本问题）
-			for name in s:gmatch('Package:%s*(luci%-i18n%-' .. app .. '%-[%w%-%_]+)') do
-				if is_installed(name) then
-					-- 直接使用 --force-remove 移除语言包，避免 prerm 脚本失败
-					sys.call(string.format("opkg remove --force-remove '%s' >/dev/null 2>&1", name))
-				end
-			end
-			-- 尝试移除 app-meta-* 包（如果存在）
+			-- 先移除 app-meta-* 包（如果存在）- 使用所有强制选项
 			local meta_pkg = 'app-meta-' .. app
 			if is_installed(meta_pkg) then
-				sys.call(string.format("opkg remove --force-remove '%s' >/dev/null 2>&1", meta_pkg))
+				sys.call(string.format("opkg remove --force-depends --force-removal-of-dependent-packages --force-remove '%s' >/dev/null 2>&1", meta_pkg))
+			end
+			-- 再移除语言包（使用所有强制选项以避免 prerm 脚本问题和依赖关系问题）
+			for name in s:gmatch('Package:%s*(luci%-i18n%-' .. app .. '%-[%w%-%_]+)') do
+				if is_installed(name) then
+					-- 使用所有强制选项：--force-depends --force-removal-of-dependent-packages --force-remove
+					sys.call(string.format("opkg remove --force-depends --force-removal-of-dependent-packages --force-remove '%s' >/dev/null 2>&1", name))
+				end
 			end
 		end
 	end
@@ -1015,8 +1052,17 @@ function action_remove()
 		return failed
 	end
 	
-	-- 先尝试正常卸载
-	local cmd = string.format("opkg remove --autoremove '%s' >%s 2>&1", pkg, tmpout)
+	-- 对于 luci-app-* 包，如果检测到有相关的语言包或 meta 包，直接使用所有强制选项
+	-- 这样可以避免依赖关系问题和 prerm 脚本失败问题
+	local cmd
+	local is_app = pkg:match('^luci%-app%-.+') ~= nil
+	if is_app then
+		-- 对于 luci-app，始终使用所有强制选项（因为可能有语言包和 meta 包的依赖关系）
+		cmd = string.format("opkg remove --autoremove --force-depends --force-removal-of-dependent-packages --force-remove '%s' >%s 2>&1", pkg, tmpout)
+	else
+		-- 对于非 luci-app 包，正常卸载
+		cmd = string.format("opkg remove --autoremove '%s' >%s 2>&1", pkg, tmpout)
+	end
 	local rc, output = run_remove(cmd)
 	local success = (rc == 0) or (not is_installed(pkg))
 	
@@ -1028,43 +1074,35 @@ function action_remove()
 	-- 这种情况下，我们需要先单独强制移除有问题的包，然后再移除主包
 	if (not success) and prerm_failed and no_packages_removed then
 		local failed_pkgs = extract_failed_packages(output)
-		-- 先强制移除所有失败的包（通常是语言包）
+		-- 先强制移除所有失败的包（通常是语言包）- 使用所有强制选项
 		for _, failed_pkg in ipairs(failed_pkgs) do
 			if is_installed(failed_pkg) then
 				output = (output or '') .. "\n[force-remove-failed] Attempting to force remove: " .. failed_pkg
-				local force_cmd = string.format("opkg remove --force-remove '%s' >%s 2>&1", failed_pkg, tmpout)
+				local force_cmd = string.format("opkg remove --force-depends --force-removal-of-dependent-packages --force-remove '%s' >%s 2>&1", failed_pkg, tmpout)
 				local force_rc, force_out = run_remove(force_cmd)
 				output = (output or '') .. "\n[force-remove-failed] " .. (force_out or '')
 				-- 即使失败也继续，因为可能包已经不存在了
 			end
 		end
 		
-		-- 强制移除所有相关的语言包（预防性）- 使用之前收集的包列表
+		-- 强制移除所有相关的语言包和 meta 包（预防性）- 使用之前收集的包列表
 		for _, related_pkg in ipairs(related_pkgs_for_istore) do
 			-- 只处理语言包和 meta 包，跳过主包（主包稍后处理）
 			if related_pkg ~= pkg and (related_pkg:match('^luci%-i18n%-') or related_pkg:match('^app%-meta%-')) then
 				if is_installed(related_pkg) then
 					output = (output or '') .. "\n[force-remove-related] Attempting to force remove: " .. related_pkg
-					local force_cmd = string.format("opkg remove --force-remove '%s' >%s 2>&1", related_pkg, tmpout)
+					local force_cmd = string.format("opkg remove --force-depends --force-removal-of-dependent-packages --force-remove '%s' >%s 2>&1", related_pkg, tmpout)
 					local force_rc, force_out = run_remove(force_cmd)
 					output = (output or '') .. "\n[force-remove-related] " .. (force_out or '')
 				end
 			end
 		end
 		
-		-- 现在再次尝试移除主包（不使用 autoremove，因为 orphaned 包已经处理了）
-		local retry_cmd = string.format("opkg remove '%s' >%s 2>&1", pkg, tmpout)
+		-- 现在再次尝试移除主包（使用所有强制选项）
+		local retry_cmd = string.format("opkg remove --force-depends --force-removal-of-dependent-packages --force-remove '%s' >%s 2>&1", pkg, tmpout)
 		rc, local_output = run_remove(retry_cmd)
 		output = (output or '') .. "\n[retry-main] " .. (local_output or '')
 		success = (rc == 0) or (not is_installed(pkg))
-		
-		-- 如果还是失败，使用强制选项
-		if not success then
-			retry_cmd = string.format("opkg remove --force-remove '%s' >%s 2>&1", pkg, tmpout)
-			rc, local_output = run_remove(retry_cmd)
-			output = (output or '') .. "\n[retry-force] " .. (local_output or '')
-			success = (rc == 0) or (not is_installed(pkg))
-		end
 		
 		-- 最后运行 autoremove 清理剩余的 orphaned 包
 		if success then
@@ -1077,7 +1115,8 @@ function action_remove()
 		local is_app = pkg:match('^luci%-app%-.+') ~= nil
 		local dependent_warn = output:lower():match('dependent') or output:match('print_dependents_warning')
 		if is_app and (dependent_warn or remove_deps) then
-			local force_cmd = string.format("opkg remove --autoremove --force-depends --force-removal-of-dependent-packages '%s' >%s 2>&1", pkg, tmpout)
+			-- 使用所有强制选项：--force-depends --force-removal-of-dependent-packages --force-remove
+			local force_cmd = string.format("opkg remove --autoremove --force-depends --force-removal-of-dependent-packages --force-remove '%s' >%s 2>&1", pkg, tmpout)
 			rc, local_output = run_remove(force_cmd)
 			output = (output or '') .. "\n[force-deps] " .. (local_output or '')
 			success = (rc == 0) or (not is_installed(pkg))
@@ -1085,17 +1124,20 @@ function action_remove()
 		end
 	end
 	
-	-- 如果检测到 prerm 脚本失败但还没有处理，使用 --force-remove 绕过 prerm 脚本
+	-- 如果检测到 prerm 脚本失败但还没有处理，使用所有强制选项
 	if (not success) and prerm_failed and not no_packages_removed then
-		local force_remove_cmd = string.format("opkg remove --autoremove --force-remove '%s' >%s 2>&1", pkg, tmpout)
-		rc, local_output = run_remove(force_remove_cmd)
-		output = (output or '') .. "\n[force-remove] " .. (local_output or '')
-		success = (rc == 0) or (not is_installed(pkg))
-		-- 如果仍然失败且是 luci-app，尝试组合所有强制选项
-		if (not success) and pkg:match('^luci%-app%-.+') then
-			force_remove_cmd = string.format("opkg remove --autoremove --force-remove --force-depends --force-removal-of-dependent-packages '%s' >%s 2>&1", pkg, tmpout)
+		local is_app = pkg:match('^luci%-app%-.+') ~= nil
+		if is_app then
+			-- 对于 luci-app，直接使用所有强制选项
+			local force_remove_cmd = string.format("opkg remove --autoremove --force-depends --force-removal-of-dependent-packages --force-remove '%s' >%s 2>&1", pkg, tmpout)
 			rc, local_output = run_remove(force_remove_cmd)
 			output = (output or '') .. "\n[force-all] " .. (local_output or '')
+			success = (rc == 0) or (not is_installed(pkg))
+		else
+			-- 对于非 luci-app 包，只使用 --force-remove
+			local force_remove_cmd = string.format("opkg remove --autoremove --force-remove '%s' >%s 2>&1", pkg, tmpout)
+			rc, local_output = run_remove(force_remove_cmd)
+			output = (output or '') .. "\n[force-remove] " .. (local_output or '')
 			success = (rc == 0) or (not is_installed(pkg))
 		end
 	end
