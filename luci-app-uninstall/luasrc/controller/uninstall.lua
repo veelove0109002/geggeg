@@ -1885,13 +1885,13 @@ end
 
 -- 保存折叠状态到系统文件
 function action_save_collapse_state()
-	-- 使用 /etc 目录下的配置文件，确保持久化（即使重启也能保留，系统级别，跨浏览器）
-	local state_dir = '/etc/luci-app-uninstall'
+	-- 使用 /var/lib 目录，通常有写入权限（系统级别，跨浏览器）
+	local state_dir = '/var/lib/luci-app-uninstall'
 	local state_file = state_dir .. '/collapse-state.json'
 	
-	-- 确保目录存在
+	-- 确保目录存在（使用 sys.call 更可靠）
 	if not fs.stat(state_dir) then
-		fs.mkdir(state_dir, 0755)
+		sys.call(string.format("mkdir -p %q", state_dir))
 	end
 	
 	local data = {}
@@ -1929,29 +1929,55 @@ function action_save_collapse_state()
 		existing_state[k] = v
 	end
 	
-	-- 保存到文件
-	local ok, err = pcall(function()
-		local content = json.stringify(existing_state)
-		fs.writefile(state_file, content)
+	-- 保存到文件（使用临时文件方式，更可靠）
+	local content = json.stringify(existing_state)
+	local tmp_file = state_file .. '.tmp'
+	
+	-- 先写入临时文件
+	local write_ok, write_err = pcall(function()
+		fs.writefile(tmp_file, content)
 	end)
 	
-	if ok then
-		return json_response({ 
-			ok = true, 
-			message = '状态已保存'
-		})
+	if write_ok then
+		-- 移动临时文件到目标位置
+		local mv_ok = sys.call(string.format("mv -f %q %q >/dev/null 2>&1", tmp_file, state_file))
+		if mv_ok == 0 then
+			-- 设置文件权限
+			sys.call(string.format("chmod 644 %q >/dev/null 2>&1", state_file))
+			return json_response({ 
+				ok = true, 
+				message = '状态已保存'
+			})
+		else
+			-- 如果移动失败，尝试直接写入
+			local direct_ok, direct_err = pcall(function()
+				fs.writefile(state_file, content)
+			end)
+			if direct_ok then
+				sys.call(string.format("chmod 644 %q >/dev/null 2>&1", state_file))
+				return json_response({ 
+					ok = true, 
+					message = '状态已保存'
+				})
+			else
+				return json_response({ 
+					ok = false, 
+					message = '保存失败: ' .. tostring(direct_err)
+				}, 500)
+			end
+		end
 	else
 		return json_response({ 
 			ok = false, 
-			message = '保存失败: ' .. tostring(err)
+			message = '保存失败: ' .. tostring(write_err)
 		}, 500)
 	end
 end
 
 -- 从系统文件读取折叠状态（系统级别，跨浏览器）
 function action_get_collapse_state()
-	-- 使用 /etc 目录下的配置文件，确保持久化
-	local state_dir = '/etc/luci-app-uninstall'
+	-- 使用 /var/lib 目录，通常有写入权限
+	local state_dir = '/var/lib/luci-app-uninstall'
 	local state_file = state_dir .. '/collapse-state.json'
 	local state = {}
 	
