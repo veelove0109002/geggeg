@@ -386,10 +386,22 @@ return view.extend({
 				searchSection.appendChild(clearBtn);
 				searchInput.addEventListener('input', function(){ clearBtn.style.display = searchInput.value ? 'inline-block' : 'none'; });
 				clearBtn.addEventListener('click', function(e){
-					e.stopPropagation(); // 阻止事件冒泡，避免触发搜索区域的点击事件
+					// 清空搜索框
 					searchInput.value=''; 
-					clearBtn.style.display='none'; 
-					searchInput.dispatchEvent(new Event('input'));
+					clearBtn.style.display='none';
+					// 立即触发刷新 - 清除搜索定时器并立即调用 refresh
+					if (window.searchTimer) {
+						clearTimeout(window.searchTimer);
+						window.searchTimer = null;
+					}
+					// 如果 refresh 函数已经定义，直接调用（优先）
+					if (typeof window.refreshUninstallList === 'function') {
+						window.refreshUninstallList();
+					} else {
+						// 如果 refresh 函数还未定义，触发 input 事件
+						var inputEvent = new Event('input', { bubbles: true, cancelable: true });
+						searchInput.dispatchEvent(inputEvent);
+					}
 					// 在手机上，清除后保持展开状态并聚焦
 					if (checkMobile() && !isExpanded) {
 						expandSearch();
@@ -435,7 +447,11 @@ return view.extend({
 				}
 				// 点击搜索区域时展开（如果还没展开）
 				searchSection.addEventListener('click', function(e) {
-					if (checkMobile() && !isExpanded && e.target !== clearBtn) {
+					// 如果点击的是清空按钮，不展开
+					if (e.target === clearBtn || clearBtn.contains(e.target)) {
+						return;
+					}
+					if (checkMobile() && !isExpanded) {
 						expandSearch();
 					}
 				});
@@ -1249,12 +1265,15 @@ return view.extend({
 
 		var FILE_SEARCH_CACHE = {};
 		var searchSeq = 0;
+		// 将 refresh 函数暴露到全局作用域，以便清空按钮可以直接调用
+		window.refreshUninstallList = null;
 		function refresh() {
 			var curSeq = (++searchSeq);
 			self.pollList().then(function(data){
 				if (curSeq !== searchSeq) return; // 已过期
 				var pkgs = (data && data.packages) || [];
-				var q = (document.getElementById('filter').value || '').toLowerCase();
+				var filterInput = document.getElementById('filter');
+				var q = (filterInput ? (filterInput.value || '') : '').toLowerCase();
 				var base = pkgs.filter(function(p){ return p.name && p.name.indexOf('luci-app-') === 0; });
 				var list = base.filter(function(p){
 					if (!q) return true;
@@ -1309,6 +1328,8 @@ return view.extend({
 				if (curSeq !== searchSeq) return;
 			});
 		}
+		// 将 refresh 函数暴露到全局作用域，以便清空按钮可以直接调用
+		window.refreshUninstallList = refresh;
 
 		// 批量卸载函数
 		function batchUninstall() {
@@ -2043,10 +2064,13 @@ return view.extend({
 		}
 
 		var searchTimer;
+		// 将 searchTimer 暴露到全局作用域，以便清空按钮可以访问
+		window.searchTimer = null;
 		root.addEventListener('input', function(ev) {
 			if (ev.target && ev.target.id === 'filter') {
 				if (searchTimer) clearTimeout(searchTimer);
 				searchTimer = setTimeout(refresh, 250);
+				window.searchTimer = searchTimer; // 同步到全局变量
 			}
 		});
 		// 全选/取消全选
@@ -2302,7 +2326,11 @@ return view.extend({
 				showHistoryLog();
 				return;
 			}
-			if (t.id === 'filter-clear') { if (searchTimer) clearTimeout(searchTimer); searchTimer = setTimeout(refresh, 10); return; }
+			if (t.id === 'filter-clear') { 
+				// 清空按钮的事件处理已经在按钮上定义了
+				// 这里不需要额外处理，避免重复刷新
+				return; 
+			}
 			// 兼容点击图标或内部元素：优先用 closest
 			if (t.closest) {
 				var btn = t.closest('#update-action');
