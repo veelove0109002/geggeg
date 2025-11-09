@@ -782,6 +782,25 @@ local function clear_istore_state(pkg)
 	sys.call('rm -f /tmp/luci-indexcache >/dev/null 2>&1')
 	sys.call('rm -rf /tmp/luci-modulecache/* >/dev/null 2>&1')
 	
+	-- 4) 尝试触发 iStore 的缓存刷新（通过删除可能的缓存文件）
+	-- iStore 可能缓存了已安装列表，需要清理
+	local possible_istore_cache = {
+		'/tmp/.istore_cache',
+		'/tmp/istore_installed_cache',
+		'/var/lib/istore/cache',
+		'/var/cache/luci-istore',
+	}
+	for _, cache_path in ipairs(possible_istore_cache) do
+		if fs.stat(cache_path) then
+			if fs.stat(cache_path).type == 'dir' then
+				sys.call(string.format("rm -rf %q >/dev/null 2>&1", cache_path))
+			else
+				fs.remove(cache_path)
+			end
+			removed[#removed+1] = cache_path
+		end
+	end
+	
 	return removed
 end
 
@@ -993,26 +1012,28 @@ function action_remove()
 	end
 	
 	-- 对于 luci-app-* 包，先尝试移除相关的语言包和 meta 包（避免 autoremove 时 prerm 失败）
-	-- 这样可以避免 autoremove 时因为语言包的 prerm 脚本失败而导致整个操作失败
-	-- 注意：必须使用 --force-depends --force-removal-of-dependent-packages --force-remove 来处理依赖关系
+	-- 使用与用户成功的命令相同的格式：opkg --force-removal-of-dependent-packages --autoremove remove [package]
+	-- 注意：不需要预防性移除，因为用户成功的命令已经能处理依赖关系
+	-- 注释掉预防性移除，直接使用用户成功的命令格式
+	--[[
 	if app then
 		local status_path = fs.stat('/usr/lib/opkg/status') and '/usr/lib/opkg/status' or (fs.stat('/var/lib/opkg/status') and '/var/lib/opkg/status' or nil)
 		if status_path then
 			local s = fs.readfile(status_path) or ''
-			-- 先移除 app-meta-* 包（如果存在）- 使用所有强制选项
+			-- 先移除 app-meta-* 包（如果存在）
 			local meta_pkg = 'app-meta-' .. app
 			if is_installed(meta_pkg) then
-				sys.call(string.format("opkg remove --force-depends --force-removal-of-dependent-packages --force-remove '%s' >/dev/null 2>&1", meta_pkg))
+				sys.call(string.format("opkg --force-removal-of-dependent-packages --autoremove remove '%s' >/dev/null 2>&1", meta_pkg))
 			end
-			-- 再移除语言包（使用所有强制选项以避免 prerm 脚本问题和依赖关系问题）
+			-- 再移除语言包
 			for name in s:gmatch('Package:%s*(luci%-i18n%-' .. app .. '%-[%w%-%_]+)') do
 				if is_installed(name) then
-					-- 使用所有强制选项：--force-depends --force-removal-of-dependent-packages --force-remove
-					sys.call(string.format("opkg remove --force-depends --force-removal-of-dependent-packages --force-remove '%s' >/dev/null 2>&1", name))
+					sys.call(string.format("opkg --force-removal-of-dependent-packages --autoremove remove '%s' >/dev/null 2>&1", name))
 				end
 			end
 		end
 	end
+	--]]
 
 	-- 卸载包（依据退出码判断成功）
 	local tmpout = '/tmp/opkg-remove-output.txt'
@@ -1052,13 +1073,15 @@ function action_remove()
 		return failed
 	end
 	
-	-- 对于 luci-app-* 包，如果检测到有相关的语言包或 meta 包，直接使用所有强制选项
-	-- 这样可以避免依赖关系问题和 prerm 脚本失败问题
+	-- 对于 luci-app-* 包，使用与用户成功的命令相同的格式
+	-- 用户成功的命令：opkg --force-removal-of-dependent-packages --autoremove remove luci-app-ubuntu2
+	-- 注意：选项顺序和位置很重要，--force-removal-of-dependent-packages 和 --autoremove 应该作为全局选项
 	local cmd
 	local is_app = pkg:match('^luci%-app%-.+') ~= nil
 	if is_app then
-		-- 对于 luci-app，始终使用所有强制选项（因为可能有语言包和 meta 包的依赖关系）
-		cmd = string.format("opkg remove --autoremove --force-depends --force-removal-of-dependent-packages --force-remove '%s' >%s 2>&1", pkg, tmpout)
+		-- 对于 luci-app，使用用户成功的命令格式（全局选项在前，remove 命令在后）
+		-- 如果 prerm 脚本失败，再尝试添加 --force-remove
+		cmd = string.format("opkg --force-removal-of-dependent-packages --autoremove remove '%s' >%s 2>&1", pkg, tmpout)
 	else
 		-- 对于非 luci-app 包，正常卸载
 		cmd = string.format("opkg remove --autoremove '%s' >%s 2>&1", pkg, tmpout)
@@ -1098,11 +1121,19 @@ function action_remove()
 			end
 		end
 		
-		-- 现在再次尝试移除主包（使用所有强制选项）
-		local retry_cmd = string.format("opkg remove --force-depends --force-removal-of-dependent-packages --force-remove '%s' >%s 2>&1", pkg, tmpout)
+		-- 现在再次尝试移除主包（使用用户成功的命令格式）
+		local retry_cmd = string.format("opkg --force-removal-of-dependent-packages --autoremove remove '%s' >%s 2>&1", pkg, tmpout)
 		rc, local_output = run_remove(retry_cmd)
 		output = (output or '') .. "\n[retry-main] " .. (local_output or '')
 		success = (rc == 0) or (not is_installed(pkg))
+		
+		-- 如果还是失败且是 luci-app，尝试添加 --force-remove（处理 prerm 脚本失败）
+		if not success and is_app then
+			retry_cmd = string.format("opkg --force-removal-of-dependent-packages --autoremove --force-remove remove '%s' >%s 2>&1", pkg, tmpout)
+			rc, local_output = run_remove(retry_cmd)
+			output = (output or '') .. "\n[retry-force] " .. (local_output or '')
+			success = (rc == 0) or (not is_installed(pkg))
+		end
 		
 		-- 最后运行 autoremove 清理剩余的 orphaned 包
 		if success then
@@ -1112,27 +1143,41 @@ function action_remove()
 	
 	-- 若提示依赖阻塞，则强制卸载（仅针对 luci-app-*）。若选择"同时卸载相关依赖"，按强制策略处理。
 	if (not success) and not no_packages_removed then
-		local is_app = pkg:match('^luci%-app%-.+') ~= nil
 		local dependent_warn = output:lower():match('dependent') or output:match('print_dependents_warning')
 		if is_app and (dependent_warn or remove_deps) then
-			-- 使用所有强制选项：--force-depends --force-removal-of-dependent-packages --force-remove
-			local force_cmd = string.format("opkg remove --autoremove --force-depends --force-removal-of-dependent-packages --force-remove '%s' >%s 2>&1", pkg, tmpout)
+			-- 使用用户成功的命令格式
+			local force_cmd = string.format("opkg --force-removal-of-dependent-packages --autoremove remove '%s' >%s 2>&1", pkg, tmpout)
 			rc, local_output = run_remove(force_cmd)
 			output = (output or '') .. "\n[force-deps] " .. (local_output or '')
 			success = (rc == 0) or (not is_installed(pkg))
 			prerm_failed = detect_prerm_failure(local_output) or prerm_failed
+			
+			-- 如果还是失败，尝试添加 --force-remove（处理 prerm 脚本失败）
+			if not success and prerm_failed then
+				force_cmd = string.format("opkg --force-removal-of-dependent-packages --autoremove --force-remove remove '%s' >%s 2>&1", pkg, tmpout)
+				rc, local_output = run_remove(force_cmd)
+				output = (output or '') .. "\n[force-deps-force] " .. (local_output or '')
+				success = (rc == 0) or (not is_installed(pkg))
+			end
 		end
 	end
 	
-	-- 如果检测到 prerm 脚本失败但还没有处理，使用所有强制选项
+	-- 如果检测到 prerm 脚本失败但还没有处理，使用用户成功的命令格式
 	if (not success) and prerm_failed and not no_packages_removed then
-		local is_app = pkg:match('^luci%-app%-.+') ~= nil
 		if is_app then
-			-- 对于 luci-app，直接使用所有强制选项
-			local force_remove_cmd = string.format("opkg remove --autoremove --force-depends --force-removal-of-dependent-packages --force-remove '%s' >%s 2>&1", pkg, tmpout)
+			-- 对于 luci-app，使用用户成功的命令格式，然后尝试添加 --force-remove
+			local force_remove_cmd = string.format("opkg --force-removal-of-dependent-packages --autoremove remove '%s' >%s 2>&1", pkg, tmpout)
 			rc, local_output = run_remove(force_remove_cmd)
 			output = (output or '') .. "\n[force-all] " .. (local_output or '')
 			success = (rc == 0) or (not is_installed(pkg))
+			
+			-- 如果还是失败，尝试添加 --force-remove
+			if not success then
+				force_remove_cmd = string.format("opkg --force-removal-of-dependent-packages --autoremove --force-remove remove '%s' >%s 2>&1", pkg, tmpout)
+				rc, local_output = run_remove(force_remove_cmd)
+				output = (output or '') .. "\n[force-all-force] " .. (local_output or '')
+				success = (rc == 0) or (not is_installed(pkg))
+			end
 		else
 			-- 对于非 luci-app 包，只使用 --force-remove
 			local force_remove_cmd = string.format("opkg remove --autoremove --force-remove '%s' >%s 2>&1", pkg, tmpout)
@@ -1174,20 +1219,38 @@ function action_remove()
 	-- 自动清理未使用依赖
 	sys.call('opkg autoremove >/dev/null 2>&1')
 
-	-- 清理 iStore 相关状态（如果卸载成功）
+	-- 清理 iStore 相关状态（如果卸载成功，或者包真的不在系统中了）
+	-- 注意：即使 opkg 返回错误，只要包真的从系统中移除了，就应该清理 iStore 状态
 	local removed_istore = {}
-	if success then
+	local actually_removed = (not is_installed(pkg))  -- 检查包是否真的不在系统中了
+	if success or actually_removed then
 		-- 清理所有相关的包（包括主包、app-meta-*, luci-i18n-* 等）
 		for _, related_pkg in ipairs(related_pkgs_for_istore) do
-			local pkg_removed = clear_istore_state(related_pkg)
-			for _, item in ipairs(pkg_removed) do
-				removed_istore[#removed_istore+1] = item
+			-- 检查包是否真的不在系统中了
+			if not is_installed(related_pkg) then
+				local pkg_removed = clear_istore_state(related_pkg)
+				for _, item in ipairs(pkg_removed) do
+					removed_istore[#removed_istore+1] = item
+				end
 			end
+		end
+		
+		-- 如果主包真的被移除了，更新 success 状态
+		if actually_removed and not success then
+			success = true
+			output = (output or '') .. "\n[note] Package was actually removed from system, updating status"
 		end
 		
 		-- 重载 web 服务器以确保 iStore 页面刷新
 		sys.call('[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd reload >/dev/null 2>&1')
 		sys.call('[ -x /etc/init.d/nginx ] && /etc/init.d/nginx reload >/dev/null 2>&1')
+		
+		-- 强制清理 iStore 可能使用的所有缓存
+		-- 包括可能的 opkg status 缓存
+		sys.call('rm -f /tmp/istoreos_installed_response.txt >/dev/null 2>&1')
+		sys.call('rm -f /tmp/istore_*.json >/dev/null 2>&1')
+		sys.call('rm -f /tmp/*istore*.cache >/dev/null 2>&1')
+		sys.call('rm -rf /var/cache/istore* >/dev/null 2>&1')
 	end
 
 	local removed_caches = {}
