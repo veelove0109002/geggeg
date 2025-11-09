@@ -1427,10 +1427,17 @@ return view.extend({
 				'style': 'width:100%; min-height:80px; padding:8px; border:1px solid #e5e7eb; border-radius:6px; font-size:13px; resize:vertical; font-family:inherit;'
 			}, '');
 			
-			var titleRow = E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin-bottom:12px;' }, [
+			// 为 linkease 添加特殊提示
+			var titleText = _('上报图标问题');
+			var titleExtra = null;
+			if (pkgName === 'luci-app-linkease') {
+				titleExtra = E('span', { 'style': 'font-size:13px;color:#ef4444;margin-left:8px;' }, _('（这个图标无需上报，在iStore商店中安装后就会显示）'));
+			}
+			var titleRow = E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap;' }, [
 				E('span', { 'style': 'display:inline-flex;width:28px;height:28px;background:#fff3cd;color:#856404;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '!'),
-				E('span', { 'style': 'font-weight:600;font-size:16px;color:#111827;' }, _('上报图标问题'))
-			]);
+				E('span', { 'style': 'font-weight:600;font-size:16px;color:#111827;' }, titleText),
+				titleExtra
+			].filter(function(item) { return item !== null; }));
 			
 			var pkgInfo = E('div', { 'style': 'margin-bottom:12px; padding:10px; background:#f8f9fa; border:1px solid #e5e7eb; border-radius:8px;' }, [
 				E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin-bottom:6px;' }, [
