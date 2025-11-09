@@ -487,7 +487,12 @@ return view.extend({
 			'luci-app-easytier': 'easytier',
 			'luci-app-mosdns': 'mosdns',
 			'luci-app-openvpn': 'openvpn',
-			'luci-app-openvpn-server': 'openvpn-server'
+			'luci-app-openvpn-server': 'openvpn-server',
+			'luci-app-wechatpush': 'wechatpush',
+			'luci-app-rtp2httpd': 'rtp2httpd',
+			'luci-app-ap-modem': 'ap-modem',
+			'luci-app-filebrowser-go': 'filebrowser-go',
+			'luci-app-5GSmartCase': '5GSmartCase'
 		};
 		function packageIcon(name){
 			// 从 app-icons 目录加载 PNG
@@ -641,7 +646,11 @@ return view.extend({
 			'luci-app-rclone': _('Rclone'),
 			'luci-app-syncdial': _('多线多拨'),
 			'luci-app-sunpanel': _('SunPanel导航页'),
-			'luci-app-ap-modem': _('访问AP/光猫'),
+			'luci-app-ap-modem': _('AP-Modem'),
+			'luci-app-wechatpush': _('Wechat Push'),
+			'luci-app-rtp2httpd': _('rtp2httpd'),
+			'luci-app-filebrowser-go': _('filebrowser-go'),
+			'luci-app-5GSmartCase': _('5GSmartCase'),
 			'luci-app-serverchan': _('微信推送ServerChan'),
 			'luci-app-runmynas': _('RunMyNAS自定义固件'),
 			'luci-app-rtbwmon': _('实时流量'),
