@@ -1218,11 +1218,29 @@ function action_remove()
 	end
 	-- 自动清理未使用依赖
 	sys.call('opkg autoremove >/dev/null 2>&1')
+	
+	-- 对于 luci-app-* 包，检查并强制移除相关的 app-meta-* 包（如果还存在）
+	-- 因为 app-meta-* 可能因为 prerm 脚本失败而没有被 autoremove 移除
+	-- 注意：即使主包卸载失败，只要包真的不在系统中了，也要检查 meta 包
+	local actually_removed = (not is_installed(pkg))  -- 检查包是否真的不在系统中了
+	if app and (success or actually_removed) then
+		local meta_pkg = 'app-meta-' .. app
+		if is_installed(meta_pkg) then
+			-- 使用用户成功的命令格式强制移除
+			output = (output or '') .. "\n[cleanup-meta] Removing orphaned meta package: " .. meta_pkg
+			local meta_cmd = string.format("opkg --force-removal-of-dependent-packages --autoremove --force-remove remove '%s' >%s 2>&1", meta_pkg, tmpout)
+			local meta_rc, meta_out = run_remove(meta_cmd)
+			output = (output or '') .. "\n[cleanup-meta] " .. (meta_out or '')
+			-- 再次检查是否真的被移除了
+			if not is_installed(meta_pkg) then
+				output = (output or '') .. "\n[cleanup-meta] Successfully removed " .. meta_pkg
+			end
+		end
+	end
 
 	-- 清理 iStore 相关状态（如果卸载成功，或者包真的不在系统中了）
 	-- 注意：即使 opkg 返回错误，只要包真的从系统中移除了，就应该清理 iStore 状态
 	local removed_istore = {}
-	local actually_removed = (not is_installed(pkg))  -- 检查包是否真的不在系统中了
 	if success or actually_removed then
 		-- 清理所有相关的包（包括主包、app-meta-*, luci-i18n-* 等）
 		for _, related_pkg in ipairs(related_pkgs_for_istore) do
