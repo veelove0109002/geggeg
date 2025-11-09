@@ -1015,6 +1015,34 @@ return view.extend({
 				'系统默认插件类': 'xtc.png'
 			};
 			var icon = iconMap[title] || 'folder.png';
+			
+			// 判断是否可以折叠（除了 VUM-Plugin类 都可以折叠）
+			var canCollapse = title !== _('VUM-Plugin类');
+			var isCollapsed = false;
+			
+			// 创建折叠/展开按钮
+			var collapseBtn = null;
+			if (canCollapse) {
+				collapseBtn = E('button', {
+					type: 'button',
+					'style': 'display:flex; align-items:center; justify-content:center; width:32px; height:32px; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:8px; cursor:pointer; transition:all 0.2s; padding:0;'
+				}, [
+					E('span', {
+						'style': 'display:inline-block; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:8px solid #6b7280; transition:transform 0.2s; transform:rotate(0deg);'
+					})
+				]);
+				
+				// 添加悬停效果
+				collapseBtn.addEventListener('mouseenter', function() {
+					this.style.background = '#e5e7eb';
+					this.style.borderColor = '#d1d5db';
+				});
+				collapseBtn.addEventListener('mouseleave', function() {
+					this.style.background = '#f3f4f6';
+					this.style.borderColor = '#e5e7eb';
+				});
+			}
+			
 			var header = E('div', { 'style': 'display:flex; align-items:center; justify-content:space-between;' }, [
 				E('div', { 'style': 'display:flex; align-items:center; gap:12px;' }, [
 					E('img', { src: L.resource('icons/' + icon), 'style': 'width:36px;height:36px; object-fit:contain;' }),
@@ -1024,10 +1052,48 @@ return view.extend({
 						var style = 'margin:0; font-size:20px; color:rgba(17,24,39,0.72); font-weight:800; display:inline-block; padding:8px 16px; border-radius:14px; background: ' + grad + '; backdrop-filter: saturate(160%) blur(10px); -webkit-backdrop-filter: saturate(160%) blur(10px); border:1px solid rgba(255,255,255,0.45); box-shadow: 0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.25)';
 						return E('h3', { 'style': style }, title);
 					})()
-				])
-			]);
-			var groupGrid = E('div', { 'style': 'display:grid; grid-template-columns:repeat(auto-fill,minmax(380px,1fr)); gap:12px; margin-top:8px;' });
+				]),
+				collapseBtn
+			].filter(function(item) { return item !== null; }));
+			
+			var groupGrid = E('div', { 
+				'style': 'display:grid; grid-template-columns:repeat(auto-fill,minmax(380px,1fr)); gap:12px; margin-top:8px; transition:max-height 0.3s ease, margin-top 0.3s ease, opacity 0.3s ease; overflow:hidden;'
+			});
 			items.forEach(function(p){ groupGrid.appendChild(renderCard(p)); });
+			
+			// 折叠/展开功能
+			if (canCollapse && collapseBtn) {
+				var arrow = collapseBtn.querySelector('span');
+				// 保存展开时的高度
+				var expandedHeight = null;
+				
+				collapseBtn.addEventListener('click', function() {
+					isCollapsed = !isCollapsed;
+					if (isCollapsed) {
+						// 折叠
+						if (expandedHeight === null) {
+							// 首次折叠，保存当前高度
+							expandedHeight = groupGrid.scrollHeight + 'px';
+						}
+						groupGrid.style.maxHeight = '0';
+						groupGrid.style.marginTop = '0';
+						groupGrid.style.opacity = '0';
+						arrow.style.transform = 'rotate(180deg)';
+					} else {
+						// 展开
+						// 先设置为 auto 以获取实际高度
+						groupGrid.style.maxHeight = 'none';
+						var height = groupGrid.scrollHeight;
+						expandedHeight = height + 'px';
+						// 然后设置为具体高度以触发动画
+						groupGrid.style.maxHeight = expandedHeight;
+						groupGrid.style.marginTop = '8px';
+						groupGrid.style.opacity = '1';
+						arrow.style.transform = 'rotate(0deg)';
+					}
+				});
+			}
+			
 			var section = E('div', { 'style': 'margin-bottom:8px;' }, [ header, groupGrid ]);
 			grid.appendChild(section);
 		}
