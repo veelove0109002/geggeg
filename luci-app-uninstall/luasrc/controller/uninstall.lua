@@ -1648,37 +1648,134 @@ function action_report_uninstall()
 	end
 end
 
+-- 从HTML中解析更新日志
+local function parse_changelog_from_html(html)
+	local logs = {}
+	if not html or #html == 0 then
+		return logs
+	end
+	
+	-- 先移除HTML标签，保留文本内容
+	local text = html:gsub('<[^>]+>', '\n')  -- 将HTML标签替换为换行
+	text = text:gsub('&nbsp;', ' ')          -- 替换&nbsp;
+	text = text:gsub('&lt;', '<')            -- 替换&lt;
+	text = text:gsub('&gt;', '>')            -- 替换&gt;
+	text = text:gsub('&amp;', '&')           -- 替换&amp;
+	text = text:gsub('\n%s*\n+', '\n')       -- 合并多个换行
+	text = text:gsub('^%s+', '')             -- 移除开头空白
+	text = text:gsub('%s+$', '')             -- 移除结尾空白
+	
+	-- 查找所有版本号位置
+	local versions = {}
+	local pos = 1
+	while true do
+		local start_pos, version = text:find('v(%d+%.%d+%.%d+)', pos)
+		if not start_pos then break end
+		
+		-- 查找对应的日期（在版本号后面，格式：YYYY-MM-DD）
+		local date_start = text:find('%d%d%d%d%-%d%d%-%d%d', start_pos)
+		if date_start then
+			local date_end, date = text:find('(%d%d%d%d%-%d%d%-%d%d)', date_start)
+			if date_end then
+				-- 查找下一个版本号的位置，作为当前版本内容的结束位置
+				local next_version_pos = text:find('v%d+%.%d+%.%d+', date_end + 1)
+				local content_end = next_version_pos or (#text + 1)
+				
+				-- 提取内容（从日期后到下一个版本号前）
+				local content = text:sub(date_end + 1, content_end - 1)
+				content = content:gsub('^%s+', '')     -- 移除开头空白
+				content = content:gsub('%s+$', '')     -- 移除结尾空白
+				content = content:gsub('\n%s*\n+', '\n')  -- 合并多个换行
+				
+				-- 处理列表项格式（* 开头的内容）
+				content = content:gsub('\n*%*%s*', '\n• ')  -- 将 * 转换为 • 
+				content = content:gsub('^%s+', '')          -- 移除开头空白
+				
+				if #content > 0 then
+					table.insert(versions, {
+						pos = start_pos,
+						version = 'v' .. version,
+						date = date,
+						content = content
+					})
+				end
+			end
+		end
+		
+		pos = start_pos + 1
+	end
+	
+	-- 按位置排序（从新到旧）
+	table.sort(versions, function(a, b) return a.pos > b.pos end)
+	
+	-- 转换为日志格式
+	for _, v in ipairs(versions) do
+		table.insert(logs, {
+			version = v.version,
+			date = v.date,
+			changelog = v.content
+		})
+	end
+	
+	return logs
+end
+
 -- 获取历史更新日志
 function action_history_log()
 	local logs = {}
 	
-	-- 尝试从远程服务器获取历史更新日志
-	local endpoints = {
-		'https://plugin.vumstar.com/download/history.json',
-		'https://plugin.vumstar.com/download/changelog.json'
-	}
+	-- 优先从 xz.vumstar.com 获取更新日志
+	local website_url = 'https://xz.vumstar.com/'
+	local html_body = sys.exec("wget -qO- '" .. website_url .. "' 2>/dev/null") or ''
+	if not html_body or #html_body == 0 then 
+		html_body = sys.exec("uclient-fetch -qO- '" .. website_url .. "' 2>/dev/null") or '' 
+	end
 	
-	local body = ''
-	for _, u in ipairs(endpoints) do
-		body = sys.exec("wget -qO- '" .. u .. "' 2>/dev/null") or ''
-		if not body or #body == 0 then 
-			body = sys.exec("uclient-fetch -qO- '" .. u .. "' 2>/dev/null") or '' 
+	if html_body and #html_body > 0 then
+		-- 提取更新日志部分（查找"更新日志"后面的内容）
+		local changelog_start = html_body:find('更新日志')
+		if changelog_start then
+			-- 提取从"更新日志"开始到页面结束或特定标记之间的内容
+			local changelog_section = html_body:sub(changelog_start)
+			-- 限制提取范围，避免提取过多内容
+			local changelog_end = changelog_section:find('</section>') or changelog_section:find('</div>') or changelog_section:find('<footer') or 50000
+			if changelog_end then
+				changelog_section = changelog_section:sub(1, changelog_end)
+			end
+			
+			logs = parse_changelog_from_html(changelog_section)
 		end
-		if body and #body > 0 then
-			local ok, data = pcall(json.parse, body)
-			if ok and type(data) == 'table' then
-				-- 支持多种数据格式
-				if data.logs and type(data.logs) == 'table' then
-					logs = data.logs
-				elseif data.history and type(data.history) == 'table' then
-					logs = data.history
-				elseif data.changelog and type(data.changelog) == 'table' then
-					logs = data.changelog
-				elseif type(data) == 'table' and #data > 0 then
-					-- 如果是数组格式
-					logs = data
+	end
+	
+	-- 如果从网站获取失败，尝试从JSON API获取
+	if #logs == 0 then
+		local endpoints = {
+			'https://plugin.vumstar.com/download/history.json',
+			'https://plugin.vumstar.com/download/changelog.json'
+		}
+		
+		local body = ''
+		for _, u in ipairs(endpoints) do
+			body = sys.exec("wget -qO- '" .. u .. "' 2>/dev/null") or ''
+			if not body or #body == 0 then 
+				body = sys.exec("uclient-fetch -qO- '" .. u .. "' 2>/dev/null") or '' 
+			end
+			if body and #body > 0 then
+				local ok, data = pcall(json.parse, body)
+				if ok and type(data) == 'table' then
+					-- 支持多种数据格式
+					if data.logs and type(data.logs) == 'table' then
+						logs = data.logs
+					elseif data.history and type(data.history) == 'table' then
+						logs = data.history
+					elseif data.changelog and type(data.changelog) == 'table' then
+						logs = data.changelog
+					elseif type(data) == 'table' and #data > 0 then
+						-- 如果是数组格式
+						logs = data
+					end
+					if #logs > 0 then break end
 				end
-				if #logs > 0 then break end
 			end
 		end
 	end
