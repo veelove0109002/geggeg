@@ -1427,10 +1427,11 @@ return view.extend({
 				'style': 'width:100%; min-height:80px; padding:8px; border:1px solid #e5e7eb; border-radius:6px; font-size:13px; resize:vertical; font-family:inherit;'
 			}, '');
 			
-			// 为 linkease 添加特殊提示
+			// 为特定应用添加特殊提示（这些应用在iStore商店中安装后会自动显示图标）
 			var titleText = _('上报图标问题');
 			var titleExtra = null;
-			if (pkgName === 'luci-app-linkease') {
+			var noReportApps = ['luci-app-linkease', 'luci-app-ddnsto', 'luci-app-lucky', 'luci-app-msd_lite', 'luci-app-zerotier', 'luci-app-smartdns'];
+			if (noReportApps.indexOf(pkgName) !== -1) {
 				titleExtra = E('span', { 'style': 'font-size:13px;color:#ef4444;margin-left:8px;' }, _('（这个图标无需上报，在iStore商店中安装后就会显示）'));
 			}
 			var titleRow = E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap;' }, [
