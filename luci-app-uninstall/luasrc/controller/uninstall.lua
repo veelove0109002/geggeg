@@ -1891,7 +1891,13 @@ function action_save_collapse_state()
 	
 	-- 确保目录存在（使用 sys.call 更可靠）
 	if not fs.stat(state_dir) then
-		sys.call(string.format("mkdir -p %q", state_dir))
+		local mkdir_result = sys.call(string.format("mkdir -p %q", state_dir))
+		if mkdir_result ~= 0 then
+			return json_response({ 
+				ok = false, 
+				message = '创建目录失败: ' .. state_dir
+			}, 500)
+		end
 	end
 	
 	local data = {}
@@ -1912,6 +1918,14 @@ function action_save_collapse_state()
 		if section and #section > 0 then
 			data[section] = (collapsed == 'true')
 		end
+	end
+	
+	-- 如果没有数据，返回错误
+	if not data or not next(data) then
+		return json_response({ 
+			ok = false, 
+			message = '没有接收到数据'
+		}, 400)
 	end
 	
 	-- 读取现有状态

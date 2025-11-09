@@ -1577,8 +1577,12 @@ return view.extend({
 				body: JSON.stringify(state)
 			}).then(function(res) {
 				// 保存成功，无需操作
+				if (res && !res.ok) {
+					console.warn('保存折叠状态失败:', res.message || '未知错误');
+				}
 			}).catch(function(err) {
-				// 保存失败，静默处理
+				// 保存失败，输出错误信息便于调试
+				console.error('保存折叠状态到服务器失败:', err);
 			});
 		}
 		
