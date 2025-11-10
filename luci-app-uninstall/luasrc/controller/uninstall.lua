@@ -48,6 +48,10 @@ function index()
 	e.leaf = true
 	e.acl_depends = { 'luci-app-uninstall' }
 
+	e = entry({ 'admin', 'vum', 'uninstall', 'announcement' }, call('action_announcement'))
+	e.leaf = true
+	e.acl_depends = { 'luci-app-uninstall' }
+
 	e = entry({ 'admin', 'vum', 'uninstall', 'save_collapse_state' }, call('action_save_collapse_state'))
 	e.leaf = true
 	e.acl_depends = { 'luci-app-uninstall' }
@@ -1880,6 +1884,53 @@ function action_history_log()
 		ok = true, 
 		logs = formatted_logs,
 		count = #formatted_logs
+	})
+end
+
+-- 获取公告数据
+function action_announcement()
+	local announcements = {}
+	
+	-- 从 xzgg.json 获取公告数据
+	local announcement_url = 'https://plugin.vumstar.com/download/xzgg.json'
+	local announcement_body = sys.exec("wget -qO- '" .. announcement_url .. "' 2>/dev/null") or ''
+	if not announcement_body or #announcement_body == 0 then 
+		announcement_body = sys.exec("uclient-fetch -qO- '" .. announcement_url .. "' 2>/dev/null") or '' 
+	end
+	
+	if announcement_body and #announcement_body > 0 then
+		local ok, data = pcall(json.parse, announcement_body)
+		if ok and type(data) == 'table' then
+			-- 支持数组格式
+			if type(data) == 'table' and #data > 0 then
+				announcements = data
+			elseif data.announcements and type(data.announcements) == 'table' then
+				announcements = data.announcements
+			elseif data.list and type(data.list) == 'table' then
+				announcements = data.list
+			elseif data.latest or data.changelog or data.content or data.text then
+				-- 如果是单个公告对象，转换为数组
+				announcements = {data}
+			end
+		end
+	end
+	
+	-- 确保公告格式正确
+	local formatted_announcements = {}
+	for _, ann in ipairs(announcements) do
+		if type(ann) == 'table' then
+			table.insert(formatted_announcements, {
+				latest = ann.latest or ann.version or ann.ver or '',
+				date = ann.date or ann.time or '',
+				changelog = ann.changelog or ann.content or ann.text or ''
+			})
+		end
+	end
+	
+	return json_response({ 
+		ok = true, 
+		announcements = formatted_announcements,
+		count = #formatted_announcements
 	})
 end
 

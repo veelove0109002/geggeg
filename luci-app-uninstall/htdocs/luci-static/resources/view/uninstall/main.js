@@ -618,85 +618,58 @@ return view.extend({
 						document.head.appendChild(spinStyle);
 					}
 					
-					// 从API获取公告数据
-					var announcementUrl = 'https://plugin.vumstar.com/download/xzgg.json';
+					// 从后端API获取公告数据（避免CORS问题）
+					var announcementUrl = L.url('admin/vum/uninstall/announcement');
 					
-					// 使用fetch或XMLHttpRequest获取数据
-					var xhr = new XMLHttpRequest();
-					xhr.open('GET', announcementUrl, true);
-					xhr.timeout = 10000; // 10秒超时
-					xhr.onload = function() {
-						if (xhr.status === 200) {
-							try {
-								var data = JSON.parse(xhr.responseText);
-								announcementDataLoaded = true;
-								
-								// 解析数据并显示
-								if (data && Array.isArray(data) && data.length > 0) {
-									// 获取最新的公告（第一个）
-									var latestAnnouncement = data[0];
-									var content = '';
-									
-									if (latestAnnouncement.changelog) {
-										content = latestAnnouncement.changelog;
-									} else if (latestAnnouncement.content) {
-										content = latestAnnouncement.content;
-									} else if (latestAnnouncement.text) {
-										content = latestAnnouncement.text;
-									}
-									
-									// 格式化显示内容
-									var displayContent = '';
-									
-									// 显示日期和版本（如果有）
-									if (latestAnnouncement.date || latestAnnouncement.latest) {
-										displayContent += '<div style="display:flex; align-items:center; gap:8px; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #e5e7eb;">';
-										if (latestAnnouncement.latest) {
-											displayContent += '<span style="font-size:12px; font-weight:600; color:#6366f1; background:#eef2ff; padding:2px 8px; border-radius:4px;">v' + latestAnnouncement.latest + '</span>';
-										}
-										if (latestAnnouncement.date) {
-											displayContent += '<span style="font-size:12px; color:#9ca3af;">' + latestAnnouncement.date + '</span>';
-										}
-										displayContent += '</div>';
-									}
-									
-									// 显示公告内容
-									if (content) {
-										// 处理换行和格式，保留原有的换行符
-										content = content.replace(/\n/g, '<br>');
-										// 处理列表项格式（如果包含序号）
-										content = content.replace(/[①-⑨]/g, function(match) {
-											return '<span style="color:#6366f1; font-weight:600;">' + match + '</span>';
-										});
-										displayContent += '<div style="line-height:1.8; color:#374151;">' + content + '</div>';
-									} else {
-										displayContent += '<div style="text-align:center; padding:20px; color:#6b7280;">' + _('暂无公告内容') + '</div>';
-									}
-									
-									announcementContent.innerHTML = displayContent;
-								} else {
-									announcementContent.innerHTML = '<div style="text-align:center; padding:20px; color:#6b7280;">' + 
-										_('暂无公告') + '</div>';
+					// 使用现有的 _httpJson 方法
+					self._httpJson(announcementUrl, { 
+						headers: { 'Accept': 'application/json' } 
+					}).then(function(res) {
+						announcementDataLoaded = true;
+						
+						if (res && res.ok && res.announcements && res.announcements.length > 0) {
+							// 获取最新的公告（第一个）
+							var latestAnnouncement = res.announcements[0];
+							var content = latestAnnouncement.changelog || '';
+							
+							// 格式化显示内容
+							var displayContent = '';
+							
+							// 显示日期和版本（如果有）
+							if (latestAnnouncement.date || latestAnnouncement.latest) {
+								displayContent += '<div style="display:flex; align-items:center; gap:8px; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #e5e7eb;">';
+								if (latestAnnouncement.latest) {
+									displayContent += '<span style="font-size:12px; font-weight:600; color:#6366f1; background:#eef2ff; padding:2px 8px; border-radius:4px;">v' + latestAnnouncement.latest + '</span>';
 								}
-							} catch (e) {
-								console.error('解析公告数据失败:', e);
-								announcementContent.innerHTML = '<div style="text-align:center; padding:20px; color:#dc2626;">' + 
-									_('加载公告失败，请稍后重试') + '</div>';
+								if (latestAnnouncement.date) {
+									displayContent += '<span style="font-size:12px; color:#9ca3af;">' + latestAnnouncement.date + '</span>';
+								}
+								displayContent += '</div>';
 							}
+							
+							// 显示公告内容
+							if (content) {
+								// 处理换行和格式，保留原有的换行符
+								content = content.replace(/\n/g, '<br>');
+								// 处理列表项格式（如果包含序号）
+								content = content.replace(/[①-⑨]/g, function(match) {
+									return '<span style="color:#6366f1; font-weight:600;">' + match + '</span>';
+								});
+								displayContent += '<div style="line-height:1.8; color:#374151;">' + content + '</div>';
+							} else {
+								displayContent += '<div style="text-align:center; padding:20px; color:#6b7280;">' + _('暂无公告内容') + '</div>';
+							}
+							
+							announcementContent.innerHTML = displayContent;
 						} else {
-							announcementContent.innerHTML = '<div style="text-align:center; padding:20px; color:#dc2626;">' + 
-								_('加载公告失败，请稍后重试') + '</div>';
+							announcementContent.innerHTML = '<div style="text-align:center; padding:20px; color:#6b7280;">' + 
+								_('暂无公告') + '</div>';
 						}
-					};
-					xhr.onerror = function() {
+					}).catch(function(err) {
+						console.error('加载公告失败:', err);
 						announcementContent.innerHTML = '<div style="text-align:center; padding:20px; color:#dc2626;">' + 
-							_('网络错误，无法加载公告') + '</div>';
-					};
-					xhr.ontimeout = function() {
-						announcementContent.innerHTML = '<div style="text-align:center; padding:20px; color:#dc2626;">' + 
-							_('请求超时，请检查网络连接') + '</div>';
-					};
-					xhr.send();
+							_('加载公告失败，请稍后重试') + '</div>';
+					});
 				};
 				
 				searchContainer.appendChild(searchSection);
