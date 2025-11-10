@@ -971,6 +971,79 @@ return view.extend({
 			return '/cgi-bin/luci/admin/' + appName;
 		}
 
+		// 解析可用的 App 打开地址（带缓存与多段路径探测）
+		var appUrlResolveCache = {};
+		function resolveAppUrl(pkgName, callback) {
+			if (!pkgName || pkgName === 'luci-app-uninstall') {
+				callback(null);
+				return;
+			}
+			// 缓存命中
+			if (appUrlResolveCache.hasOwnProperty(pkgName)) {
+				callback(appUrlResolveCache[pkgName]);
+				return;
+			}
+			// 计算候选路径（含特殊映射）
+			var appName = pkgName.replace(/^luci-app-/, '');
+			var specialUrls = {
+				'wireguard': '/cgi-bin/luci/admin/network/wireguard',
+				'openvpn': '/cgi-bin/luci/admin/services/openvpn',
+				'passwall': '/cgi-bin/luci/admin/services/passwall',
+				'homeproxy': '/cgi-bin/luci/admin/services/homeproxy',
+				'adguardhome': '/cgi-bin/luci/admin/services/adguardhome',
+				'openclash': '/cgi-bin/luci/admin/services/openclash',
+				'dockerman': '/cgi-bin/luci/admin/docker',
+				'zerotier': '/cgi-bin/luci/admin/services/zerotier',
+				'ddns': '/cgi-bin/luci/admin/services/ddns',
+				'firewall': '/cgi-bin/luci/admin/network/firewall',
+				'samba4': '/cgi-bin/luci/admin/services/samba4',
+				'ksmbd': '/cgi-bin/luci/admin/services/ksmbd',
+				'upnp': '/cgi-bin/luci/admin/services/upnp',
+				'wol': '/cgi-bin/luci/admin/services/wol',
+				'transmission': '/cgi-bin/luci/admin/services/transmission',
+				'aria2': '/cgi-bin/luci/admin/services/aria2',
+				'smartdns': '/cgi-bin/luci/admin/services/smartdns',
+				'mosdns': '/cgi-bin/luci/admin/services/mosdns',
+				'cpufreq': '/cgi-bin/luci/admin/system/cpufreq',
+				'statistics': '/cgi-bin/luci/admin/statistics',
+				'filetransfer': '/cgi-bin/luci/admin/system/filetransfer',
+				'fan': '/cgi-bin/luci/admin/system/fan',
+				'diskman': '/cgi-bin/luci/admin/system/diskman',
+				'ttyd': '/cgi-bin/luci/admin/system/ttyd'
+			};
+			if (specialUrls[appName]) {
+				var sp = specialUrls[appName];
+				appUrlResolveCache[pkgName] = sp;
+				callback(sp);
+				return;
+			}
+			// 常见分区顺序尝试：services → nas → network → system → 根 admin
+			var candidates = [
+				'/cgi-bin/luci/admin/services/' + appName,
+				'/cgi-bin/luci/admin/nas/' + appName,
+				'/cgi-bin/luci/admin/network/' + appName,
+				'/cgi-bin/luci/admin/system/' + appName,
+				'/cgi-bin/luci/admin/' + appName
+			];
+			// 依次探测
+			(function tryNext(idx){
+				if (idx >= candidates.length) {
+					appUrlResolveCache[pkgName] = null;
+					callback(null);
+					return;
+				}
+				var url = candidates[idx];
+				checkUrlAvailable(url, function(ok){
+					if (ok) {
+						appUrlResolveCache[pkgName] = url;
+						callback(url);
+					} else {
+						tryNext(idx + 1);
+					}
+				});
+			})(0);
+		}
+
 		// 检查软件是否有可用界面
 		function hasAvailableUI(pkgName) {
 			// 首先检查黑名单
@@ -1154,24 +1227,19 @@ return view.extend({
 	}
 			// 右上角：小眼睛图标（打开软件）- 排除"高级卸载"卡片
 			if (pkg && pkg.name !== 'luci-app-uninstall') {
-				var appUrl = getAppUrl(pkg.name);
-				if (appUrl) {
-					// 检查分类：iStoreOS插件类 和 其他插件类 直接显示图标，不进行检查
-					var category = pkg.category || '';
-					var skipCheck = (category === 'iStoreOS插件类' || category === '其他插件类');
-					
+				// 检查黑名单（同步）
+				if (!hasAvailableUI(pkg.name)) {
+					// 不展示眼睛图标
+				} else {
 					// 创建唯一的渐变 ID 避免冲突
 					var gradientId = 'eyeGrad_' + pkg.name.replace(/[^a-zA-Z0-9]/g, '_') + '_' + Date.now();
-					// 创建渐变小眼睛图标 SVG（使用 encodeURIComponent 确保正确编码）
 					var svgContent = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="' + gradientId + '" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" /><stop offset="50%" style="stop-color:#8b5cf6;stop-opacity:1" /><stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" /></linearGradient></defs><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="url(#' + gradientId + ')" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="12" cy="12" r="3" stroke="url(#' + gradientId + ')" stroke-width="2" fill="none"/></svg>';
 					var eyeIconSvg = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgContent);
-					
-					// 使用渐变边框效果的按钮（缩小尺寸）
-					// 如果是 iStoreOS插件类 或 其他插件类，直接显示；否则先隐藏，检查通过后显示
+					// 初始隐藏，待解析到有效 URL 后再显示
 					var eyeBtn = E('button', {
 						type: 'button',
 						title: _('打开软件'),
-						'style': 'position:absolute; right:12px; top:12px; width:26px; height:26px; padding:1.5px; background:linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7); border:none; border-radius:50%; display:' + (skipCheck ? 'flex' : 'none') + '; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 6px rgba(99,102,241,0.3); transition:all .2s ease; z-index:10; overflow:visible;'
+						'style': 'position:absolute; right:12px; top:12px; width:26px; height:26px; padding:1.5px; background:linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7); border:none; border-radius:50%; display:none; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 6px rgba(99,102,241,0.3); transition:all .2s ease; z-index:10; overflow:visible;'
 					}, [
 						E('span', {
 							'style': 'width:100%; height:100%; background:linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%); border-radius:50%; display:flex; align-items:center; justify-content:center;'
@@ -1185,53 +1253,30 @@ return view.extend({
 							})
 						])
 					]);
-					
 					eyeBtn.addEventListener('mouseenter', function(){
 						this.style.transform = 'translateY(-2px) scale(1.1)';
 						this.style.background = 'linear-gradient(135deg, #4f46e5, #7c3aed, #9333ea)';
 						this.style.boxShadow = '0 4px 12px rgba(99,102,241,0.5)';
 					});
-					
 					eyeBtn.addEventListener('mouseleave', function(){
 						this.style.transform = 'translateY(0) scale(1)';
 						this.style.background = 'linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7)';
 						this.style.boxShadow = '0 2px 6px rgba(99,102,241,0.3)';
 					});
-					
-					eyeBtn.addEventListener('click', function(ev){
-						ev.preventDefault();
-						ev.stopPropagation();
-						window.location.href = appUrl;
-					});
-					
-					// 添加到 children
 					children.push(eyeBtn);
-					
-					// 如果不是 iStoreOS插件类 和 其他插件类，才进行检查
-					if (!skipCheck) {
-						// 先检查黑名单（同步检查）
-						if (!hasAvailableUI(pkg.name)) {
-							// 在黑名单中，移除眼睛图标
-							if (eyeBtn && eyeBtn.parentNode) {
-								eyeBtn.parentNode.removeChild(eyeBtn);
-							} else {
-								eyeBtn.style.display = 'none';
-							}
+					// 异步解析有效地址
+					resolveAppUrl(pkg.name, function(url){
+						if (url) {
+							eyeBtn.style.display = 'flex';
+							eyeBtn.onclick = function(ev){
+								ev.preventDefault();
+								ev.stopPropagation();
+								window.location.href = url;
+							};
 						} else {
-							// 异步检查 URL 是否可用
-							checkUrlAvailable(appUrl, function(available) {
-								if (available) {
-									// URL 可用，显示眼睛图标
-									eyeBtn.style.display = 'flex';
-								} else {
-									// URL 不可用，移除眼睛图标
-									if (eyeBtn && eyeBtn.parentNode) {
-										eyeBtn.parentNode.removeChild(eyeBtn);
-									}
-								}
-							});
+							// 保持隐藏
 						}
-					}
+					});
 				}
 			}
 			// 顶部右侧：仅在"高级卸载"卡片上展示图标按钮与远端版本
