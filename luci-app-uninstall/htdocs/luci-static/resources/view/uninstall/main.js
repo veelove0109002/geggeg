@@ -1154,70 +1154,83 @@ return view.extend({
 	}
 			// 右上角：小眼睛图标（打开软件）- 排除"高级卸载"卡片
 			if (pkg && pkg.name !== 'luci-app-uninstall') {
-				// 先检查黑名单（同步检查）
-				if (!hasAvailableUI(pkg.name)) {
-					// 在黑名单中，不显示眼睛图标
-				} else {
-					var appUrl = getAppUrl(pkg.name);
-					if (appUrl) {
-						// 创建唯一的渐变 ID 避免冲突
-						var gradientId = 'eyeGrad_' + pkg.name.replace(/[^a-zA-Z0-9]/g, '_') + '_' + Date.now();
-						// 创建渐变小眼睛图标 SVG（使用 encodeURIComponent 确保正确编码）
-						var svgContent = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="' + gradientId + '" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" /><stop offset="50%" style="stop-color:#8b5cf6;stop-opacity:1" /><stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" /></linearGradient></defs><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="url(#' + gradientId + ')" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="12" cy="12" r="3" stroke="url(#' + gradientId + ')" stroke-width="2" fill="none"/></svg>';
-						var eyeIconSvg = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgContent);
-						
-						// 使用渐变边框效果的按钮（缩小尺寸）- 先隐藏，检查通过后显示
-						var eyeBtn = E('button', {
-							type: 'button',
-							title: _('打开软件'),
-							'style': 'position:absolute; right:12px; top:12px; width:26px; height:26px; padding:1.5px; background:linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7); border:none; border-radius:50%; display:none; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 6px rgba(99,102,241,0.3); transition:all .2s ease; z-index:10; overflow:visible;'
+				var appUrl = getAppUrl(pkg.name);
+				if (appUrl) {
+					// 检查分类：iStoreOS插件类 和 其他插件类 直接显示图标，不进行检查
+					var category = pkg.category || '';
+					var skipCheck = (category === 'iStoreOS插件类' || category === '其他插件类');
+					
+					// 创建唯一的渐变 ID 避免冲突
+					var gradientId = 'eyeGrad_' + pkg.name.replace(/[^a-zA-Z0-9]/g, '_') + '_' + Date.now();
+					// 创建渐变小眼睛图标 SVG（使用 encodeURIComponent 确保正确编码）
+					var svgContent = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="' + gradientId + '" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" /><stop offset="50%" style="stop-color:#8b5cf6;stop-opacity:1" /><stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" /></linearGradient></defs><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="url(#' + gradientId + ')" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="12" cy="12" r="3" stroke="url(#' + gradientId + ')" stroke-width="2" fill="none"/></svg>';
+					var eyeIconSvg = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgContent);
+					
+					// 使用渐变边框效果的按钮（缩小尺寸）
+					// 如果是 iStoreOS插件类 或 其他插件类，直接显示；否则先隐藏，检查通过后显示
+					var eyeBtn = E('button', {
+						type: 'button',
+						title: _('打开软件'),
+						'style': 'position:absolute; right:12px; top:12px; width:26px; height:26px; padding:1.5px; background:linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7); border:none; border-radius:50%; display:' + (skipCheck ? 'flex' : 'none') + '; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 6px rgba(99,102,241,0.3); transition:all .2s ease; z-index:10; overflow:visible;'
+					}, [
+						E('span', {
+							'style': 'width:100%; height:100%; background:linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%); border-radius:50%; display:flex; align-items:center; justify-content:center;'
 						}, [
-							E('span', {
-								'style': 'width:100%; height:100%; background:linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%); border-radius:50%; display:flex; align-items:center; justify-content:center;'
-							}, [
-								E('img', {
-									src: eyeIconSvg,
-									alt: 'open',
-									width: 14,
-									height: 14,
-									'style': 'display:block; object-fit:contain; pointer-events:none;'
-								})
-							])
-						]);
-						
-						eyeBtn.addEventListener('mouseenter', function(){
-							this.style.transform = 'translateY(-2px) scale(1.1)';
-							this.style.background = 'linear-gradient(135deg, #4f46e5, #7c3aed, #9333ea)';
-							this.style.boxShadow = '0 4px 12px rgba(99,102,241,0.5)';
-						});
-						
-						eyeBtn.addEventListener('mouseleave', function(){
-							this.style.transform = 'translateY(0) scale(1)';
-							this.style.background = 'linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7)';
-							this.style.boxShadow = '0 2px 6px rgba(99,102,241,0.3)';
-						});
-						
-						eyeBtn.addEventListener('click', function(ev){
-							ev.preventDefault();
-							ev.stopPropagation();
-							window.location.href = appUrl;
-						});
-						
-						// 先添加到 children（在渲染时显示）
-						children.push(eyeBtn);
-						
-						// 异步检查 URL 是否可用
-						checkUrlAvailable(appUrl, function(available) {
-							if (available) {
-								// URL 可用，显示眼睛图标
-								eyeBtn.style.display = 'flex';
+							E('img', {
+								src: eyeIconSvg,
+								alt: 'open',
+								width: 14,
+								height: 14,
+								'style': 'display:block; object-fit:contain; pointer-events:none;'
+							})
+						])
+					]);
+					
+					eyeBtn.addEventListener('mouseenter', function(){
+						this.style.transform = 'translateY(-2px) scale(1.1)';
+						this.style.background = 'linear-gradient(135deg, #4f46e5, #7c3aed, #9333ea)';
+						this.style.boxShadow = '0 4px 12px rgba(99,102,241,0.5)';
+					});
+					
+					eyeBtn.addEventListener('mouseleave', function(){
+						this.style.transform = 'translateY(0) scale(1)';
+						this.style.background = 'linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7)';
+						this.style.boxShadow = '0 2px 6px rgba(99,102,241,0.3)';
+					});
+					
+					eyeBtn.addEventListener('click', function(ev){
+						ev.preventDefault();
+						ev.stopPropagation();
+						window.location.href = appUrl;
+					});
+					
+					// 添加到 children
+					children.push(eyeBtn);
+					
+					// 如果不是 iStoreOS插件类 和 其他插件类，才进行检查
+					if (!skipCheck) {
+						// 先检查黑名单（同步检查）
+						if (!hasAvailableUI(pkg.name)) {
+							// 在黑名单中，移除眼睛图标
+							if (eyeBtn && eyeBtn.parentNode) {
+								eyeBtn.parentNode.removeChild(eyeBtn);
 							} else {
-								// URL 不可用，移除眼睛图标
-								if (eyeBtn && eyeBtn.parentNode) {
-									eyeBtn.parentNode.removeChild(eyeBtn);
-								}
+								eyeBtn.style.display = 'none';
 							}
-						});
+						} else {
+							// 异步检查 URL 是否可用
+							checkUrlAvailable(appUrl, function(available) {
+								if (available) {
+									// URL 可用，显示眼睛图标
+									eyeBtn.style.display = 'flex';
+								} else {
+									// URL 不可用，移除眼睛图标
+									if (eyeBtn && eyeBtn.parentNode) {
+										eyeBtn.parentNode.removeChild(eyeBtn);
+									}
+								}
+							});
+						}
 					}
 				}
 			}
