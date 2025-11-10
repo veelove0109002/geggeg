@@ -1069,14 +1069,14 @@ return view.extend({
 					// 创建唯一的渐变 ID 避免冲突
 					var gradientId = 'eyeGrad_' + pkg.name.replace(/[^a-zA-Z0-9]/g, '_') + '_' + Date.now();
 					// 创建渐变小眼睛图标 SVG（使用 encodeURIComponent 确保正确编码）
-					var svgContent = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="' + gradientId + '" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" /><stop offset="50%" style="stop-color:#8b5cf6;stop-opacity:1" /><stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" /></linearGradient></defs><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="url(#' + gradientId + ')" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="12" cy="12" r="3" stroke="url(#' + gradientId + ')" stroke-width="2" fill="none"/></svg>';
+					var svgContent = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="' + gradientId + '" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" /><stop offset="50%" style="stop-color:#8b5cf6;stop-opacity:1" /><stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" /></linearGradient></defs><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="url(#' + gradientId + ')" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="12" cy="12" r="3" stroke="url(#' + gradientId + ')" stroke-width="2" fill="none"/></svg>';
 					var eyeIconSvg = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgContent);
 					
-					// 使用渐变边框效果的按钮
+					// 使用渐变边框效果的按钮（缩小尺寸）
 					var eyeBtn = E('button', {
 						type: 'button',
 						title: _('打开软件'),
-						'style': 'position:absolute; right:12px; top:12px; width:32px; height:32px; padding:2px; background:linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7); border:none; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 8px rgba(99,102,241,0.3); transition:all .2s ease; z-index:10; overflow:visible;'
+						'style': 'position:absolute; right:12px; top:12px; width:26px; height:26px; padding:1.5px; background:linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7); border:none; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 6px rgba(99,102,241,0.3); transition:all .2s ease; z-index:10; overflow:visible;'
 					}, [
 						E('span', {
 							'style': 'width:100%; height:100%; background:linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%); border-radius:50%; display:flex; align-items:center; justify-content:center;'
@@ -1084,8 +1084,8 @@ return view.extend({
 							E('img', {
 								src: eyeIconSvg,
 								alt: 'open',
-								width: 18,
-								height: 18,
+								width: 14,
+								height: 14,
 								'style': 'display:block; object-fit:contain; pointer-events:none;'
 							})
 						])
