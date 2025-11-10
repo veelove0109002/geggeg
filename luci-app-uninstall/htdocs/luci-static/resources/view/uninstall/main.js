@@ -242,6 +242,13 @@ return view.extend({
 					white-space: nowrap;
 				}
 				
+				#announcement-bell-btn {
+					margin-left: 0;
+					flex: 0 0 auto;
+					padding: 6px 12px;
+					min-width: 36px;
+				}
+				
 				#history-log-btn {
 					margin-left: 0;
 					flex: 0 0 auto;
@@ -256,6 +263,14 @@ return view.extend({
 				
 				#history-log-btn img {
 					margin: 0;
+				}
+				
+				#announcement-panel {
+					max-width: 100%;
+					left: 0;
+					right: 0;
+					margin-left: 0;
+					margin-right: 0;
 				}
 			}
 			
@@ -313,10 +328,125 @@ return view.extend({
 					padding: 2px 6px;
 				}
 				
+				#announcement-bell-btn {
+					padding: 5px 10px;
+					min-width: 36px;
+				}
+				
 				#history-log-btn {
 					padding: 5px 10px;
 					min-width: 36px;
 				}
+				
+				#announcement-panel {
+					max-width: 100%;
+					font-size: 13px;
+					left: 0;
+					right: 0;
+					margin-left: 0;
+					margin-right: 0;
+					padding: 12px;
+				}
+				
+				#announcement-content {
+					font-size: 13px;
+				}
+			}
+			
+			/* 公告面板样式 */
+			#announcement-panel {
+				position: absolute;
+				top: 100%;
+				left: 0;
+				right: 0;
+				margin-top: 8px;
+				background: #ffffff;
+				border: 1px solid #e5e7eb;
+				border-radius: 8px;
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+				padding: 16px;
+				z-index: 300;
+				opacity: 0;
+				visibility: hidden;
+				transform: translateY(-10px);
+				transition: opacity 0.3s ease-out, transform 0.3s ease-out, visibility 0.3s ease-out;
+				max-height: 300px;
+				overflow-y: auto;
+			}
+			
+			#announcement-panel.show {
+				opacity: 1;
+				visibility: visible;
+				transform: translateY(0);
+			}
+			
+			#announcement-content {
+				color: #374151;
+				line-height: 1.6;
+				font-size: 14px;
+				word-wrap: break-word;
+				white-space: pre-wrap;
+			}
+			
+			#announcement-bell-btn {
+				position: relative;
+				background: #ffffff;
+				border: 1px solid #d1d5db;
+				border-radius: 8px;
+				padding: 6px 12px;
+				cursor: pointer;
+				transition: all 0.2s;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				min-width: 40px;
+				height: 36px;
+			}
+			
+			#announcement-bell-btn:hover {
+				background: #f9fafb;
+				border-color: #9ca3af;
+				transform: translateY(-1px);
+				box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+			}
+			
+			#announcement-bell-btn.active {
+				background: #fef3c7;
+				border-color: #f59e0b;
+			}
+			
+			#announcement-bell-btn svg {
+				width: 18px;
+				height: 18px;
+				fill: #6b7280;
+			}
+			
+			#announcement-bell-btn:hover svg {
+				fill: #374151;
+			}
+			
+			#announcement-bell-btn.active svg {
+				fill: #d97706;
+			}
+			
+			/* 搜索区域容器，用于定位公告面板 */
+			#search-container {
+				position: relative;
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+				align-items: stretch;
+				margin: 0 12px;
+				min-width: 0;
+			}
+			
+			/* 搜索框区域 */
+			#search-section {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				flex: 1;
+				min-width: 0;
 			}
 		`);
 		document.head.appendChild(styleEl);
@@ -406,10 +536,15 @@ return view.extend({
 				batchSection.appendChild(selectedCount);
 				batchSection.appendChild(batchUninstallBtn);
 				
-				// 中间：搜索框
+				// 中间：搜索框容器（包含搜索框和公告面板）
+				var searchContainer = E('div', { 
+					id: 'search-container'
+				}, []);
+				
+				// 搜索框
 				var searchSection = E('div', { 
 					id: 'search-section',
-					'style': 'flex:1; display:flex; align-items:center; gap:8px; background:#ffffff; border:1px solid #bae6fd; border-radius:999px; padding:6px 12px; margin:0 12px; transition:all 0.3s ease;'
+					'style': 'flex:1; display:flex; align-items:center; gap:8px; background:#ffffff; border:1px solid #bae6fd; border-radius:999px; padding:6px 12px; transition:all 0.3s ease;'
 				}, []);
 				var searchIcon = E('img', { 
 					src: L.resource('icons/ss.svg'), 
@@ -429,6 +564,18 @@ return view.extend({
 				searchSection.appendChild(searchIcon);
 				searchSection.appendChild(searchInput);
 				searchSection.appendChild(clearBtn);
+				
+				// 公告面板
+				var announcementPanel = E('div', {
+					id: 'announcement-panel'
+				}, [
+					E('div', {
+						id: 'announcement-content'
+					}, _('欢迎使用高级卸载功能！我们持续优化产品体验，如有问题请及时反馈。'))
+				]);
+				
+				searchContainer.appendChild(searchSection);
+				searchContainer.appendChild(announcementPanel);
 				searchInput.addEventListener('input', function(){ clearBtn.style.display = searchInput.value ? 'inline-block' : 'none'; });
 				clearBtn.addEventListener('click', function(e){
 					// 清空搜索框
@@ -467,12 +614,21 @@ return view.extend({
 					// 隐藏其他元素，让搜索框占据更多空间
 					var batchSection = toolbar.querySelector('div:first-child');
 					var historyBtn = document.getElementById('history-log-btn');
+					var bellBtn = document.getElementById('announcement-bell-btn');
 					if (batchSection) batchSection.style.display = 'none';
 					if (historyBtn) historyBtn.style.display = 'none';
+					if (bellBtn) bellBtn.style.display = 'none';
 					// 让搜索框占据全宽
+					searchContainer.style.flex = '1 1 100%';
+					searchContainer.style.margin = '0';
+					searchContainer.style.order = '1';
 					searchSection.style.flex = '1 1 100%';
-					searchSection.style.margin = '0';
-					searchSection.style.order = '1';
+					// 关闭公告面板（如果打开）
+					if (window.announcementVisible) {
+						window.announcementVisible = false;
+						announcementPanel.classList.remove('show');
+						announcementBellBtn.classList.remove('active');
+					}
 					// 聚焦到输入框
 					setTimeout(function() { searchInput.focus(); }, 100);
 				}
@@ -483,12 +639,15 @@ return view.extend({
 					// 恢复其他元素
 					var batchSection = toolbar.querySelector('div:first-child');
 					var historyBtn = document.getElementById('history-log-btn');
+					var bellBtn = document.getElementById('announcement-bell-btn');
 					if (batchSection) batchSection.style.display = '';
 					if (historyBtn) historyBtn.style.display = '';
+					if (bellBtn) bellBtn.style.display = '';
 					// 恢复搜索框样式
+					searchContainer.style.flex = '';
+					searchContainer.style.margin = '';
+					searchContainer.style.order = '';
 					searchSection.style.flex = '';
-					searchSection.style.margin = '';
-					searchSection.style.order = '';
 				}
 				// 点击搜索区域时展开（如果还没展开）
 				searchSection.addEventListener('click', function(e) {
@@ -545,6 +704,45 @@ return view.extend({
 					resizeTimer = setTimeout(updatePlaceholder, 100);
 				});
 				
+				// 公告铃铛按钮
+				var bellIconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25-2.5 7-2.5 7h15s-2.5-1.75-2.5-7c0-3.87-3.13-7-7-7zm0 2c2.76 0 5 2.24 5 5 0 4.67 1.67 6.33 2.5 7H4.5c.83-.67 2.5-2.33 2.5-7 0-2.76 2.24-5 5-5zm-1 15h2v2h-2v-2z"/></svg>';
+				var announcementBellBtn = E('button', {
+					id: 'announcement-bell-btn',
+					type: 'button',
+					title: _('公告')
+				});
+				announcementBellBtn.innerHTML = bellIconSvg;
+				
+				// 公告按钮点击事件
+				window.announcementVisible = false;
+				announcementBellBtn.addEventListener('click', function(e) {
+					e.preventDefault();
+					e.stopPropagation();
+					window.announcementVisible = !window.announcementVisible;
+					if (window.announcementVisible) {
+						announcementPanel.classList.add('show');
+						announcementBellBtn.classList.add('active');
+					} else {
+						announcementPanel.classList.remove('show');
+						announcementBellBtn.classList.remove('active');
+					}
+				});
+				
+				// 点击外部区域关闭公告面板
+				var announcementClickHandler = function(e) {
+					if (window.announcementVisible) {
+						var target = e.target;
+						if (!announcementPanel.contains(target) && 
+							target !== announcementBellBtn && 
+							!announcementBellBtn.contains(target)) {
+							window.announcementVisible = false;
+							announcementPanel.classList.remove('show');
+							announcementBellBtn.classList.remove('active');
+						}
+					}
+				};
+				document.addEventListener('click', announcementClickHandler);
+				
 				// 右侧：查看历史更新日志按钮
 				var historyLogGradient = 'linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%)';
 				var historyLogGradientHover = 'linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #7c3aed 100%)';
@@ -577,7 +775,8 @@ return view.extend({
 				});
 				
 				toolbar.appendChild(batchSection);
-				toolbar.appendChild(searchSection);
+				toolbar.appendChild(searchContainer);
+				toolbar.appendChild(announcementBellBtn);
 				toolbar.appendChild(historyLogBtn);
 				
 				return toolbar;
@@ -3088,10 +3287,22 @@ return view.extend({
 				batchUninstall();
 				return;
 			}
+			if (t.id === 'announcement-bell-btn' || (t.closest && t.closest('#announcement-bell-btn'))) {
+				// 公告按钮的点击事件已经在按钮上定义了，这里不需要额外处理
+				return;
+			}
 			if (t.id === 'history-log-btn' || (t.closest && t.closest('#history-log-btn'))) {
 				ev.preventDefault();
 				ev.stopPropagation();
 				showHistoryLog();
+				// 关闭公告面板（如果打开）
+				var announcementPanel = document.getElementById('announcement-panel');
+				var announcementBellBtn = document.getElementById('announcement-bell-btn');
+				if (announcementPanel && announcementPanel.classList.contains('show')) {
+					announcementPanel.classList.remove('show');
+					if (announcementBellBtn) announcementBellBtn.classList.remove('active');
+					window.announcementVisible = false;
+				}
 				return;
 			}
 			if (t.id === 'filter-clear') { 
