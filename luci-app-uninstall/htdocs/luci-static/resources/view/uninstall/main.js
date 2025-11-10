@@ -641,6 +641,7 @@ return view.extend({
 			'luci-app-mosdns': 'mosdns',
 			'luci-app-openvpn': 'openvpn',
 			'luci-app-openvpn-server': 'openvpn-server',
+			'luci-app-wireguard': 'wireguard',
 			'luci-app-wechatpush': 'wechatpush',
 			'luci-app-rtp2httpd': 'rtp2httpd',
 			'luci-app-ap-modem': 'ap-modem',
