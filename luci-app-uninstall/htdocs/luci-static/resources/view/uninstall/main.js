@@ -267,10 +267,12 @@ return view.extend({
 				
 				#announcement-panel {
 					max-width: 100%;
-					left: 0;
-					right: 0;
 					margin-left: 0;
 					margin-right: 0;
+				}
+				
+				#announcement-panel.show {
+					padding: 14px;
 				}
 			}
 			
@@ -341,10 +343,11 @@ return view.extend({
 				#announcement-panel {
 					max-width: 100%;
 					font-size: 13px;
-					left: 0;
-					right: 0;
 					margin-left: 0;
 					margin-right: 0;
+				}
+				
+				#announcement-panel.show {
 					padding: 12px;
 				}
 				
@@ -355,29 +358,31 @@ return view.extend({
 			
 			/* 公告面板样式 */
 			#announcement-panel {
-				position: absolute;
-				top: 100%;
-				left: 0;
-				right: 0;
-				margin-top: 8px;
+				width: 100%;
 				background: #ffffff;
-				border: 1px solid #e5e7eb;
-				border-radius: 8px;
-				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-				padding: 16px;
-				z-index: 300;
+				border: 1px solid transparent;
+				border-radius: 12px;
+				box-shadow: none;
+				padding: 0 16px;
+				margin-top: 0;
 				opacity: 0;
 				visibility: hidden;
-				transform: translateY(-10px);
-				transition: opacity 0.3s ease-out, transform 0.3s ease-out, visibility 0.3s ease-out;
-				max-height: 300px;
-				overflow-y: auto;
+				max-height: 0;
+				overflow: hidden;
+				transform: translateY(-6px);
+				transition: max-height 0.3s ease, opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease, padding 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 			}
 			
 			#announcement-panel.show {
+				margin-top: 10px;
 				opacity: 1;
 				visibility: visible;
+				max-height: 1000px;
+				padding: 16px;
 				transform: translateY(0);
+				border-color: #e5e7eb;
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+				overflow: auto;
 			}
 			
 			#announcement-content {
