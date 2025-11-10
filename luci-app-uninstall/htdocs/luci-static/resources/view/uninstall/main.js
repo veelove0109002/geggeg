@@ -1479,18 +1479,14 @@ return view.extend({
 						var grad = 'linear-gradient(90deg, rgba(240,245,255,0.6) 0%, rgba(230,240,255,0.6) 50%, rgba(219,228,255,0.6) 100%)';
 						var style = 'margin:0; font-size:20px; color:rgba(17,24,39,0.72); font-weight:800; display:inline-block; padding:8px 16px; border-radius:14px; background: ' + grad + '; backdrop-filter: saturate(160%) blur(10px); -webkit-backdrop-filter: saturate(160%) blur(10px); border:1px solid rgba(255,255,255,0.45); box-shadow: 0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.25)';
 						return E('h3', { 'style': style }, title);
+					})(),
+					(function(){
+						// 标题右侧的计数徽标
+						var badgeStyle = 'display:inline-flex; align-items:center; justify-content:center; height:26px; padding:0 10px; font-size:12px; font-weight:700; color:#0f172a; background:linear-gradient(135deg, #dbeafe 0%, #e9d5ff 100%); border:1px solid rgba(15,23,42,0.08); border-radius:999px; box-shadow:0 2px 6px rgba(99,102,241,0.18);';
+						return E('span', { 'style': badgeStyle }, String(count));
 					})()
 				]),
-				(function(){
-					// 单独的计数徽标（右侧）
-					var badgeStyle = 'display:inline-flex; align-items:center; justify-content:center; height:28px; padding:0 10px; font-size:12px; font-weight:700; color:#0f172a; background:linear-gradient(135deg, #dbeafe 0%, #e9d5ff 100%); border:1px solid rgba(15,23,42,0.08); border-radius:999px; box-shadow:0 2px 6px rgba(99,102,241,0.18);';
-					var badge = E('span', { 'style': badgeStyle }, String(count));
-					// 右侧容器：计数徽标 + 折叠按钮
-					return E('div', { 'style': 'display:flex; align-items:center; gap:10px;' }, [
-						badge,
-						collapseBtn
-					]);
-				})()
+				collapseBtn
 			].filter(function(item) { return item !== null; }));
 			
 			var groupGrid = E('div', { 
