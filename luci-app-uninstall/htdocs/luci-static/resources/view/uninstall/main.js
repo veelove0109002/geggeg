@@ -852,6 +852,45 @@ return view.extend({
 			return zh || NAME_MAP[name] || name;
 		}
 
+		// 获取软件对应的 URL 路径
+		function getAppUrl(pkgName){
+			if (!pkgName || pkgName === 'luci-app-uninstall') return null;
+			// 移除 luci-app- 前缀
+			var appName = pkgName.replace(/^luci-app-/, '');
+			// 特殊映射
+			var specialUrls = {
+				'wireguard': '/cgi-bin/luci/admin/network/wireguard',
+				'openvpn': '/cgi-bin/luci/admin/services/openvpn',
+				'passwall': '/cgi-bin/luci/admin/services/passwall',
+				'homeproxy': '/cgi-bin/luci/admin/services/homeproxy',
+				'adguardhome': '/cgi-bin/luci/admin/services/adguardhome',
+				'openclash': '/cgi-bin/luci/admin/services/openclash',
+				'dockerman': '/cgi-bin/luci/admin/docker',
+				'zerotier': '/cgi-bin/luci/admin/services/zerotier',
+				'ddns': '/cgi-bin/luci/admin/services/ddns',
+				'firewall': '/cgi-bin/luci/admin/network/firewall',
+				'samba4': '/cgi-bin/luci/admin/services/samba4',
+				'ksmbd': '/cgi-bin/luci/admin/services/ksmbd',
+				'upnp': '/cgi-bin/luci/admin/services/upnp',
+				'wol': '/cgi-bin/luci/admin/services/wol',
+				'transmission': '/cgi-bin/luci/admin/services/transmission',
+				'aria2': '/cgi-bin/luci/admin/services/aria2',
+				'smartdns': '/cgi-bin/luci/admin/services/smartdns',
+				'mosdns': '/cgi-bin/luci/admin/services/mosdns',
+				'cpufreq': '/cgi-bin/luci/admin/system/cpufreq',
+				'statistics': '/cgi-bin/luci/admin/statistics',
+				'filetransfer': '/cgi-bin/luci/admin/system/filetransfer',
+				'fan': '/cgi-bin/luci/admin/system/fan',
+				'diskman': '/cgi-bin/luci/admin/system/diskman',
+				'ttyd': '/cgi-bin/luci/admin/system/ttyd'
+			};
+			if (specialUrls[appName]) {
+				return specialUrls[appName];
+			}
+			// 默认路径：尝试常见的路径模式
+			return '/cgi-bin/luci/admin/' + appName;
+		}
+
 		function renderCard(pkg){
 			var isNew = false;
 			if (pkg && pkg.install_time) {
@@ -1023,7 +1062,57 @@ return view.extend({
 		});
 		children.push(reportUninstallBtn);
 	}
-			// 顶部右侧：仅在“高级卸载”卡片上展示图标按钮与远端版本
+			// 右上角：小眼睛图标（打开软件）- 排除"高级卸载"卡片
+			if (pkg && pkg.name !== 'luci-app-uninstall') {
+				var appUrl = getAppUrl(pkg.name);
+				if (appUrl) {
+					// 创建唯一的渐变 ID 避免冲突
+					var gradientId = 'eyeGrad_' + pkg.name.replace(/[^a-zA-Z0-9]/g, '_') + '_' + Date.now();
+					// 创建渐变小眼睛图标 SVG（使用 encodeURIComponent 确保正确编码）
+					var svgContent = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="' + gradientId + '" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" /><stop offset="50%" style="stop-color:#8b5cf6;stop-opacity:1" /><stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" /></linearGradient></defs><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="url(#' + gradientId + ')" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="12" cy="12" r="3" stroke="url(#' + gradientId + ')" stroke-width="2" fill="none"/></svg>';
+					var eyeIconSvg = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgContent);
+					
+					// 使用渐变边框效果的按钮
+					var eyeBtn = E('button', {
+						type: 'button',
+						title: _('打开软件'),
+						'style': 'position:absolute; right:12px; top:12px; width:32px; height:32px; padding:2px; background:linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7); border:none; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 8px rgba(99,102,241,0.3); transition:all .2s ease; z-index:10; overflow:visible;'
+					}, [
+						E('span', {
+							'style': 'width:100%; height:100%; background:linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%); border-radius:50%; display:flex; align-items:center; justify-content:center;'
+						}, [
+							E('img', {
+								src: eyeIconSvg,
+								alt: 'open',
+								width: 18,
+								height: 18,
+								'style': 'display:block; object-fit:contain; pointer-events:none;'
+							})
+						])
+					]);
+					
+					eyeBtn.addEventListener('mouseenter', function(){
+						this.style.transform = 'translateY(-2px) scale(1.1)';
+						this.style.background = 'linear-gradient(135deg, #4f46e5, #7c3aed, #9333ea)';
+						this.style.boxShadow = '0 4px 12px rgba(99,102,241,0.5)';
+					});
+					
+					eyeBtn.addEventListener('mouseleave', function(){
+						this.style.transform = 'translateY(0) scale(1)';
+						this.style.background = 'linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7)';
+						this.style.boxShadow = '0 2px 8px rgba(99,102,241,0.3)';
+					});
+					
+					eyeBtn.addEventListener('click', function(ev){
+						ev.preventDefault();
+						ev.stopPropagation();
+						window.location.href = appUrl;
+					});
+					
+					children.push(eyeBtn);
+				}
+			}
+			// 顶部右侧：仅在"高级卸载"卡片上展示图标按钮与远端版本
 			if (pkg && pkg.name === 'luci-app-uninstall') {
 				var actionsTop = E('div', { 'style': 'position:absolute; right:10px; top:8px; display:flex; gap:8px; align-items:center; z-index:1000; pointer-events:auto;' }, [
 					E('span', { id: 'remote-version', 'style': 'font-size:12px; color:#111827; background:#e0f2fe; border:1px solid #93c5fd; border-radius:999px; padding:2px 8px; display:none; pointer-events:none;' }, ''),
