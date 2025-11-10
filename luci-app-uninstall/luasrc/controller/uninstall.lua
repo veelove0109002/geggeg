@@ -1901,6 +1901,8 @@ function action_save_collapse_state()
 	end
 	
 	local data = {}
+	local body = http.content() or ''
+	local content_type = http.getenv('CONTENT_TYPE') or ''
 	
 	-- 方法1: 优先从表单获取（LuCI 对表单支持更好）
 	local section = http.formvalue('section') or ''
@@ -1909,17 +1911,36 @@ function action_save_collapse_state()
 		data[section] = (collapsed == 'true' or collapsed == true)
 	end
 	
-	-- 方法2: 如果表单为空，尝试解析 JSON 请求体
+	-- 方法2: 如果表单为空，尝试从请求体解析数据
 	if not data or not next(data) then
-		local body = http.content() or ''
 		if body and #body > 0 then
-			-- 尝试解析 JSON
-			local ok, state = pcall(json.parse, body)
-			if ok and state and type(state) == 'table' then
-				-- JSON 数据可能是 { "sectionName": true } 格式
-				for k, v in pairs(state) do
-					if type(k) == 'string' then
-						data[k] = (v == true or v == 'true')
+			-- 检查 Content-Type
+			if content_type:match('application/x%-www%-form%-urlencoded') then
+				-- 解析 URL 编码的表单数据
+				local body_section, body_collapsed
+				for key, val in body:gmatch('([^&=]+)=([^&]*)') do
+					-- URL 解码
+					key = key:gsub('+', ' '):gsub('%%(%x%x)', function(h) return string.char(tonumber(h, 16)) end)
+					val = val:gsub('+', ' '):gsub('%%(%x%x)', function(h) return string.char(tonumber(h, 16)) end)
+					if key == 'section' then
+						body_section = val
+					elseif key == 'collapsed' then
+						body_collapsed = val
+					end
+				end
+				-- 如果从 body 中获取到 section 和 collapsed，使用它们
+				if body_section and #body_section > 0 then
+					data[body_section] = (body_collapsed == 'true' or body_collapsed == true)
+				end
+			elseif content_type:match('application/json') then
+				-- 尝试解析 JSON
+				local ok, state = pcall(json.parse, body)
+				if ok and state and type(state) == 'table' then
+					-- JSON 数据可能是 { "sectionName": true } 格式
+					for k, v in pairs(state) do
+						if type(k) == 'string' then
+							data[k] = (v == true or v == 'true')
+						end
 					end
 				end
 			end
@@ -1928,7 +1949,6 @@ function action_save_collapse_state()
 	
 	-- 如果没有数据，返回错误（添加调试信息）
 	if not data or not next(data) then
-		local content_type = http.getenv('CONTENT_TYPE') or 'unknown'
 		local request_method = http.getenv('REQUEST_METHOD') or 'unknown'
 		local body_len = body and #body or 0
 		return json_response({ 
@@ -1938,7 +1958,9 @@ function action_save_collapse_state()
 				content_type = content_type,
 				request_method = request_method,
 				body_length = body_len,
-				body_preview = body and body:sub(1, 100) or ''
+				body_preview = body and body:sub(1, 100) or '',
+				form_section = section,
+				form_collapsed = collapsed
 			}
 		}, 400)
 	end

@@ -15,6 +15,14 @@ return view.extend({
 	// Helper to fetch JSON across different LuCI versions
 	_httpJson: function(url, options) {
 		options = options || {};
+		// 对于 POST 请求，优先使用 fetch，因为 L.Request.request 可能不支持 body
+		if (options.method && options.method.toUpperCase() === 'POST' && typeof fetch === 'function') {
+			options.credentials = 'include';
+			return fetch(url, options).then(function(res){
+				if (!res.ok) throw new Error('HTTP ' + res.status);
+				return res.json();
+			});
+		}
 		if (L && L.Request && typeof L.Request.request === 'function') {
 			return L.Request.request(url, options).then(function(res){ return res.json(); });
 		}
