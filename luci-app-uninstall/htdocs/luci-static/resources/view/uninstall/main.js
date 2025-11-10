@@ -648,10 +648,20 @@ return view.extend({
 			'luci-app-filebrowser-go': 'filebrowser-go',
 			'luci-app-5GSmartCase': '5GSmartCase'
 		};
-		function packageIcon(name){
+		function packageIcon(name, category){
 			// 从 app-icons 目录加载 PNG
 			// 规则：luci-app-xxx[-yyy...] -> 移除前缀与横杆，得到 xxx[yyy].png
 			// 特殊映射优先
+			// DDNSTO 与 LinkEase 图标按分类单独处理
+			if (name === 'luci-app-ddnsto' || name === 'luci-app-linkease') {
+				var baseName = (name === 'luci-app-ddnsto') ? 'ddnsto' : 'linkease';
+				// iStoreOS 插件类走 app-icons，其它分类走 icons
+				if (category === 'iStoreOS插件类') {
+					return L.resource('app-icons/' + baseName + '.png');
+				} else {
+					return L.resource('icons/' + baseName + '.png');
+				}
+			}
 			var base = SPECIAL_ICON_MAP[name];
 			if (base) return L.resource('app-icons/' + base + '.png');
 			if (name === 'luci-app-uninstall') return L.resource('app-icons/gjxz.png');
@@ -1153,7 +1163,7 @@ return view.extend({
 				updateBatchUI();
 			});
 			
-		var img = E('img', { src: packageIcon(pkg.name), alt: pkg.name, width: 56, height: 56, 'style': 'border-radius:10px;background:#f3f4f6;object-fit:contain;border:1px solid #e5e7eb;' });
+		var img = E('img', { src: packageIcon(pkg.name, pkg.category), alt: pkg.name, width: 56, height: 56, 'style': 'border-radius:10px;background:#f3f4f6;object-fit:contain;border:1px solid #e5e7eb;' });
 		img.addEventListener('error', function(){ img.src = DEFAULT_ICON; });
 			
 			var titleCn = E('div', { 'style': 'font-weight:600;color:#111827;word-break:break-all;font-size:14px;' }, (pkg.display_name || displayName(pkg.name, pkg.category)));
