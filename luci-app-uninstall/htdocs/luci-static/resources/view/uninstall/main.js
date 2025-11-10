@@ -416,17 +416,26 @@ return view.extend({
 			}
 			
 			#announcement-bell-btn svg {
-				width: 18px;
-				height: 18px;
-				fill: #6b7280;
+				width: 20px;
+				height: 20px;
+				display: block;
+				vertical-align: middle;
 			}
 			
 			#announcement-bell-btn:hover svg {
-				fill: #374151;
+				transform: scale(1.1);
+				transition: transform 0.2s ease;
 			}
 			
 			#announcement-bell-btn.active svg {
-				fill: #d97706;
+				animation: bell-ring 0.5s ease-in-out;
+			}
+			
+			@keyframes bell-ring {
+				0%, 100% { transform: rotate(0deg) scale(1); }
+				10%, 30% { transform: rotate(-8deg) scale(1.05); }
+				20%, 40% { transform: rotate(8deg) scale(1.05); }
+				50% { transform: rotate(0deg) scale(1); }
 			}
 			
 			/* 搜索区域容器，用于定位公告面板 */
@@ -628,6 +637,10 @@ return view.extend({
 						window.announcementVisible = false;
 						announcementPanel.classList.remove('show');
 						announcementBellBtn.classList.remove('active');
+						// 更新图标渐变色
+						if (announcementBellBtn.updateGradient) {
+							announcementBellBtn.updateGradient(false);
+						}
 					}
 					// 聚焦到输入框
 					setTimeout(function() { searchInput.focus(); }, 100);
@@ -704,14 +717,46 @@ return view.extend({
 					resizeTimer = setTimeout(updatePlaceholder, 100);
 				});
 				
-				// 公告铃铛按钮
-				var bellIconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25-2.5 7-2.5 7h15s-2.5-1.75-2.5-7c0-3.87-3.13-7-7-7zm0 2c2.76 0 5 2.24 5 5 0 4.67 1.67 6.33 2.5 7H4.5c.83-.67 2.5-2.33 2.5-7 0-2.76 2.24-5 5-5zm-1 15h2v2h-2v-2z"/></svg>';
+				// 公告铃铛按钮 - 使用渐变色图标
+				// 生成唯一的ID以避免多个实例冲突
+				var bellGradientId = 'bellGradient_' + Date.now();
+				var bellGradientActiveId = 'bellGradientActive_' + Date.now();
+				
+				// 使用更清晰的铃铛图标路径
+				var bellIconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" preserveAspectRatio="xMidYMid meet" style="display:block;overflow:visible;">' +
+					'<defs>' +
+					'<linearGradient id="' + bellGradientId + '" x1="0%" y1="0%" x2="100%" y2="100%">' +
+					'<stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />' +
+					'<stop offset="50%" style="stop-color:#6366f1;stop-opacity:1" />' +
+					'<stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />' +
+					'</linearGradient>' +
+					'<linearGradient id="' + bellGradientActiveId + '" x1="0%" y1="0%" x2="100%" y2="100%">' +
+					'<stop offset="0%" style="stop-color:#f59e0b;stop-opacity:1" />' +
+					'<stop offset="50%" style="stop-color:#f97316;stop-opacity:1" />' +
+					'<stop offset="100%" style="stop-color:#ea580c;stop-opacity:1" />' +
+					'</linearGradient>' +
+					'</defs>' +
+					'<path d="M12 2c-1.1 0-2 .9-2 2v.29C7.12 5.14 5 7.82 5 11v6l-2 2v1h18v-1l-2-2v-6c0-3.18-2.12-5.86-5-6.71V4c0-1.1-.9-2-2-2zm0 3c.55 0 1 .45 1 1v1.07C15.36 7.27 17 9.47 17 12v5.83l.17.17H6.83L7 17.83V12c0-2.53 1.64-4.73 4-4.93V6c0-.55.45-1 1-1zm0 13c-1.1 0-2-.9-2-2h4c0 1.1-.9 2-2 2z" fill="url(#' + bellGradientId + ')" stroke="none"/>' +
+					'</svg>';
 				var announcementBellBtn = E('button', {
 					id: 'announcement-bell-btn',
 					type: 'button',
-					title: _('公告')
+					title: _('公告'),
+					'style': 'position:relative;'
 				});
 				announcementBellBtn.innerHTML = bellIconSvg;
+				
+				// 更新图标渐变色的函数（保存到按钮元素上以便全局访问）
+				announcementBellBtn.updateGradient = function(isActive) {
+					var svg = this.querySelector('svg');
+					if (svg) {
+						var paths = svg.querySelectorAll('path');
+						var gradientId = isActive ? bellGradientActiveId : bellGradientId;
+						paths.forEach(function(path) {
+							path.setAttribute('fill', 'url(#' + gradientId + ')');
+						});
+					}
+				};
 				
 				// 公告按钮点击事件
 				window.announcementVisible = false;
@@ -721,12 +766,17 @@ return view.extend({
 					window.announcementVisible = !window.announcementVisible;
 					if (window.announcementVisible) {
 						announcementPanel.classList.add('show');
-						announcementBellBtn.classList.add('active');
+						this.classList.add('active');
+						this.updateGradient(true);
 					} else {
 						announcementPanel.classList.remove('show');
-						announcementBellBtn.classList.remove('active');
+						this.classList.remove('active');
+						this.updateGradient(false);
 					}
 				});
+				
+				// 初始化图标渐变色
+				announcementBellBtn.updateGradient(false);
 				
 				// 点击外部区域关闭公告面板
 				var announcementClickHandler = function(e) {
@@ -738,6 +788,10 @@ return view.extend({
 							window.announcementVisible = false;
 							announcementPanel.classList.remove('show');
 							announcementBellBtn.classList.remove('active');
+							// 更新图标渐变色
+							if (announcementBellBtn.updateGradient) {
+								announcementBellBtn.updateGradient(false);
+							}
 						}
 					}
 				};
@@ -3300,7 +3354,13 @@ return view.extend({
 				var announcementBellBtn = document.getElementById('announcement-bell-btn');
 				if (announcementPanel && announcementPanel.classList.contains('show')) {
 					announcementPanel.classList.remove('show');
-					if (announcementBellBtn) announcementBellBtn.classList.remove('active');
+					if (announcementBellBtn) {
+						announcementBellBtn.classList.remove('active');
+						// 更新图标渐变色
+						if (announcementBellBtn.updateGradient) {
+							announcementBellBtn.updateGradient(false);
+						}
+					}
 					window.announcementVisible = false;
 				}
 				return;
