@@ -485,7 +485,7 @@ return view.extend({
 			(function(){
 				var toolbar = E('div', { 
 					id: 'batch-toolbar',
-					'style': 'margin:8px 0; display:flex; align-items:center; gap:12px; padding:10px 16px; background:linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border:1px solid #bae6fd; border-radius:12px; box-shadow:0 2px 4px rgba(0,0,0,0.05); position:sticky; top:0; z-index:100; backdrop-filter:saturate(160%) blur(6px); -webkit-backdrop-filter:saturate(160%) blur(6px); flex-wrap:nowrap;'
+					'style': 'margin:0; display:flex; align-items:center; gap:12px; padding:10px 16px; background:linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border:1px solid #bae6fd; border-radius:12px; box-shadow:0 2px 4px rgba(0,0,0,0.05); backdrop-filter:saturate(160%) blur(6px); -webkit-backdrop-filter:saturate(160%) blur(6px); flex-wrap:nowrap;'
 				}, []);
 				
 				// 左侧：批量操作区域（缩短）
@@ -861,7 +861,7 @@ return view.extend({
 				
 				// 创建包装器，包含工具栏和公告面板
 				var toolbarWrapper = E('div', {
-					'style': 'position: relative;'
+					'style': 'position: sticky; top: 0; z-index: 100; margin: 8px 0;'
 				}, []);
 				
 				toolbarWrapper.appendChild(toolbar);
