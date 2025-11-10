@@ -273,8 +273,10 @@ return view.extend({
 				}
 				
 				#announcement-panel.show {
-					margin-top: -8px;
+					margin-top: 6px;
 					padding: 14px;
+					border-top: 1px solid #bae6fd;
+					border-radius: 12px;
 				}
 			}
 			
@@ -351,8 +353,10 @@ return view.extend({
 				}
 				
 				#announcement-panel.show {
-					margin-top: -8px;
+					margin-top: 6px;
 					padding: 12px;
+					border-top: 1px solid #bae6fd;
+					border-radius: 12px;
 				}
 				
 				#announcement-content {
@@ -382,21 +386,22 @@ return view.extend({
 			}
 			
 			#announcement-panel.show {
-				margin-top: -12px;
+				margin-top: 8px;
 				opacity: 1;
 				visibility: visible;
 				max-height: 500px;
 				padding: 16px;
 				transform: translateY(0);
 				border-color: #bae6fd;
-				border-top: none;
+				border-top: 1px solid #bae6fd;
+				border-radius: 12px;
 				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 				overflow-y: auto;
 			}
 			
-			/* 当公告面板展开时，调整工具栏的圆角 */
+			/* 当公告面板展开时，保持工具栏的圆角（因为现在有间距了） */
 			#batch-toolbar.announcement-open {
-				border-radius: 12px 12px 0 0 !important;
+				border-radius: 12px !important;
 			}
 			
 			#announcement-content {
