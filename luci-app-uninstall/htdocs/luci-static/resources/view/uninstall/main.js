@@ -896,21 +896,47 @@ return view.extend({
 				return;
 			}
 			
-			// 使用 HEAD 请求检查 URL 是否存在
+			// 使用 HEAD 请求检查 URL 是否存在，失败时回退到 GET
 			if (typeof fetch === 'function') {
 				fetch(url, {
 					method: 'HEAD',
 					credentials: 'include',
 					cache: 'no-cache'
 				}).then(function(response) {
-					// 200-299 或 302/301 重定向都认为可用
+					// 200-299 或 302/301 重定向都认为可用；否则尝试 GET 回退
 					var available = response.ok || (response.status >= 300 && response.status < 400);
-					urlCheckCache[url] = available;
-					callback(available);
+					if (available) {
+						urlCheckCache[url] = true;
+						callback(true);
+					} else {
+						// 回退 GET
+						fetch(url, {
+							method: 'GET',
+							credentials: 'include',
+							cache: 'no-cache'
+						}).then(function(res2){
+							var ok2 = res2.ok || (res2.status >= 300 && res2.status < 400);
+							urlCheckCache[url] = ok2;
+							callback(ok2);
+						}).catch(function(){
+							urlCheckCache[url] = false;
+							callback(false);
+						});
+					}
 				}).catch(function() {
-					// 请求失败，认为不可用
-					urlCheckCache[url] = false;
-					callback(false);
+					// HEAD 失败回退到 GET
+					fetch(url, {
+						method: 'GET',
+						credentials: 'include',
+						cache: 'no-cache'
+					}).then(function(res2){
+						var ok2 = res2.ok || (res2.status >= 300 && res2.status < 400);
+						urlCheckCache[url] = ok2;
+						callback(ok2);
+					}).catch(function(){
+						urlCheckCache[url] = false;
+						callback(false);
+					});
 				});
 			} else {
 				// 如果没有 fetch，使用 XMLHttpRequest
@@ -920,13 +946,46 @@ return view.extend({
 				xhr.onreadystatechange = function() {
 					if (xhr.readyState === 4) {
 						var available = (xhr.status >= 200 && xhr.status < 300) || (xhr.status >= 300 && xhr.status < 400);
-						urlCheckCache[url] = available;
-						callback(available);
+						if (available) {
+							urlCheckCache[url] = true;
+							callback(true);
+						} else {
+							// 回退到 GET
+							var xhr2 = new XMLHttpRequest();
+							xhr2.open('GET', url, true);
+							xhr2.withCredentials = true;
+							xhr2.onreadystatechange = function() {
+								if (xhr2.readyState === 4) {
+									var ok2 = (xhr2.status >= 200 && xhr2.status < 300) || (xhr2.status >= 300 && xhr2.status < 400);
+									urlCheckCache[url] = ok2;
+									callback(ok2);
+								}
+							};
+							xhr2.onerror = function() {
+								urlCheckCache[url] = false;
+								callback(false);
+							};
+							xhr2.send();
+						}
 					}
 				};
 				xhr.onerror = function() {
-					urlCheckCache[url] = false;
-					callback(false);
+					// 回退到 GET
+					var xhr2 = new XMLHttpRequest();
+					xhr2.open('GET', url, true);
+					xhr2.withCredentials = true;
+					xhr2.onreadystatechange = function() {
+						if (xhr2.readyState === 4) {
+							var ok2 = (xhr2.status >= 200 && xhr2.status < 300) || (xhr2.status >= 300 && xhr2.status < 400);
+							urlCheckCache[url] = ok2;
+							callback(ok2);
+						}
+					};
+					xhr2.onerror = function() {
+						urlCheckCache[url] = false;
+						callback(false);
+					};
+					xhr2.send();
 				};
 				xhr.send();
 			}
@@ -962,7 +1021,8 @@ return view.extend({
 				'filetransfer': '/cgi-bin/luci/admin/system/filetransfer',
 				'fan': '/cgi-bin/luci/admin/system/fan',
 				'diskman': '/cgi-bin/luci/admin/system/diskman',
-				'ttyd': '/cgi-bin/luci/admin/system/ttyd'
+				'ttyd': '/cgi-bin/luci/admin/system/ttyd',
+				'socat': '/cgi-bin/luci/admin/network/socat'
 			};
 			if (specialUrls[appName]) {
 				return specialUrls[appName];
