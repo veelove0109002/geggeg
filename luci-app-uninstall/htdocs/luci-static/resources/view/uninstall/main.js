@@ -852,6 +852,86 @@ return view.extend({
 			return zh || NAME_MAP[name] || name;
 		}
 
+		// 已知没有界面的软件列表（黑名单）
+		var NO_UI_PACKAGES = {
+			'luci-app-cifs-mount': true,
+			'luci-app-mergerfs': true,
+			'luci-app-nfs': true,
+			'luci-app-oaf': true,
+			'luci-app-package-manager': true,
+			'luci-app-unishare': true,
+			'luci-app-cpufreq': true,
+			'luci-app-cpuset': true,
+			'luci-app-hd-idle': true,
+			'luci-app-turboacc': true,
+			'luci-app-mwan3': true,
+			'luci-app-mwan3helper': true,
+			'luci-app-vlmcsd': true,
+			'luci-app-attendedsysupgrade': true,
+			'luci-app-statistics': true,
+			'luci-app-nlbwmon': true,
+			'luci-app-tinyproxy': true,
+			'luci-app-shadowsocks-libev': true,
+			'luci-app-banip': true,
+			'luci-app-minidlna': true,
+			'luci-app-frpc': true,
+			'luci-app-frps': true,
+			'luci-app-socat': true,
+			'luci-app-kodexplorer': true
+		};
+
+		// URL 可用性检查缓存
+		var urlCheckCache = {};
+
+		// 检查 URL 是否可用（异步）
+		function checkUrlAvailable(url, callback) {
+			if (!url) {
+				callback(false);
+				return;
+			}
+			
+			// 检查缓存
+			if (urlCheckCache.hasOwnProperty(url)) {
+				callback(urlCheckCache[url]);
+				return;
+			}
+			
+			// 使用 HEAD 请求检查 URL 是否存在
+			if (typeof fetch === 'function') {
+				fetch(url, {
+					method: 'HEAD',
+					credentials: 'include',
+					cache: 'no-cache'
+				}).then(function(response) {
+					// 200-299 或 302/301 重定向都认为可用
+					var available = response.ok || (response.status >= 300 && response.status < 400);
+					urlCheckCache[url] = available;
+					callback(available);
+				}).catch(function() {
+					// 请求失败，认为不可用
+					urlCheckCache[url] = false;
+					callback(false);
+				});
+			} else {
+				// 如果没有 fetch，使用 XMLHttpRequest
+				var xhr = new XMLHttpRequest();
+				xhr.open('HEAD', url, true);
+				xhr.withCredentials = true;
+				xhr.onreadystatechange = function() {
+					if (xhr.readyState === 4) {
+						var available = (xhr.status >= 200 && xhr.status < 300) || (xhr.status >= 300 && xhr.status < 400);
+						urlCheckCache[url] = available;
+						callback(available);
+					}
+				};
+				xhr.onerror = function() {
+					urlCheckCache[url] = false;
+					callback(false);
+				};
+				xhr.send();
+			}
+		}
+
 		// 获取软件对应的 URL 路径
 		function getAppUrl(pkgName){
 			if (!pkgName || pkgName === 'luci-app-uninstall') return null;
@@ -889,6 +969,16 @@ return view.extend({
 			}
 			// 默认路径：尝试常见的路径模式
 			return '/cgi-bin/luci/admin/' + appName;
+		}
+
+		// 检查软件是否有可用界面
+		function hasAvailableUI(pkgName) {
+			// 首先检查黑名单
+			if (NO_UI_PACKAGES[pkgName]) {
+				return false;
+			}
+			// 其他软件默认认为有界面（可以通过异步检查进一步验证）
+			return true;
 		}
 
 		function renderCard(pkg){
@@ -1064,52 +1154,71 @@ return view.extend({
 	}
 			// 右上角：小眼睛图标（打开软件）- 排除"高级卸载"卡片
 			if (pkg && pkg.name !== 'luci-app-uninstall') {
-				var appUrl = getAppUrl(pkg.name);
-				if (appUrl) {
-					// 创建唯一的渐变 ID 避免冲突
-					var gradientId = 'eyeGrad_' + pkg.name.replace(/[^a-zA-Z0-9]/g, '_') + '_' + Date.now();
-					// 创建渐变小眼睛图标 SVG（使用 encodeURIComponent 确保正确编码）
-					var svgContent = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="' + gradientId + '" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" /><stop offset="50%" style="stop-color:#8b5cf6;stop-opacity:1" /><stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" /></linearGradient></defs><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="url(#' + gradientId + ')" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="12" cy="12" r="3" stroke="url(#' + gradientId + ')" stroke-width="2" fill="none"/></svg>';
-					var eyeIconSvg = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgContent);
-					
-					// 使用渐变边框效果的按钮（缩小尺寸）
-					var eyeBtn = E('button', {
-						type: 'button',
-						title: _('打开软件'),
-						'style': 'position:absolute; right:12px; top:12px; width:26px; height:26px; padding:1.5px; background:linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7); border:none; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 6px rgba(99,102,241,0.3); transition:all .2s ease; z-index:10; overflow:visible;'
-					}, [
-						E('span', {
-							'style': 'width:100%; height:100%; background:linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%); border-radius:50%; display:flex; align-items:center; justify-content:center;'
+				// 先检查黑名单（同步检查）
+				if (!hasAvailableUI(pkg.name)) {
+					// 在黑名单中，不显示眼睛图标
+				} else {
+					var appUrl = getAppUrl(pkg.name);
+					if (appUrl) {
+						// 创建唯一的渐变 ID 避免冲突
+						var gradientId = 'eyeGrad_' + pkg.name.replace(/[^a-zA-Z0-9]/g, '_') + '_' + Date.now();
+						// 创建渐变小眼睛图标 SVG（使用 encodeURIComponent 确保正确编码）
+						var svgContent = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="' + gradientId + '" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" /><stop offset="50%" style="stop-color:#8b5cf6;stop-opacity:1" /><stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" /></linearGradient></defs><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="url(#' + gradientId + ')" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="12" cy="12" r="3" stroke="url(#' + gradientId + ')" stroke-width="2" fill="none"/></svg>';
+						var eyeIconSvg = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgContent);
+						
+						// 使用渐变边框效果的按钮（缩小尺寸）- 先隐藏，检查通过后显示
+						var eyeBtn = E('button', {
+							type: 'button',
+							title: _('打开软件'),
+							'style': 'position:absolute; right:12px; top:12px; width:26px; height:26px; padding:1.5px; background:linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7); border:none; border-radius:50%; display:none; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 6px rgba(99,102,241,0.3); transition:all .2s ease; z-index:10; overflow:visible;'
 						}, [
-							E('img', {
-								src: eyeIconSvg,
-								alt: 'open',
-								width: 14,
-								height: 14,
-								'style': 'display:block; object-fit:contain; pointer-events:none;'
-							})
-						])
-					]);
-					
-					eyeBtn.addEventListener('mouseenter', function(){
-						this.style.transform = 'translateY(-2px) scale(1.1)';
-						this.style.background = 'linear-gradient(135deg, #4f46e5, #7c3aed, #9333ea)';
-						this.style.boxShadow = '0 4px 12px rgba(99,102,241,0.5)';
-					});
-					
-					eyeBtn.addEventListener('mouseleave', function(){
-						this.style.transform = 'translateY(0) scale(1)';
-						this.style.background = 'linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7)';
-						this.style.boxShadow = '0 2px 8px rgba(99,102,241,0.3)';
-					});
-					
-					eyeBtn.addEventListener('click', function(ev){
-						ev.preventDefault();
-						ev.stopPropagation();
-						window.location.href = appUrl;
-					});
-					
-					children.push(eyeBtn);
+							E('span', {
+								'style': 'width:100%; height:100%; background:linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%); border-radius:50%; display:flex; align-items:center; justify-content:center;'
+							}, [
+								E('img', {
+									src: eyeIconSvg,
+									alt: 'open',
+									width: 14,
+									height: 14,
+									'style': 'display:block; object-fit:contain; pointer-events:none;'
+								})
+							])
+						]);
+						
+						eyeBtn.addEventListener('mouseenter', function(){
+							this.style.transform = 'translateY(-2px) scale(1.1)';
+							this.style.background = 'linear-gradient(135deg, #4f46e5, #7c3aed, #9333ea)';
+							this.style.boxShadow = '0 4px 12px rgba(99,102,241,0.5)';
+						});
+						
+						eyeBtn.addEventListener('mouseleave', function(){
+							this.style.transform = 'translateY(0) scale(1)';
+							this.style.background = 'linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7)';
+							this.style.boxShadow = '0 2px 6px rgba(99,102,241,0.3)';
+						});
+						
+						eyeBtn.addEventListener('click', function(ev){
+							ev.preventDefault();
+							ev.stopPropagation();
+							window.location.href = appUrl;
+						});
+						
+						// 先添加到 children（在渲染时显示）
+						children.push(eyeBtn);
+						
+						// 异步检查 URL 是否可用
+						checkUrlAvailable(appUrl, function(available) {
+							if (available) {
+								// URL 可用，显示眼睛图标
+								eyeBtn.style.display = 'flex';
+							} else {
+								// URL 不可用，移除眼睛图标
+								if (eyeBtn && eyeBtn.parentNode) {
+									eyeBtn.parentNode.removeChild(eyeBtn);
+								}
+							}
+						});
+					}
 				}
 			}
 			// 顶部右侧：仅在"高级卸载"卡片上展示图标按钮与远端版本
