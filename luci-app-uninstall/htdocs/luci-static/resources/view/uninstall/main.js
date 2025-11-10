@@ -266,12 +266,14 @@ return view.extend({
 				}
 				
 				#announcement-panel {
-					max-width: 100%;
+					width: 100%;
 					margin-left: 0;
 					margin-right: 0;
+					border-radius: 0 0 8px 8px;
 				}
 				
 				#announcement-panel.show {
+					margin-top: -8px;
 					padding: 14px;
 				}
 			}
@@ -341,13 +343,15 @@ return view.extend({
 				}
 				
 				#announcement-panel {
-					max-width: 100%;
+					width: 100%;
 					font-size: 13px;
 					margin-left: 0;
 					margin-right: 0;
+					border-radius: 0 0 8px 8px;
 				}
 				
 				#announcement-panel.show {
+					margin-top: -8px;
 					padding: 12px;
 				}
 				
@@ -356,33 +360,43 @@ return view.extend({
 				}
 			}
 			
-			/* 公告面板样式 */
+			/* 公告面板样式 - 在工具栏外部下拉 */
 			#announcement-panel {
+				position: relative;
 				width: 100%;
 				background: #ffffff;
 				border: 1px solid transparent;
-				border-radius: 12px;
+				border-top: none;
+				border-radius: 0 0 12px 12px;
 				box-shadow: none;
-				padding: 0 16px;
+				padding: 0;
 				margin-top: 0;
+				margin-left: 0;
+				margin-right: 0;
 				opacity: 0;
 				visibility: hidden;
 				max-height: 0;
 				overflow: hidden;
-				transform: translateY(-6px);
-				transition: max-height 0.3s ease, opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease, padding 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+				transform: translateY(-10px);
+				transition: max-height 0.3s ease-out, opacity 0.3s ease-out, transform 0.3s ease-out, visibility 0.3s ease-out, padding 0.3s ease-out, border-color 0.3s ease-out, box-shadow 0.3s ease-out, margin-top 0.3s ease-out;
 			}
 			
 			#announcement-panel.show {
-				margin-top: 10px;
+				margin-top: -12px;
 				opacity: 1;
 				visibility: visible;
-				max-height: 1000px;
+				max-height: 500px;
 				padding: 16px;
 				transform: translateY(0);
-				border-color: #e5e7eb;
+				border-color: #bae6fd;
+				border-top: none;
 				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-				overflow: auto;
+				overflow-y: auto;
+			}
+			
+			/* 当公告面板展开时，调整工具栏的圆角 */
+			#batch-toolbar.announcement-open {
+				border-radius: 12px 12px 0 0 !important;
 			}
 			
 			#announcement-content {
@@ -443,13 +457,12 @@ return view.extend({
 				50% { transform: rotate(0deg) scale(1); }
 			}
 			
-			/* 搜索区域容器，用于定位公告面板 */
+			/* 搜索区域容器 */
 			#search-container {
 				position: relative;
 				flex: 1;
 				display: flex;
-				flex-direction: column;
-				align-items: stretch;
+				align-items: center;
 				margin: 0 12px;
 				min-width: 0;
 			}
@@ -589,7 +602,6 @@ return view.extend({
 				]);
 				
 				searchContainer.appendChild(searchSection);
-				searchContainer.appendChild(announcementPanel);
 				searchInput.addEventListener('input', function(){ clearBtn.style.display = searchInput.value ? 'inline-block' : 'none'; });
 				clearBtn.addEventListener('click', function(e){
 					// 清空搜索框
@@ -642,6 +654,8 @@ return view.extend({
 						window.announcementVisible = false;
 						announcementPanel.classList.remove('show');
 						announcementBellBtn.classList.remove('active');
+						// 恢复工具栏圆角
+						toolbar.classList.remove('announcement-open');
 						// 更新图标渐变色
 						if (announcementBellBtn.updateGradient) {
 							announcementBellBtn.updateGradient(false);
@@ -773,10 +787,14 @@ return view.extend({
 						announcementPanel.classList.add('show');
 						this.classList.add('active');
 						this.updateGradient(true);
+						// 调整工具栏圆角
+						toolbar.classList.add('announcement-open');
 					} else {
 						announcementPanel.classList.remove('show');
 						this.classList.remove('active');
 						this.updateGradient(false);
+						// 恢复工具栏圆角
+						toolbar.classList.remove('announcement-open');
 					}
 				});
 				
@@ -793,6 +811,9 @@ return view.extend({
 							window.announcementVisible = false;
 							announcementPanel.classList.remove('show');
 							announcementBellBtn.classList.remove('active');
+							// 恢复工具栏圆角
+							var toolbar = document.getElementById('batch-toolbar');
+							if (toolbar) toolbar.classList.remove('announcement-open');
 							// 更新图标渐变色
 							if (announcementBellBtn.updateGradient) {
 								announcementBellBtn.updateGradient(false);
@@ -838,7 +859,15 @@ return view.extend({
 				toolbar.appendChild(announcementBellBtn);
 				toolbar.appendChild(historyLogBtn);
 				
-				return toolbar;
+				// 创建包装器，包含工具栏和公告面板
+				var toolbarWrapper = E('div', {
+					'style': 'position: relative;'
+				}, []);
+				
+				toolbarWrapper.appendChild(toolbar);
+				toolbarWrapper.appendChild(announcementPanel);
+				
+				return toolbarWrapper;
 			})()
 		]);
 
@@ -3359,6 +3388,9 @@ return view.extend({
 				var announcementBellBtn = document.getElementById('announcement-bell-btn');
 				if (announcementPanel && announcementPanel.classList.contains('show')) {
 					announcementPanel.classList.remove('show');
+					// 恢复工具栏圆角
+					var toolbar = document.getElementById('batch-toolbar');
+					if (toolbar) toolbar.classList.remove('announcement-open');
 					if (announcementBellBtn) {
 						announcementBellBtn.classList.remove('active');
 						// 更新图标渐变色
