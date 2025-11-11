@@ -584,6 +584,31 @@ function action_list()
 			end
 		end
 	end
+	-- 额外安全校验：有些包（例如 luci-app-ssr-plus）在特殊卸载流程后可能留下“幽灵记录”
+	-- 这里以 `opkg list-installed` 为准，过滤掉不在实际已安装列表中的 LuCI 应用项
+	do
+		local out = sys.exec("opkg list-installed 2>/dev/null") or ''
+		local installed_set = {}
+		for line in (out or ''):gmatch('[^\n]+') do
+			local n = line:match("^([^%s]+)%s+-%s+")
+			if n and #n > 0 then installed_set[n] = true end
+		end
+		if next(installed_set) ~= nil then
+			local filtered = {}
+			for _, p in ipairs(pkgs) do
+				if p.is_app then
+					-- 仅对 LuCI 应用进行严格交叉校验
+					if installed_set[p.name] then
+						filtered[#filtered+1] = p
+					end
+				else
+					-- 非 LuCI 应用保持原逻辑
+					filtered[#filtered+1] = p
+				end
+			end
+			pkgs = filtered
+		end
+	end
 	-- de-duplicate by package name, prefer records with version and latest install_time
 	local uniq = {}
 	for _, p in ipairs(pkgs) do
