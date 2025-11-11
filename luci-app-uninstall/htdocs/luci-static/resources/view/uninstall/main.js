@@ -1616,9 +1616,11 @@ return view.extend({
 			var btn = E('button', { 
 				type: 'button', 
 				'class': 'btn cbi-button cbi-button-remove',
-				disabled: isLocked,
 				'style': 'background:' + (isLocked ? uninstallGradientDisabled : uninstallGradient) + '; color:#fff; border:none; box-shadow:0 2px 8px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'pointer') + ';'
 			}, _('卸载'));
+			if (isLocked) {
+				btn.disabled = true;
+			}
 			btn.addEventListener('mouseenter', function() {
 				if (!this.disabled) {
 					this.style.background = uninstallGradientHover;
@@ -1657,7 +1659,6 @@ return view.extend({
 		reportIconBtn = E('button', {
 			type: 'button',
 			title: _('上报图标问题'),
-			disabled: isLocked,
 			'style': 'position:absolute; left:' + (pkg.vum_plugin ? '100px' : '12px') + '; bottom:6px; width:28px; height:28px; padding:0; background:#ffffff; border:1px solid #e5e7eb; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:' + (isLocked ? 'not-allowed' : 'pointer') + '; box-shadow:0 1px 3px rgba(0,0,0,0.1); transition:all .15s ease; color:#6b7280; overflow:hidden; opacity:' + (isLocked ? '0.5' : '1') + ';'
 		}, [
 			E('img', { 
@@ -1668,6 +1669,9 @@ return view.extend({
 				'style': 'display:block; object-fit:contain;'
 			})
 		]);
+		if (isLocked) {
+			reportIconBtn.disabled = true;
+		}
 		reportIconBtn.addEventListener('mouseenter', function(){ 
 			if (!this.disabled) {
 				this.style.transform = 'translateY(-2px)'; 
@@ -1702,7 +1706,6 @@ return view.extend({
 		reportUninstallBtn = E('button', {
 			type: 'button',
 			title: _('上报卸载问题'),
-			disabled: isLocked,
 			'style': 'position:absolute; left:' + (pkg.vum_plugin ? '136px' : '48px') + '; bottom:6px; width:28px; height:28px; padding:0; background:#ffffff; border:1px solid #e5e7eb; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:' + (isLocked ? 'not-allowed' : 'pointer') + '; box-shadow:0 1px 3px rgba(0,0,0,0.1); transition:all .15s ease; color:#6b7280; overflow:hidden; opacity:' + (isLocked ? '0.5' : '1') + ';'
 		}, [
 			E('img', { 
@@ -1713,6 +1716,9 @@ return view.extend({
 				'style': 'display:block; object-fit:contain;'
 			})
 		]);
+		if (isLocked) {
+			reportUninstallBtn.disabled = true;
+		}
 		reportUninstallBtn.addEventListener('mouseenter', function(){ 
 			if (!this.disabled) {
 				this.style.transform = 'translateY(-2px)'; 
@@ -1810,12 +1816,13 @@ return view.extend({
 					}
 					
 					// 更新卸载按钮状态
-					btn.disabled = isLocked;
 					if (isLocked) {
+						btn.disabled = true;
 						btn.style.background = uninstallGradientDisabled;
 						btn.style.opacity = '0.5';
 						btn.style.cursor = 'not-allowed';
 					} else {
+						btn.disabled = false;
 						btn.style.background = uninstallGradient;
 						btn.style.opacity = '1';
 						btn.style.cursor = 'pointer';
@@ -1823,13 +1830,21 @@ return view.extend({
 					
 					// 更新上报图标按钮状态
 					if (reportIconBtn) {
-						reportIconBtn.disabled = isLocked;
+						if (isLocked) {
+							reportIconBtn.disabled = true;
+						} else {
+							reportIconBtn.disabled = false;
+						}
 						reportIconBtn.style.opacity = isLocked ? '0.5' : '1';
 						reportIconBtn.style.cursor = isLocked ? 'not-allowed' : 'pointer';
 					}
 					
 					if (reportUninstallBtn) {
-						reportUninstallBtn.disabled = isLocked;
+						if (isLocked) {
+							reportUninstallBtn.disabled = true;
+						} else {
+							reportUninstallBtn.disabled = false;
+						}
 						reportUninstallBtn.style.opacity = isLocked ? '0.5' : '1';
 						reportUninstallBtn.style.cursor = isLocked ? 'not-allowed' : 'pointer';
 					}
