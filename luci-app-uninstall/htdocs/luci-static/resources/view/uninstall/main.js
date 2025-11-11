@@ -512,6 +512,92 @@ return view.extend({
 					E('span', { 'style': 'line-height:1; display:inline-block; vertical-align:middle;' }, _('全选'))
 				]);
 				
+				// 直接绑定全选事件处理，避免依赖事件委托在部分环境下不触发
+				selectAllCheckbox.addEventListener('change', function(ev) {
+					var checked = ev.target.checked;
+					// 全选时弹出风险提示（仅统计未锁定的复选框）
+					if (checked) {
+						var totalCount = Array.from(document.querySelectorAll('.pkg-checkbox')).filter(function(cb) { return !cb.disabled; }).length;
+						if (totalCount > 0) {
+							var warnModal = ui.showModal(_('风险警告'), [
+								E('div', { 'style': 'display:flex; align-items:center; gap:12px; margin-bottom:16px;' }, [
+									E('span', { 'style': 'display:inline-flex;width:48px;height:48px;background:#fee2e2;color:#dc2626;border-radius:999px;align-items:center;justify-content:center;font-weight:700;font-size:24px;' }, '!'),
+									E('div', { 'style': 'flex:1;' }, [
+										E('div', { 'style': 'font-weight:600;font-size:16px;color:#111827;margin-bottom:4px;' }, _('全部卸载可能导致系统崩溃')),
+										E('div', { 'style': 'font-size:14px;color:#6b7280;' }, _('您即将卸载所有 ') + totalCount + _(' 个软件包'))
+									])
+								]),
+								E('div', { 'style': 'background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px;margin-bottom:16px;' }, [
+									E('div', { 'style': 'font-weight:600;color:#991b1b;margin-bottom:8px;' }, _('⚠️ 严重警告：')),
+									E('ul', { 'style': 'margin:0;padding-left:20px;color:#7f1d1d;' }, [
+										E('li', {}, _('卸载系统核心插件可能导致路由器无法正常工作')),
+										E('li', {}, _('可能需要重新刷机才能恢复系统')),
+										E('li', {}, _('建议仅卸载您确认不需要的插件'))
+									])
+								]),
+								E('div', { 'style':'margin-top:16px;display:flex;gap:8px;justify-content:flex-end;' }, [
+									E('button', { 'class': 'btn', id: 'cancel-select-all', 'style': 'background:#eef2ff;color:#1f2937;border-radius:999px;padding:6px 14px;' }, _('取消全选')),
+									(function(){
+										var riskGradient = 'linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
+										var riskGradientHover = 'linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #ef4444 100%)';
+										var riskBtn = E('button', { 
+											'class': 'btn', 
+											id: 'confirm-select-all', 
+											'style': 'background:' + riskGradient + '; color:#fff; border:none; border-radius:999px; padding:6px 14px; font-weight:600; box-shadow:0 2px 8px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s;'
+										}, _('我知道风险，继续'));
+										riskBtn.addEventListener('mouseenter', function(){ this.style.background = riskGradientHover; this.style.boxShadow = '0 4px 12px rgba(220,38,38,0.4), inset 0 1px 0 rgba(255,255,255,0.2)'; });
+										riskBtn.addEventListener('mouseleave', function(){ this.style.background = riskGradient; this.style.boxShadow = '0 2px 8px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.2)'; });
+										return riskBtn;
+									})()
+								])
+							]);
+							var warnOverlay = warnModal && warnModal.parentNode;
+							if (warnOverlay) { warnOverlay.style.display = 'flex'; warnOverlay.style.alignItems = 'center'; warnOverlay.style.justifyContent = 'center'; }
+							
+							var cancelBtn = warnModal.querySelector('#cancel-select-all');
+							var confirmBtn = warnModal.querySelector('#confirm-select-all');
+							
+							if (cancelBtn) {
+								cancelBtn.addEventListener('click', function() {
+									ui.hideModal(warnModal);
+									// 取消全选
+									ev.target.checked = false;
+									var checkboxes = document.querySelectorAll('.pkg-checkbox');
+									checkboxes.forEach(function(cb) { 
+										if (!cb.disabled) {
+											cb.checked = false; 
+											cb.dispatchEvent(new Event('change'));
+										}
+									});
+								});
+							}
+							
+							if (confirmBtn) {
+								confirmBtn.addEventListener('click', function() {
+									ui.hideModal(warnModal);
+									// 继续全选
+									var checkboxes = document.querySelectorAll('.pkg-checkbox');
+									checkboxes.forEach(function(cb) {
+										if (!cb.disabled && cb.checked !== checked) {
+											cb.checked = checked;
+											cb.dispatchEvent(new Event('change'));
+										}
+									});
+								});
+							}
+							return; // 等待用户确认后再继续
+						}
+					}
+					// 未勾选或无需确认的场景，直接同步各项
+					var checkboxes = document.querySelectorAll('.pkg-checkbox');
+					checkboxes.forEach(function(cb){
+						if (!cb.disabled && cb.checked !== checked) {
+							cb.checked = checked;
+							cb.dispatchEvent(new Event('change'));
+						}
+					});
+				});
+				
 				// 已选数量显示
 				var selectedCount = E('span', { 
 					id: 'selected-count',
