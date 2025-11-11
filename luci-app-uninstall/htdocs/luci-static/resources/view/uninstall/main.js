@@ -580,9 +580,29 @@ return view.extend({
 									checkboxes.forEach(function(cb) {
 										if (!cb.disabled && cb.checked !== checked) {
 											cb.checked = checked;
-											cb.dispatchEvent(new Event('change'));
+											// 使用可冒泡的事件，提升兼容性
+											cb.dispatchEvent(new Event('change', { bubbles: true }));
+											// 双保险：直接同步 selectedPackages，避免某些环境下 change 未生效
+											try {
+												var name = cb.getAttribute('data-pkg-name');
+												if (name) {
+													if (checked) {
+														// 默认选项值（与单项选择一致）
+														selectedPackages[name] = {
+															name: name,
+															version: '',
+															purge: true,
+															deps: true,
+															cache: true
+														};
+													} else {
+														delete selectedPackages[name];
+													}
+												}
+											} catch(e){}
 										}
 									});
+									updateBatchUI();
 								});
 							}
 							return; // 等待用户确认后再继续
@@ -593,9 +613,28 @@ return view.extend({
 					checkboxes.forEach(function(cb){
 						if (!cb.disabled && cb.checked !== checked) {
 							cb.checked = checked;
-							cb.dispatchEvent(new Event('change'));
+							// 使用可冒泡的事件，提升兼容性
+							cb.dispatchEvent(new Event('change', { bubbles: true }));
+							// 双保险：直接同步 selectedPackages
+							try {
+								var name = cb.getAttribute('data-pkg-name');
+								if (name) {
+                                    if (checked) {
+                                        selectedPackages[name] = {
+                                            name: name,
+                                            version: '',
+                                            purge: true,
+                                            deps: true,
+                                            cache: true
+                                        };
+                                    } else {
+                                        delete selectedPackages[name];
+                                    }
+								}
+							} catch(e){}
 						}
 					});
+					updateBatchUI();
 				});
 				
 				// 已选数量显示
