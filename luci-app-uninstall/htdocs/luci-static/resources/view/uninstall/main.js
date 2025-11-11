@@ -644,7 +644,7 @@ return view.extend({
 							if (latestAnnouncement.date || latestAnnouncement.latest) {
 								displayContent += '<div style="display:flex; align-items:center; gap:8px; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #e5e7eb;">';
 								if (latestAnnouncement.latest) {
-									displayContent += '<span style="font-size:12px; font-weight:600; color:#6366f1; background:#eef2ff; padding:2px 8px; border-radius:4px;">v' + latestAnnouncement.latest + '</span>';
+									displayContent += '<span style="font-size:12px; font-weight:600; color:#6366f1; background:#eef2ff; padding:2px 8px; border-radius:4px;">' + latestAnnouncement.latest + '</span>';
 								}
 								if (latestAnnouncement.date) {
 									displayContent += '<span style="font-size:12px; color:#9ca3af;">' + latestAnnouncement.date + '</span>';
