@@ -1569,21 +1569,45 @@ return view.extend({
 			var verCorner = E('div', { 'style': 'position:absolute; right:12px; bottom:6px; font-size:12px; color:#111827; background:#f3f4f6; padding:2px 8px; border-radius:10px; border:1px solid #e5e7eb;' }, (pkg.version || ''));
 			if (pkg && pkg.name === 'luci-app-uninstall') verCorner.id = 'uninstall-card-version';
 			var purgeEl = E('input', { type: 'checkbox', checked: true, 'style': 'display:none;' });
-			var makeSwitch = function(el){
+			var makeSwitch = function(el, disabled){
+				disabled = disabled || false;
 				var baseOn = 'display:inline-block;width:36px;height:20px;background:#4f46e5;border-radius:999px;position:relative;transition:all .15s;';
 				var baseOff = 'display:inline-block;width:36px;height:20px;background:#e5e7eb;border-radius:999px;position:relative;transition:all .15s;';
+				var baseDisabled = 'display:inline-block;width:36px;height:20px;background:#d1d5db;border-radius:999px;position:relative;transition:all .15s;opacity:0.5;';
 				var knobOn = 'position:absolute;top:2px;left:18px;width:16px;height:16px;background:#fff;border-radius:999px;box-shadow:0 1px 2px rgba(0,0,0,.15);';
 				var knobOff = 'position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:999px;box-shadow:0 1px 2px rgba(0,0,0,.15);';
-				var sw = E('span', { 'style': el.checked ? baseOn : baseOff });
+				var sw = E('span', { 'style': disabled ? baseDisabled : (el.checked ? baseOn : baseOff) });
 				sw.appendChild(E('span', { 'style': el.checked ? knobOn : knobOff }));
-				sw.addEventListener('click', function(ev){ ev.preventDefault(); el.checked = !el.checked; sw.firstChild.setAttribute('style', el.checked ? knobOn : knobOff); sw.setAttribute('style', el.checked ? baseOn : baseOff); });
+				sw._disabled = disabled;
+				sw._updateStyle = function(disabledState) {
+					sw._disabled = disabledState;
+					if (disabledState) {
+						sw.setAttribute('style', baseDisabled);
+					} else {
+						sw.setAttribute('style', el.checked ? baseOn : baseOff);
+					}
+				};
+				sw.addEventListener('click', function(ev){ 
+					if (sw._disabled) {
+						ev.preventDefault();
+						ev.stopPropagation();
+						return;
+					}
+					ev.preventDefault(); 
+					el.checked = !el.checked; 
+					sw.firstChild.setAttribute('style', el.checked ? knobOn : knobOff); 
+					sw.setAttribute('style', el.checked ? baseOn : baseOff); 
+				});
 				return sw;
 			};
-			var purgeLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px auto auto; align-items:center; column-gap:6px; line-height:20px;' }, [ optionIcon(ICON_PURGE), _('删除配置文件'), makeSwitch(purgeEl) ]);
+			var purgeSwitch = makeSwitch(purgeEl, isLocked);
+			var purgeLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px auto auto; align-items:center; column-gap:6px; line-height:20px; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_PURGE), _('删除配置文件'), purgeSwitch ]);
 			var depsEl = E('input', { type: 'checkbox', checked: true, 'style': 'display:none;' });
-			var depsLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px auto auto; align-items:center; column-gap:6px; line-height:20px;' }, [ optionIcon(ICON_DEP), _('卸载相关依赖'), makeSwitch(depsEl) ]);
+			var depsSwitch = makeSwitch(depsEl, isLocked);
+			var depsLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px auto auto; align-items:center; column-gap:6px; line-height:20px; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_DEP), _('卸载相关依赖'), depsSwitch ]);
 			var cacheEl = E('input', { type: 'checkbox', checked: true, 'style': 'display:none;' });
-			var cacheLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px auto auto; align-items:center; column-gap:6px; line-height:20px;' }, [ optionIcon(ICON_CACHE), _('清空插件缓存'), makeSwitch(cacheEl) ]);
+			var cacheSwitch = makeSwitch(cacheEl, isLocked);
+			var cacheLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px auto auto; align-items:center; column-gap:6px; line-height:20px; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_CACHE), _('清空插件缓存'), cacheSwitch ]);
 			var optionsRow = E('div', { 'style': 'display:flex; gap:12px; align-items:center; flex-wrap:wrap;' }, [ purgeLabel, depsLabel, cacheLabel ]);
 			// 卸载按钮使用红色渐变
 			var uninstallGradient = 'linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
@@ -1802,6 +1826,31 @@ return view.extend({
 						reportUninstallBtn.disabled = isLocked;
 						reportUninstallBtn.style.opacity = isLocked ? '0.5' : '1';
 						reportUninstallBtn.style.cursor = isLocked ? 'not-allowed' : 'pointer';
+					}
+					
+					// 更新开关选项状态
+					if (purgeSwitch && purgeSwitch._updateStyle) {
+						purgeSwitch._updateStyle(isLocked);
+					}
+					if (depsSwitch && depsSwitch._updateStyle) {
+						depsSwitch._updateStyle(isLocked);
+					}
+					if (cacheSwitch && cacheSwitch._updateStyle) {
+						cacheSwitch._updateStyle(isLocked);
+					}
+					
+					// 更新标签样式
+					if (purgeLabel) {
+						purgeLabel.style.opacity = isLocked ? '0.5' : '1';
+						purgeLabel.style.cursor = isLocked ? 'not-allowed' : 'default';
+					}
+					if (depsLabel) {
+						depsLabel.style.opacity = isLocked ? '0.5' : '1';
+						depsLabel.style.cursor = isLocked ? 'not-allowed' : 'default';
+					}
+					if (cacheLabel) {
+						cacheLabel.style.opacity = isLocked ? '0.5' : '1';
+						cacheLabel.style.cursor = isLocked ? 'not-allowed' : 'default';
 					}
 					
 					updateBatchUI();
