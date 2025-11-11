@@ -1607,7 +1607,7 @@ return view.extend({
 			}
 			// 点击包装器也能切换复选框（仅在未锁定时）
 			checkboxWrapper.addEventListener('click', function(ev){
-				if (isLocked) {
+				if (checkbox.disabled) {
 					ev.preventDefault();
 					ev.stopPropagation();
 					return;
@@ -1618,17 +1618,21 @@ return view.extend({
 				checkbox.dispatchEvent(new Event('change'));
 			});
 			checkbox.addEventListener('change', function(){
-				if (isLocked) {
+				if (this.disabled) {
 					this.checked = false;
 					return;
+				}
+				// 读取选项的安全方法，避免元素尚未初始化导致异常
+				function safeChecked(el, defVal) {
+					return (el && typeof el.checked === 'boolean') ? el.checked : defVal;
 				}
 				if (this.checked) {
 					selectedPackages[pkg.name] = { 
 						name: pkg.name, 
 						version: pkg.version || '',
-						purge: purgeEl.checked,
-						deps: depsEl.checked,
-						cache: cacheEl.checked
+						purge: safeChecked(purgeEl, true),
+						deps: safeChecked(depsEl, true),
+						cache: safeChecked(cacheEl, true)
 					};
 				} else {
 					delete selectedPackages[pkg.name];
