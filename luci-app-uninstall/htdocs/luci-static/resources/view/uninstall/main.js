@@ -1619,18 +1619,20 @@ return view.extend({
 				disabled: isLocked,
 				'style': 'background:' + (isLocked ? uninstallGradientDisabled : uninstallGradient) + '; color:#fff; border:none; box-shadow:0 2px 8px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'pointer') + ';'
 			}, _('卸载'));
-			if (!isLocked) {
-				btn.addEventListener('mouseenter', function() {
+			btn.addEventListener('mouseenter', function() {
+				if (!this.disabled) {
 					this.style.background = uninstallGradientHover;
 					this.style.boxShadow = '0 4px 12px rgba(220,38,38,0.4), inset 0 1px 0 rgba(255,255,255,0.3)';
 					this.style.transform = 'translateY(-1px)';
-				});
-				btn.addEventListener('mouseleave', function() {
+				}
+			});
+			btn.addEventListener('mouseleave', function() {
+				if (!this.disabled) {
 					this.style.background = uninstallGradient;
 					this.style.boxShadow = '0 2px 8px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
 					this.style.transform = 'translateY(0)';
-				});
-			}
+				}
+			});
 			btn.addEventListener('click', function(ev){ 
 				if (this.disabled) {
 					ev.preventDefault();
@@ -1666,22 +1668,24 @@ return view.extend({
 				'style': 'display:block; object-fit:contain;'
 			})
 		]);
-		if (!isLocked) {
-			reportIconBtn.addEventListener('mouseenter', function(){ 
+		reportIconBtn.addEventListener('mouseenter', function(){ 
+			if (!this.disabled) {
 				this.style.transform = 'translateY(-2px)'; 
 				this.style.background = '#ff6b6b';
 				this.style.borderColor = '#ff6b6b';
 				this.style.boxShadow = '0 3px 8px rgba(255,107,107,0.3)';
 				this.style.color = '#ffffff';
-			});
-			reportIconBtn.addEventListener('mouseleave', function(){ 
+			}
+		});
+		reportIconBtn.addEventListener('mouseleave', function(){ 
+			if (!this.disabled) {
 				this.style.transform = 'translateY(0)'; 
 				this.style.background = '#ffffff';
 				this.style.borderColor = '#e5e7eb';
 				this.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
 				this.style.color = '#6b7280';
-			});
-		}
+			}
+		});
 		reportIconBtn.addEventListener('click', function(ev){
 			if (this.disabled) {
 				ev.preventDefault();
@@ -1709,22 +1713,24 @@ return view.extend({
 				'style': 'display:block; object-fit:contain;'
 			})
 		]);
-		if (!isLocked) {
-			reportUninstallBtn.addEventListener('mouseenter', function(){ 
+		reportUninstallBtn.addEventListener('mouseenter', function(){ 
+			if (!this.disabled) {
 				this.style.transform = 'translateY(-2px)'; 
 				this.style.background = '#f59e0b';
 				this.style.borderColor = '#f59e0b';
 				this.style.boxShadow = '0 3px 8px rgba(245,158,11,0.3)';
 				this.style.color = '#ffffff';
-			});
-			reportUninstallBtn.addEventListener('mouseleave', function(){ 
+			}
+		});
+		reportUninstallBtn.addEventListener('mouseleave', function(){ 
+			if (!this.disabled) {
 				this.style.transform = 'translateY(0)'; 
 				this.style.background = '#ffffff';
 				this.style.borderColor = '#e5e7eb';
 				this.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
 				this.style.color = '#6b7280';
-			});
-		}
+			}
+		});
 		reportUninstallBtn.addEventListener('click', function(ev){
 			if (this.disabled) {
 				ev.preventDefault();
