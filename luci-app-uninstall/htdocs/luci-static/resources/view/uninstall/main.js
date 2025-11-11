@@ -1011,7 +1011,8 @@ return view.extend({
 			'luci-app-rtp2httpd': 'rtp2httpd',
 			'luci-app-ap-modem': 'ap-modem',
 			'luci-app-filebrowser-go': 'filebrowser-go',
-			'luci-app-5GSmartCase': '5GSmartCase'
+			'luci-app-5GSmartCase': '5GSmartCase',
+			'luci-app-ssr-plus': 'ssr'
 		};
 		function packageIcon(name, category){
 			// 从 app-icons 目录加载 PNG
@@ -1216,7 +1217,8 @@ return view.extend({
 			'luci-app-alist': _('alist网盘'),
 			'luci-app-typecho': _('TypeCho博客'),
 			'luci-app-aliyundrive-webdav': _('阿里云盘WebDAV'),
-			'luci-app-tailscaler': _('Tailscale')
+			'luci-app-tailscaler': _('Tailscale'),
+			'luci-app-ssr-plus': _('SSR Plus')
 		};
 		function displayName(name, category){
 			// iStoreOS 插件优先用商店中文名；否则 fallback 到内置映射或原名
