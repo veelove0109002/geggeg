@@ -1588,22 +1588,35 @@ return view.extend({
 			// 卸载按钮使用红色渐变
 			var uninstallGradient = 'linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
 			var uninstallGradientHover = 'linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #ef4444 100%)';
+			var uninstallGradientDisabled = 'linear-gradient(135deg, #9ca3af 0%, #6b7280 50%, #4b5563 100%)';
 			var btn = E('button', { 
 				type: 'button', 
 				'class': 'btn cbi-button cbi-button-remove',
-				'style': 'background:' + uninstallGradient + '; color:#fff; border:none; box-shadow:0 2px 8px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s;'
+				disabled: isLocked,
+				'style': 'background:' + (isLocked ? uninstallGradientDisabled : uninstallGradient) + '; color:#fff; border:none; box-shadow:0 2px 8px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'pointer') + ';'
 			}, _('卸载'));
-			btn.addEventListener('mouseenter', function() {
-				this.style.background = uninstallGradientHover;
-				this.style.boxShadow = '0 4px 12px rgba(220,38,38,0.4), inset 0 1px 0 rgba(255,255,255,0.3)';
-				this.style.transform = 'translateY(-1px)';
+			if (!isLocked) {
+				btn.addEventListener('mouseenter', function() {
+					this.style.background = uninstallGradientHover;
+					this.style.boxShadow = '0 4px 12px rgba(220,38,38,0.4), inset 0 1px 0 rgba(255,255,255,0.3)';
+					this.style.transform = 'translateY(-1px)';
+				});
+				btn.addEventListener('mouseleave', function() {
+					this.style.background = uninstallGradient;
+					this.style.boxShadow = '0 2px 8px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
+					this.style.transform = 'translateY(0)';
+				});
+			}
+			btn.addEventListener('click', function(ev){ 
+				if (this.disabled) {
+					ev.preventDefault();
+					ev.stopPropagation();
+					return;
+				}
+				ev.preventDefault(); 
+				ev.stopPropagation(); 
+				uninstall(pkg.name, purgeEl.checked, depsEl.checked, pkg.version || '', cacheEl.checked); 
 			});
-			btn.addEventListener('mouseleave', function() {
-				this.style.background = uninstallGradient;
-				this.style.boxShadow = '0 2px 8px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
-				this.style.transform = 'translateY(0)';
-			});
-			btn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); uninstall(pkg.name, purgeEl.checked, depsEl.checked, pkg.version || '', cacheEl.checked); });
 			var metaTop = E('div', { 'style': 'display:flex; align-items:center; gap:8px; flex-wrap:wrap;' }, [ title ]);
 		var metaCol = E('div', { 'class': 'pkg-meta', 'style': 'flex:1; display:flex; flex-direction:column; gap:6px;' }, [ metaTop, optionsRow ]);
 		var actions = E('div', { 'class': 'pkg-actions', 'style': 'display:flex; align-items:center; margin-left:auto;' }, [ btn ]);
@@ -1612,11 +1625,14 @@ return view.extend({
 		if (isNew) children.push(E('img', { src: L.resource('icons/new.png'), 'style': 'position:absolute; left:12px; top:8px; width:24px; height:24px; object-fit:contain;' }));
 		
 	// 在卡片左下角添加上报图标按钮(排除 luci-app-uninstall 自身)
+	var reportIconBtn = null;
+	var reportUninstallBtn = null;
 	if (pkg && pkg.name !== 'luci-app-uninstall') {
-		var reportIconBtn = E('button', {
+		reportIconBtn = E('button', {
 			type: 'button',
 			title: _('上报图标问题'),
-			'style': 'position:absolute; left:' + (pkg.vum_plugin ? '100px' : '12px') + '; bottom:6px; width:28px; height:28px; padding:0; background:#ffffff; border:1px solid #e5e7eb; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.1); transition:all .15s ease; color:#6b7280; overflow:hidden;'
+			disabled: isLocked,
+			'style': 'position:absolute; left:' + (pkg.vum_plugin ? '100px' : '12px') + '; bottom:6px; width:28px; height:28px; padding:0; background:#ffffff; border:1px solid #e5e7eb; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:' + (isLocked ? 'not-allowed' : 'pointer') + '; box-shadow:0 1px 3px rgba(0,0,0,0.1); transition:all .15s ease; color:#6b7280; overflow:hidden; opacity:' + (isLocked ? '0.5' : '1') + ';'
 		}, [
 			E('img', { 
 				src: L.resource('icons/copy.png'), 
@@ -1626,21 +1642,28 @@ return view.extend({
 				'style': 'display:block; object-fit:contain;'
 			})
 		]);
-		reportIconBtn.addEventListener('mouseenter', function(){ 
-			this.style.transform = 'translateY(-2px)'; 
-			this.style.background = '#ff6b6b';
-			this.style.borderColor = '#ff6b6b';
-			this.style.boxShadow = '0 3px 8px rgba(255,107,107,0.3)';
-			this.style.color = '#ffffff';
-		});
-		reportIconBtn.addEventListener('mouseleave', function(){ 
-			this.style.transform = 'translateY(0)'; 
-			this.style.background = '#ffffff';
-			this.style.borderColor = '#e5e7eb';
-			this.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-			this.style.color = '#6b7280';
-		});
+		if (!isLocked) {
+			reportIconBtn.addEventListener('mouseenter', function(){ 
+				this.style.transform = 'translateY(-2px)'; 
+				this.style.background = '#ff6b6b';
+				this.style.borderColor = '#ff6b6b';
+				this.style.boxShadow = '0 3px 8px rgba(255,107,107,0.3)';
+				this.style.color = '#ffffff';
+			});
+			reportIconBtn.addEventListener('mouseleave', function(){ 
+				this.style.transform = 'translateY(0)'; 
+				this.style.background = '#ffffff';
+				this.style.borderColor = '#e5e7eb';
+				this.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+				this.style.color = '#6b7280';
+			});
+		}
 		reportIconBtn.addEventListener('click', function(ev){
+			if (this.disabled) {
+				ev.preventDefault();
+				ev.stopPropagation();
+				return;
+			}
 			ev.preventDefault();
 			ev.stopPropagation();
 			reportIcon(pkg.name);
@@ -1648,10 +1671,11 @@ return view.extend({
 		children.push(reportIconBtn);
 		
 		// 添加上报卸载问题按钮（在上报图标按钮右边）
-		var reportUninstallBtn = E('button', {
+		reportUninstallBtn = E('button', {
 			type: 'button',
 			title: _('上报卸载问题'),
-			'style': 'position:absolute; left:' + (pkg.vum_plugin ? '136px' : '48px') + '; bottom:6px; width:28px; height:28px; padding:0; background:#ffffff; border:1px solid #e5e7eb; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.1); transition:all .15s ease; color:#6b7280; overflow:hidden;'
+			disabled: isLocked,
+			'style': 'position:absolute; left:' + (pkg.vum_plugin ? '136px' : '48px') + '; bottom:6px; width:28px; height:28px; padding:0; background:#ffffff; border:1px solid #e5e7eb; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:' + (isLocked ? 'not-allowed' : 'pointer') + '; box-shadow:0 1px 3px rgba(0,0,0,0.1); transition:all .15s ease; color:#6b7280; overflow:hidden; opacity:' + (isLocked ? '0.5' : '1') + ';'
 		}, [
 			E('img', { 
 				src: L.resource('icons/xzbc.png'), 
@@ -1661,21 +1685,28 @@ return view.extend({
 				'style': 'display:block; object-fit:contain;'
 			})
 		]);
-		reportUninstallBtn.addEventListener('mouseenter', function(){ 
-			this.style.transform = 'translateY(-2px)'; 
-			this.style.background = '#f59e0b';
-			this.style.borderColor = '#f59e0b';
-			this.style.boxShadow = '0 3px 8px rgba(245,158,11,0.3)';
-			this.style.color = '#ffffff';
-		});
-		reportUninstallBtn.addEventListener('mouseleave', function(){ 
-			this.style.transform = 'translateY(0)'; 
-			this.style.background = '#ffffff';
-			this.style.borderColor = '#e5e7eb';
-			this.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-			this.style.color = '#6b7280';
-		});
+		if (!isLocked) {
+			reportUninstallBtn.addEventListener('mouseenter', function(){ 
+				this.style.transform = 'translateY(-2px)'; 
+				this.style.background = '#f59e0b';
+				this.style.borderColor = '#f59e0b';
+				this.style.boxShadow = '0 3px 8px rgba(245,158,11,0.3)';
+				this.style.color = '#ffffff';
+			});
+			reportUninstallBtn.addEventListener('mouseleave', function(){ 
+				this.style.transform = 'translateY(0)'; 
+				this.style.background = '#ffffff';
+				this.style.borderColor = '#e5e7eb';
+				this.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+				this.style.color = '#6b7280';
+			});
+		}
 		reportUninstallBtn.addEventListener('click', function(ev){
+			if (this.disabled) {
+				ev.preventDefault();
+				ev.stopPropagation();
+				return;
+			}
 			ev.preventDefault();
 			ev.stopPropagation();
 			reportUninstall(pkg.name);
@@ -1747,6 +1778,32 @@ return view.extend({
 						checkboxWrapper.style.opacity = '1';
 						checkboxWrapper.style.cursor = 'pointer';
 					}
+					
+					// 更新卸载按钮状态
+					btn.disabled = isLocked;
+					if (isLocked) {
+						btn.style.background = uninstallGradientDisabled;
+						btn.style.opacity = '0.5';
+						btn.style.cursor = 'not-allowed';
+					} else {
+						btn.style.background = uninstallGradient;
+						btn.style.opacity = '1';
+						btn.style.cursor = 'pointer';
+					}
+					
+					// 更新上报图标按钮状态
+					if (reportIconBtn) {
+						reportIconBtn.disabled = isLocked;
+						reportIconBtn.style.opacity = isLocked ? '0.5' : '1';
+						reportIconBtn.style.cursor = isLocked ? 'not-allowed' : 'pointer';
+					}
+					
+					if (reportUninstallBtn) {
+						reportUninstallBtn.disabled = isLocked;
+						reportUninstallBtn.style.opacity = isLocked ? '0.5' : '1';
+						reportUninstallBtn.style.cursor = isLocked ? 'not-allowed' : 'pointer';
+					}
+					
 					updateBatchUI();
 					
 					// 更新锁按钮样式
