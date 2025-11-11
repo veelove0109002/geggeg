@@ -1497,25 +1497,45 @@ return view.extend({
 				// install_time from backend is seconds since epoch
 				isNew = ((Date.now() / 1000) - pkg.install_time) < 259200; // 3 days
 			}
+			// 检查锁状态
+			var isLocked = false;
+			if (window.lockStateCache && window.lockStateCache[pkg.name] === true) {
+				isLocked = true;
+			}
 			// 批量选择复选框 - 美化版本
 			var checkbox = E('input', { 
 				type: 'checkbox',
 				'class': 'pkg-checkbox',
-				'data-pkg-name': pkg.name
+				'data-pkg-name': pkg.name,
+				disabled: isLocked
 			});
 			checkbox.checked = selectedPackages[pkg.name] || false;
 			var checkboxWrapper = E('div', { 'class': 'custom-checkbox-wrapper pkg-checkbox-wrapper' }, [
 				checkbox,
 				E('span', { 'class': 'custom-checkbox' })
 			]);
-			// 点击包装器也能切换复选框
+			// 如果锁定，添加禁用样式
+			if (isLocked) {
+				checkboxWrapper.style.opacity = '0.5';
+				checkboxWrapper.style.cursor = 'not-allowed';
+			}
+			// 点击包装器也能切换复选框（仅在未锁定时）
 			checkboxWrapper.addEventListener('click', function(ev){
+				if (isLocked) {
+					ev.preventDefault();
+					ev.stopPropagation();
+					return;
+				}
 				ev.preventDefault();
 				ev.stopPropagation();
 				checkbox.checked = !checkbox.checked;
 				checkbox.dispatchEvent(new Event('change'));
 			});
 			checkbox.addEventListener('change', function(){
+				if (isLocked) {
+					this.checked = false;
+					return;
+				}
 				if (this.checked) {
 					selectedPackages[pkg.name] = { 
 						name: pkg.name, 
@@ -1662,6 +1682,92 @@ return view.extend({
 		});
 		children.push(reportUninstallBtn);
 	}
+			// 右上角：小锁图标（锁定复选框）- 排除"高级卸载"卡片
+			if (pkg && pkg.name !== 'luci-app-uninstall') {
+				// 创建锁图标SVG
+				var lockIconSvgUnlocked = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>');
+				var lockIconSvgLocked = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>');
+				
+				var lockBtn = E('button', {
+					type: 'button',
+					title: isLocked ? _('解锁') : _('锁定'),
+					'style': 'position:absolute; right:44px; top:12px; width:26px; height:26px; padding:1.5px; background:' + (isLocked ? 'linear-gradient(135deg, #ef4444, #dc2626, #b91c1c)' : 'linear-gradient(135deg, #6b7280, #4b5563, #374151)') + '; border:none; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.2); transition:all .2s ease; z-index:10; overflow:visible;'
+				}, [
+					E('span', {
+						'style': 'width:100%; height:100%; background:linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%); border-radius:50%; display:flex; align-items:center; justify-content:center;'
+					}, [
+						E('img', {
+							src: isLocked ? lockIconSvgLocked : lockIconSvgUnlocked,
+							alt: isLocked ? 'locked' : 'unlocked',
+							width: 14,
+							height: 14,
+							'style': 'display:block; object-fit:contain; pointer-events:none;'
+						})
+					])
+				]);
+				
+				lockBtn.addEventListener('mouseenter', function(){
+					if (isLocked) {
+						this.style.transform = 'translateY(-2px) scale(1.1)';
+						this.style.background = 'linear-gradient(135deg, #dc2626, #b91c1c, #991b1b)';
+						this.style.boxShadow = '0 4px 12px rgba(239,68,68,0.5)';
+					} else {
+						this.style.transform = 'translateY(-2px) scale(1.1)';
+						this.style.background = 'linear-gradient(135deg, #4b5563, #374151, #1f2937)';
+						this.style.boxShadow = '0 4px 12px rgba(107,114,128,0.5)';
+					}
+				});
+				lockBtn.addEventListener('mouseleave', function(){
+					if (isLocked) {
+						this.style.transform = 'translateY(0) scale(1)';
+						this.style.background = 'linear-gradient(135deg, #ef4444, #dc2626, #b91c1c)';
+						this.style.boxShadow = '0 2px 6px rgba(0,0,0,0.2)';
+					} else {
+						this.style.transform = 'translateY(0) scale(1)';
+						this.style.background = 'linear-gradient(135deg, #6b7280, #4b5563, #374151)';
+						this.style.boxShadow = '0 2px 6px rgba(0,0,0,0.2)';
+					}
+				});
+				
+				lockBtn.addEventListener('click', function(ev){
+					ev.preventDefault();
+					ev.stopPropagation();
+					
+					// 切换锁状态
+					isLocked = !isLocked;
+					
+					// 更新复选框状态
+					checkbox.disabled = isLocked;
+					if (isLocked) {
+						checkbox.checked = false;
+						delete selectedPackages[pkg.name];
+						checkboxWrapper.style.opacity = '0.5';
+						checkboxWrapper.style.cursor = 'not-allowed';
+					} else {
+						checkboxWrapper.style.opacity = '1';
+						checkboxWrapper.style.cursor = 'pointer';
+					}
+					updateBatchUI();
+					
+					// 更新锁按钮样式
+					var lockIcon = lockBtn.querySelector('img');
+					if (isLocked) {
+						lockBtn.title = _('解锁');
+						lockBtn.style.background = 'linear-gradient(135deg, #ef4444, #dc2626, #b91c1c)';
+						lockIcon.src = lockIconSvgLocked;
+					} else {
+						lockBtn.title = _('锁定');
+						lockBtn.style.background = 'linear-gradient(135deg, #6b7280, #4b5563, #374151)';
+						lockIcon.src = lockIconSvgUnlocked;
+					}
+					
+					// 保存锁状态到服务器
+					saveLockStateToServer(pkg.name, isLocked);
+				});
+				
+				children.push(lockBtn);
+			}
+			
 			// 右上角：小眼睛图标（打开软件）- 排除"高级卸载"卡片
 			if (pkg && pkg.name !== 'luci-app-uninstall') {
 				// 检查黑名单（同步）
@@ -1758,10 +1864,10 @@ return view.extend({
 				}
 			}
 			
-			// 更新全选复选框状态
+			// 更新全选复选框状态（只统计未锁定的复选框）
 			if (selectAllCb) {
-				var allCheckboxes = document.querySelectorAll('.pkg-checkbox');
-				var checkedCount = document.querySelectorAll('.pkg-checkbox:checked').length;
+				var allCheckboxes = Array.from(document.querySelectorAll('.pkg-checkbox')).filter(function(cb) { return !cb.disabled; });
+				var checkedCount = allCheckboxes.filter(function(cb) { return cb.checked; }).length;
 				selectAllCb.checked = allCheckboxes.length > 0 && checkedCount === allCheckboxes.length;
 				selectAllCb.indeterminate = checkedCount > 0 && checkedCount < allCheckboxes.length;
 			}
@@ -2305,10 +2411,62 @@ return view.extend({
 			});
 		}
 		
+		// 锁状态缓存（从服务器加载）
+		window.lockStateCache = {};
+		
+		// 从服务器加载锁状态
+		function loadLockStateFromServer() {
+			return self._httpJson(L.url('admin/vum/uninstall/get_lock_state'), { 
+				headers: { 'Accept': 'application/json' } 
+			}).then(function(res) {
+				if (res && res.ok && res.state) {
+					window.lockStateCache = res.state || {};
+				}
+				return window.lockStateCache;
+			}).catch(function(err) {
+				// 如果加载失败，使用空对象
+				window.lockStateCache = {};
+				return window.lockStateCache;
+			});
+		}
+		
+		// 保存锁状态到服务器
+		function saveLockStateToServer(packageName, locked) {
+			// 更新本地缓存
+			if (!window.lockStateCache) {
+				window.lockStateCache = {};
+			}
+			window.lockStateCache[packageName] = locked;
+			
+			// 保存到服务器（使用 URL 编码的表单方式，更兼容 LuCI）
+			var formData = 'package=' + encodeURIComponent(packageName) + '&locked=' + (locked ? 'true' : 'false');
+			
+			// 使用表单方式发送
+			self._httpJson(L.url('admin/vum/uninstall/save_lock_state'), {
+				method: 'POST',
+				headers: { 
+					'Content-Type': 'application/x-www-form-urlencoded',
+					'Accept': 'application/json'
+				},
+				body: formData
+			}).then(function(res) {
+				// 保存成功，无需操作
+				if (res && !res.ok) {
+					console.warn('保存锁状态失败:', res.message || '未知错误');
+				}
+			}).catch(function(err) {
+				// 保存失败，输出错误信息便于调试
+				console.error('保存锁状态到服务器失败:', err);
+			});
+		}
+		
 		function refresh() {
 			var curSeq = (++searchSeq);
-			// 先加载折叠状态（从服务器，系统级别，跨浏览器）
-			loadCollapseStateFromServer().then(function() {
+			// 先加载折叠状态和锁状态（从服务器，系统级别，跨浏览器）
+			Promise.all([
+				loadCollapseStateFromServer(),
+				loadLockStateFromServer()
+			]).then(function() {
 				// 然后加载包列表并渲染
 				return self.pollList();
 			}).then(function(data){
@@ -3201,9 +3359,9 @@ return view.extend({
 		root.addEventListener('change', function(ev){
 			if (ev.target && ev.target.id === 'select-all') {
 				var checked = ev.target.checked;
-				// 全选时显示风险提示
+				// 全选时显示风险提示（只统计未锁定的复选框）
 				if (checked) {
-					var totalCount = document.querySelectorAll('.pkg-checkbox').length;
+					var totalCount = Array.from(document.querySelectorAll('.pkg-checkbox')).filter(function(cb) { return !cb.disabled; }).length;
 					if (totalCount > 0) {
 						var warnModal = ui.showModal(_('风险警告'), [
 							E('div', { 'style': 'display:flex; align-items:center; gap:12px; margin-bottom:16px;' }, [
@@ -3249,7 +3407,13 @@ return view.extend({
 								// 取消全选
 								ev.target.checked = false;
 								var checkboxes = document.querySelectorAll('.pkg-checkbox');
-								checkboxes.forEach(function(cb) { cb.checked = false; cb.dispatchEvent(new Event('change')); });
+								checkboxes.forEach(function(cb) { 
+									// 跳过锁定的复选框
+									if (!cb.disabled) {
+										cb.checked = false; 
+										cb.dispatchEvent(new Event('change')); 
+									}
+								});
 							});
 						}
 						
@@ -3259,7 +3423,8 @@ return view.extend({
 								// 继续全选
 								var checkboxes = document.querySelectorAll('.pkg-checkbox');
 								checkboxes.forEach(function(cb) {
-									if (cb.checked !== checked) {
+									// 跳过锁定的复选框
+									if (!cb.disabled && cb.checked !== checked) {
 										cb.checked = checked;
 										cb.dispatchEvent(new Event('change'));
 									}
@@ -3271,7 +3436,8 @@ return view.extend({
 				}
 				var checkboxes = document.querySelectorAll('.pkg-checkbox');
 				checkboxes.forEach(function(cb){
-					if (cb.checked !== checked) {
+					// 跳过锁定的复选框
+					if (!cb.disabled && cb.checked !== checked) {
 						cb.checked = checked;
 						cb.dispatchEvent(new Event('change'));
 					}

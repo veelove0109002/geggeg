@@ -59,6 +59,14 @@ function index()
 	e = entry({ 'admin', 'vum', 'uninstall', 'get_collapse_state' }, call('action_get_collapse_state'))
 	e.leaf = true
 	e.acl_depends = { 'luci-app-uninstall' }
+
+	e = entry({ 'admin', 'vum', 'uninstall', 'save_lock_state' }, call('action_save_lock_state'))
+	e.leaf = true
+	e.acl_depends = { 'luci-app-uninstall' }
+
+	e = entry({ 'admin', 'vum', 'uninstall', 'get_lock_state' }, call('action_get_lock_state'))
+	e.leaf = true
+	e.acl_depends = { 'luci-app-uninstall' }
 end
 
 local http = require 'luci.http'
@@ -2081,6 +2089,159 @@ function action_get_collapse_state()
 	-- 使用 /var/lib 目录，通常有写入权限
 	local state_dir = '/var/lib/luci-app-uninstall'
 	local state_file = state_dir .. '/collapse-state.json'
+	local state = {}
+	
+	if fs.stat(state_file) then
+		local content = fs.readfile(state_file) or '{}'
+		local ok, parsed = pcall(json.parse, content)
+		if ok and type(parsed) == 'table' then
+			state = parsed
+		end
+	end
+	
+	return json_response({ 
+		ok = true, 
+		state = state
+	})
+end
+
+-- 保存锁状态到系统文件
+function action_save_lock_state()
+	-- 使用 /var/lib 目录，通常有写入权限（系统级别，跨浏览器）
+	local state_dir = '/var/lib/luci-app-uninstall'
+	local state_file = state_dir .. '/lock-state.json'
+	
+	-- 确保目录存在（使用 sys.call 更可靠）
+	if not fs.stat(state_dir) then
+		local mkdir_result = sys.call(string.format("mkdir -p %q", state_dir))
+		if mkdir_result ~= 0 then
+			return json_response({ 
+				ok = false, 
+				message = '创建目录失败: ' .. state_dir
+			}, 500)
+		end
+	end
+	
+	local data = {}
+	local body = http.content() or ''
+	local content_type = http.getenv('CONTENT_TYPE') or ''
+	
+	-- 方法1: 优先从表单获取（LuCI 对表单支持更好）
+	local package = http.formvalue('package') or ''
+	local locked = http.formvalue('locked') or 'false'
+	if package and #package > 0 then
+		data[package] = (locked == 'true' or locked == true)
+	end
+	
+	-- 方法2: 如果表单为空，尝试从请求体解析数据
+	if not data or not next(data) then
+		if body and #body > 0 then
+			-- 检查 Content-Type
+			if content_type:match('application/x%-www%-form%-urlencoded') then
+				-- 解析 URL 编码的表单数据
+				local body_package, body_locked
+				for key, val in body:gmatch('([^&=]+)=([^&]*)') do
+					-- URL 解码
+					key = key:gsub('+', ' '):gsub('%%(%x%x)', function(h) return string.char(tonumber(h, 16)) end)
+					val = val:gsub('+', ' '):gsub('%%(%x%x)', function(h) return string.char(tonumber(h, 16)) end)
+					if key == 'package' then
+						body_package = val
+					elseif key == 'locked' then
+						body_locked = val
+					end
+				end
+				-- 如果从 body 中获取到 package 和 locked，使用它们
+				if body_package and #body_package > 0 then
+					data[body_package] = (body_locked == 'true' or body_locked == true)
+				end
+			elseif content_type:match('application/json') then
+				-- 尝试解析 JSON
+				local ok, state = pcall(json.parse, body)
+				if ok and state and type(state) == 'table' then
+					-- JSON 数据可能是 { "packageName": true } 格式
+					for k, v in pairs(state) do
+						if type(k) == 'string' then
+							data[k] = (v == true or v == 'true')
+						end
+					end
+				end
+			end
+		end
+	end
+	
+	-- 如果没有数据，返回错误
+	if not data or not next(data) then
+		return json_response({ 
+			ok = false, 
+			message = '没有接收到数据'
+		}, 400)
+	end
+	
+	-- 读取现有状态
+	local existing_state = {}
+	if fs.stat(state_file) then
+		local content = fs.readfile(state_file) or '{}'
+		local ok, parsed = pcall(json.parse, content)
+		if ok and type(parsed) == 'table' then
+			existing_state = parsed
+		end
+	end
+	
+	-- 合并新状态
+	for k, v in pairs(data) do
+		existing_state[k] = v
+	end
+	
+	-- 保存到文件（使用临时文件方式，更可靠）
+	local content = json.stringify(existing_state)
+	local tmp_file = state_file .. '.tmp'
+	
+	-- 先写入临时文件
+	local write_ok, write_err = pcall(function()
+		fs.writefile(tmp_file, content)
+	end)
+	
+	if write_ok then
+		-- 移动临时文件到目标位置
+		local mv_ok = sys.call(string.format("mv -f %q %q >/dev/null 2>&1", tmp_file, state_file))
+		if mv_ok == 0 then
+			-- 设置文件权限
+			sys.call(string.format("chmod 644 %q >/dev/null 2>&1", state_file))
+			return json_response({ 
+				ok = true, 
+				message = '状态已保存'
+			})
+		else
+			-- 如果移动失败，尝试直接写入
+			local direct_ok, direct_err = pcall(function()
+				fs.writefile(state_file, content)
+			end)
+			if direct_ok then
+				sys.call(string.format("chmod 644 %q >/dev/null 2>&1", state_file))
+				return json_response({ 
+					ok = true, 
+					message = '状态已保存'
+				})
+			else
+				return json_response({ 
+					ok = false, 
+					message = '保存失败: ' .. tostring(direct_err)
+				}, 500)
+			end
+		end
+	else
+		return json_response({ 
+			ok = false, 
+			message = '保存失败: ' .. tostring(write_err)
+		}, 500)
+	end
+end
+
+-- 从系统文件读取锁状态（系统级别，跨浏览器）
+function action_get_lock_state()
+	-- 使用 /var/lib 目录，通常有写入权限
+	local state_dir = '/var/lib/luci-app-uninstall'
+	local state_file = state_dir .. '/lock-state.json'
 	local state = {}
 	
 	if fs.stat(state_file) then
