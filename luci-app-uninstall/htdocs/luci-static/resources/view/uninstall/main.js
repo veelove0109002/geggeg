@@ -1164,6 +1164,25 @@ return view.extend({
 		var grid = E('div', { 'class': 'card-grid', 'style': 'display:block;margin-top:8px;' });
 		root.appendChild(grid);
 
+		// 兜底：根据锁状态强制同步复选框可交互性，避免意外禁用导致无法选择
+		function ensureInteractiveCheckboxes() {
+			try {
+				var checkboxes = document.querySelectorAll('.pkg-checkbox');
+				checkboxes.forEach(function(cb){
+					var name = cb.getAttribute('data-pkg-name') || '';
+					var locked = !!(window.lockStateCache && window.lockStateCache[name] === true);
+					cb.disabled = locked ? true : false;
+					// 同步包装器可视和交互状态
+					var wrapper = cb.parentElement;
+					if (wrapper && wrapper.classList && wrapper.classList.contains('custom-checkbox-wrapper')) {
+						wrapper.style.opacity = locked ? '0.5' : '1';
+						wrapper.style.cursor = locked ? 'not-allowed' : 'pointer';
+						wrapper.style.pointerEvents = locked ? 'auto' : 'auto'; // 始终允许事件穿透到自定义点击逻辑
+					}
+				});
+			} catch(e) {}
+		}
+
 		var NAME_MAP = {
 			'luci-app-uninstall': _('高级卸载'),
 			'luci-app-cifs-mount': _('挂载cifs'),
@@ -2757,6 +2776,8 @@ return view.extend({
 					renderSection(_('系统默认插件类'), g_default);
 					// 渲染后重新检查升级状态，避免按钮误显
 					try { checkUpdate(); } catch (e) {}
+					// 渲染完成后，强制同步一次交互状态，防止出现“需要锁定再解锁”才能选择的问题
+					ensureInteractiveCheckboxes();
 				}
 				if (!q || q.length < 3) { renderWith(list); return; }
 				// 文件名匹配（>=3字符才触发），结果缓存
