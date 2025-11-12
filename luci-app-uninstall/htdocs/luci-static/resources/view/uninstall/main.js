@@ -215,9 +215,11 @@ return view.extend({
 				#search-section.mobile-collapsed {
 					flex: 0 0 auto !important;
 					width: 40px;
-					padding: 6px;
-					gap: 0;
-					justify-content: center;
+					padding: 6px !important;
+					gap: 0 !important;
+					display: flex !important;
+					align-items: center !important;
+					justify-content: center !important;
 					background: transparent !important;
 					border: none !important;
 					border-color: transparent !important;
@@ -235,7 +237,8 @@ return view.extend({
 				}
 				
 				#search-section.mobile-collapsed img.search-icon {
-					margin: 0;
+					display: block !important;
+					margin: 0 !important;
 				}
 				
 				#batch-toolbar > div:first-child {
