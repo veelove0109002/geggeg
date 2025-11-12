@@ -214,8 +214,8 @@ return view.extend({
 				
 				#search-section.mobile-collapsed {
 					flex: 0 0 auto !important;
-					width: auto;
-					min-width: 36px;
+					width: 100% !important;
+					min-width: 0 !important;
 					padding: 6px 8px !important;
 					gap: 0 !important;
 					display: flex !important;
@@ -228,8 +228,10 @@ return view.extend({
 				}
 				
 				#search-container.mobile-icon-only {
-					flex: 0 0 auto !important;
-					margin: 0 8px 0 0 !important;
+					flex: 0 0 44px !important;
+					width: 44px !important;
+					min-width: 44px !important;
+					margin: 0 !important;
 				}
 				
 				#search-section.mobile-collapsed #filter,
