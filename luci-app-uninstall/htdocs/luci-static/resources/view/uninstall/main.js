@@ -214,8 +214,9 @@ return view.extend({
 				
 				#search-section.mobile-collapsed {
 					flex: 0 0 auto !important;
-					width: 40px;
-					padding: 6px !important;
+					width: auto;
+					min-width: 36px;
+					padding: 6px 8px !important;
 					gap: 0 !important;
 					display: flex !important;
 					align-items: center !important;
@@ -228,7 +229,7 @@ return view.extend({
 				
 				#search-container.mobile-icon-only {
 					flex: 0 0 auto !important;
-					margin: 0 !important;
+					margin: 0 8px 0 0 !important;
 				}
 				
 				#search-section.mobile-collapsed #filter,
@@ -239,6 +240,7 @@ return view.extend({
 				#search-section.mobile-collapsed img.search-icon {
 					display: block !important;
 					margin: 0 !important;
+					opacity: 0.75;
 				}
 				
 				#batch-toolbar > div:first-child {
