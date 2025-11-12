@@ -214,23 +214,23 @@ return view.extend({
 				
 				#search-section.mobile-collapsed {
 					flex: 0 0 auto !important;
-					width: 100% !important;
+					width: auto !important;
 					min-width: 0 !important;
-					padding: 6px 8px !important;
+					padding: 6px !important;
 					gap: 0 !important;
 					display: flex !important;
 					align-items: center !important;
-					justify-content: center !important;
-					background: transparent !important;
-					border: none !important;
-					border-color: transparent !important;
+					justify-content: flex-start !important;
+					background: rgba(255, 255, 255, 0.75) !important;
+					border: 1px solid rgba(186, 230, 253, 0.6) !important;
+					border-radius: 999px !important;
 					box-shadow: none !important;
 				}
 				
 				#search-container.mobile-icon-only {
-					flex: 0 0 44px !important;
-					width: 44px !important;
-					min-width: 44px !important;
+					flex: 0 0 auto !important;
+					width: auto !important;
+					min-width: 0 !important;
 					margin: 0 !important;
 				}
 				
@@ -925,7 +925,7 @@ return view.extend({
 					var batchSection = toolbar.querySelector('div:first-child');
 					var historyBtn = document.getElementById('history-log-btn');
 					var bellBtn = document.getElementById('announcement-bell-btn');
-					if (batchSection) batchSection.style.display = '';
+					if (batchSection) batchSection.style.display = 'flex';
 					if (historyBtn) historyBtn.style.display = '';
 					if (bellBtn) bellBtn.style.display = '';
 					// 恢复搜索框样式
