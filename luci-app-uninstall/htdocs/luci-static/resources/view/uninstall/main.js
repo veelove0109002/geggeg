@@ -212,6 +212,32 @@ return view.extend({
 					font-size: 16px !important;
 				}
 				
+				#search-section.mobile-collapsed {
+					flex: 0 0 auto !important;
+					width: 40px;
+					padding: 6px;
+					gap: 0;
+					justify-content: center;
+					background: transparent !important;
+					border: none !important;
+					border-color: transparent !important;
+					box-shadow: none !important;
+				}
+				
+				#search-container.mobile-icon-only {
+					flex: 0 0 auto !important;
+					margin: 0 !important;
+				}
+				
+				#search-section.mobile-collapsed #filter,
+				#search-section.mobile-collapsed .search-clear-btn {
+					display: none !important;
+				}
+				
+				#search-section.mobile-collapsed img.search-icon {
+					margin: 0;
+				}
+				
 				#batch-toolbar > div:first-child {
 					flex: 1 1 100%;
 					justify-content: flex-start;
@@ -705,6 +731,7 @@ return view.extend({
 				}, []);
 				var searchIcon = E('img', { 
 					src: L.resource('icons/ss.svg'), 
+					'class': 'search-icon',
 					'style': 'display:inline-block; width:18px; height:18px; object-fit:contain; opacity:0.6;'
 				});
 				var searchInput = E('input', { 
@@ -716,6 +743,7 @@ return view.extend({
 				var clearBtn = E('button', { 
 					id: 'filter-clear', 
 					type: 'button', 
+					'class': 'search-clear-btn',
 					'style': 'display:none; background:#f3f4f6; border:1px solid #e5e7eb; color:#6b7280; border-radius:999px; padding:2px 8px; font-size:12px; cursor:pointer;' 
 				}, _('清除'));
 				searchSection.appendChild(searchIcon);
@@ -834,9 +862,25 @@ return view.extend({
 				function checkMobile() {
 					return window.innerWidth <= 768;
 				}
+				function updateSearchLayout() {
+					if (checkMobile()) {
+						if (!isExpanded) {
+							searchSection.classList.add('mobile-collapsed');
+							searchContainer.classList.add('mobile-icon-only');
+						} else {
+							searchContainer.classList.remove('mobile-icon-only');
+						}
+					} else {
+						searchSection.classList.remove('mobile-collapsed');
+						searchContainer.classList.remove('mobile-icon-only');
+					}
+				}
+				updateSearchLayout();
 				function expandSearch() {
 					if (!checkMobile() || isExpanded) return;
 					isExpanded = true;
+					searchSection.classList.remove('mobile-collapsed');
+					searchContainer.classList.remove('mobile-icon-only');
 					searchSection.classList.add('search-expanded');
 					// 隐藏其他元素，让搜索框占据更多空间
 					var batchSection = toolbar.querySelector('div:first-child');
@@ -864,6 +908,7 @@ return view.extend({
 					}
 					// 聚焦到输入框
 					setTimeout(function() { searchInput.focus(); }, 100);
+					updateSearchLayout();
 				}
 				function collapseSearch() {
 					if (!isExpanded) return;
@@ -881,6 +926,8 @@ return view.extend({
 					searchContainer.style.margin = '';
 					searchContainer.style.order = '';
 					searchSection.style.flex = '';
+					searchInput.blur();
+					updateSearchLayout();
 				}
 				// 点击搜索区域时展开（如果还没展开）
 				searchSection.addEventListener('click', function(e) {
@@ -915,6 +962,7 @@ return view.extend({
 					if (!checkMobile() && isExpanded) {
 						collapseSearch();
 					}
+					updateSearchLayout();
 				});
 				
 				// 根据屏幕宽度动态调整 placeholder 文字
