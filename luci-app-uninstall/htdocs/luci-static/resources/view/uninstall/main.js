@@ -257,6 +257,19 @@ return view.extend({
 					padding: 3px 10px;
 				}
 				
+				#batch-uninstall-btn .trash-icon {
+					display: block !important;
+				}
+				
+				#batch-uninstall-btn .btn-text {
+					display: none !important;
+				}
+				
+				#batch-uninstall-btn {
+					padding: 6px 12px;
+					min-width: 40px;
+				}
+				
 				#batch-toolbar > div:nth-child(2) {
 					flex: 1 1 100%;
 					margin: 0;
@@ -339,6 +352,22 @@ return view.extend({
 				#batch-uninstall-btn {
 					font-size: 12px;
 					padding: 4px 10px;
+					position: relative;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					gap: 6px;
+				}
+				
+				#batch-uninstall-btn .trash-icon {
+					display: none;
+					width: 18px;
+					height: 18px;
+					fill: currentColor;
+				}
+				
+				#batch-uninstall-btn .btn-text {
+					display: inline;
 				}
 				
 				#batch-toolbar > div:nth-child(2) {
@@ -679,13 +708,21 @@ return view.extend({
 				// 批量卸载按钮
 				var batchUninstallGradient = 'linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
 				var batchUninstallGradientHover = 'linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #ef4444 100%)';
+				// 垃圾桶图标 SVG
+				var trashIconSvg = '<svg class="trash-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" preserveAspectRatio="xMidYMid meet" style="overflow:visible;"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/></svg>';
 				var batchUninstallBtn = E('button', {
 					id: 'batch-uninstall-btn',
 					type: 'button',
 					'class': 'btn cbi-button cbi-button-remove',
 					'style': 'opacity:0.5; cursor:not-allowed; background:' + batchUninstallGradient + '; color:#fff; border:none; box-shadow:0 2px 8px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s;',
 					disabled: true
-				}, _('批量卸载'));
+				});
+				// 添加文本和图标
+				var btnText = E('span', { 'class': 'btn-text' }, _('批量卸载'));
+				var btnIcon = E('span');
+				btnIcon.innerHTML = trashIconSvg;
+				batchUninstallBtn.appendChild(btnText);
+				batchUninstallBtn.appendChild(btnIcon);
 				// 为批量卸载按钮添加悬停效果（在按钮启用后）
 				setTimeout(function() {
 					var btn = document.getElementById('batch-uninstall-btn');
