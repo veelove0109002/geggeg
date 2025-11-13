@@ -989,7 +989,11 @@ function action_remove()
 			append_log(log, '+ ' .. cmd)
 			sys.call(cmd .. ' >/dev/null 2>&1')
 		end
-		rm('rm -f /etc/config/passwall')
+		if purge then
+			rm('rm -f /etc/config/passwall')
+		else
+			append_log(log, '# 已根据用户选择保留 PassWall 配置文件')
+		end
 		rm('rm -f /usr/lib/lua/luci/controller/passwall.lua')
 		rm('rm -rf /usr/lib/lua/luci/controller/passwall')
 		rm('rm -rf /usr/lib/lua/luci/model/cbi/passwall')
@@ -1057,8 +1061,12 @@ function action_remove()
 			append_log(log, '+ ' .. cmd)
 			sys.call(cmd .. ' >/dev/null 2>&1')
 		end
-		rm('rm -rf /etc/openclash')
-		rm('rm -f /etc/config/openclash')
+		if purge then
+			rm('rm -rf /etc/openclash')
+			rm('rm -f /etc/config/openclash')
+		else
+			append_log(log, '# 已根据用户选择保留 OpenClash 配置文件')
+		end
 		rm('rm -f /usr/lib/lua/luci/controller/openclash.lua')
 		rm('rm -rf /usr/lib/lua/luci/controller/openclash')
 		rm('rm -rf /usr/lib/lua/luci/model/cbi/openclash')
