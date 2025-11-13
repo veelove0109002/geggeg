@@ -1029,6 +1029,81 @@ function action_remove()
 		return json_response({ ok = true, message = table.concat(log, "\n") })
 	end
 
+	-- If uninstalling OpenClash, perform thorough cleanup based on reference script
+	if pkg == 'luci-app-openclash' or pkg == 'openclash' then
+		local log = {}
+		append_log(log, '=== OpenClash 卸载流程开始（无残留） ===')
+
+		-- [1/6] 停止并禁用服务
+		if fs.access('/etc/init.d/openclash') then
+			append_log(log, '+ /etc/init.d/openclash stop')
+			sys.call('/etc/init.d/openclash stop >/dev/null 2>&1')
+			append_log(log, '+ /etc/init.d/openclash disable')
+			sys.call('/etc/init.d/openclash disable >/dev/null 2>&1')
+		end
+
+		-- [2/6] 卸载包
+		append_log(log, '+ opkg update')
+		sys.call('opkg update >/dev/null 2>&1')
+		append_log(log, '+ opkg remove luci-i18n-openclash-zh-cn')
+		sys.call("opkg remove luci-i18n-openclash-zh-cn >/dev/null 2>&1")
+		append_log(log, '+ opkg remove luci-app-openclash')
+		sys.call("opkg remove luci-app-openclash >/dev/null 2>&1")
+		append_log(log, '+ opkg autoremove')
+		sys.call("opkg autoremove >/dev/null 2>&1")
+
+		-- [3/6] 删除配置与残留文件（不可逆）
+		local function rm(cmd)
+			append_log(log, '+ ' .. cmd)
+			sys.call(cmd .. ' >/dev/null 2>&1')
+		end
+		rm('rm -rf /etc/openclash')
+		rm('rm -f /etc/config/openclash')
+		rm('rm -f /usr/lib/lua/luci/controller/openclash.lua')
+		rm('rm -rf /usr/lib/lua/luci/controller/openclash')
+		rm('rm -rf /usr/lib/lua/luci/model/cbi/openclash')
+		rm('rm -rf /usr/lib/lua/luci/view/openclash')
+		rm('rm -rf /usr/share/openclash')
+		rm('rm -f /usr/bin/clash')
+		rm('rm -f /etc/init.d/openclash')
+		rm("find /etc/rc.d -maxdepth 1 -type l -name '*openclash*' -exec rm -f {} +")
+		rm("rm -f /etc/uci-defaults/*openclash*")
+		rm("find /etc/hotplug.d -type f -name '*openclash*' -exec rm -f {} +")
+		rm('rm -rf /tmp/openclash* /var/run/openclash*')
+
+		-- [4/6] 移除可能的计划任务
+		if fs.access('/etc/crontabs/root') then
+			append_log(log, "+ sed -i '/openclash/d' /etc/crontabs/root")
+			sys.call("sed -i '/openclash/d' /etc/crontabs/root >/dev/null 2>&1")
+			append_log(log, '+ /etc/init.d/cron reload')
+			sys.call('/etc/init.d/cron reload >/dev/null 2>&1')
+		end
+
+		-- [5/6] 刷新 LuCI 缓存并重载 Web/防火墙
+		rm('rm -f /tmp/luci-indexcache')
+		rm('rm -rf /tmp/luci-modulecache/*')
+		sys.call('command -v luci-reload >/dev/null 2>&1 && luci-reload')
+		sys.call('[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd reload >/dev/null 2>&1')
+		sys.call('[ -x /etc/init.d/nginx ] && /etc/init.d/nginx reload >/dev/null 2>&1')
+		sys.call('[ -x /etc/init.d/firewall ] && /etc/init.d/firewall reload >/dev/null 2>&1')
+
+		-- [6/6] sync
+		append_log(log, '+ sync')
+		sys.call('sync >/dev/null 2>&1')
+
+		-- 清理 iStore 记录及缓存
+		local removed_istore = clear_istore_state('luci-app-openclash')
+		for _, item in ipairs(removed_istore or {}) do
+			append_log(log, '+ cleared: ' .. item)
+		end
+
+		return json_response({
+			ok = true,
+			message = table.concat(log, "\n"),
+			removed_istore = removed_istore
+		})
+	end
+
 	-- 通用卸载逻辑（保留原行为）
 	local files
 	if purge then
