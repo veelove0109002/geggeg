@@ -1238,7 +1238,12 @@ return view.extend({
 			'luci-app-ap-modem': 'ap-modem',
 			'luci-app-filebrowser-go': 'filebrowser-go',
 			'luci-app-5GSmartCase': '5GSmartCase',
-			'luci-app-ssr-plus': 'ssr'
+			'luci-app-ssr-plus': 'ssr',
+			'luci-app-taskplan': 'taskplan',
+			'luci-app-filemanager': 'filemanager',
+			'luci-app-unblockneteasemusic': 'unblockneteasemusic',
+			'luci-app-turboacc': 'turboacc',
+			'luci-app-watchdog': 'watchdog'
 		};
 		function packageIcon(name, category){
 			// 从 app-icons 目录加载 PNG
@@ -1330,7 +1335,11 @@ return view.extend({
 			'luci-app-zerotier': _('ZeroTier'),
 			'luci-app-ksmbd': _('SMB共享'),
 			'luci-app-samba': _('Samba共享'),
-			'luci-app-turboacc': _('网络加速'),
+			'luci-app-turboacc': _('Turbo Acc网络加速插件'),
+			'luci-app-taskplan': _('Task Plan'),
+			'luci-app-filemanager': _('File Manager'),
+			'luci-app-unblockneteasemusic': _('解锁网易云音乐'),
+			'luci-app-watchdog': _('看门狗'),
 			'luci-app-mwan3': _('多线多拨'),
 			'luci-app-mwan3helper': _('多线助手'),
 			'luci-app-vlmcsd': _('KMS激活'),
