@@ -192,6 +192,11 @@ return view.extend({
 				animation: update-glow 2s ease-in-out infinite;
 			}
 			
+			/* 默认样式：垃圾桶图标隐藏 */
+			#batch-uninstall-btn .trash-icon {
+				display: none;
+			}
+			
 			/* 移动端响应式样式 */
 			@media screen and (max-width: 768px) {
 				#batch-toolbar {
@@ -257,12 +262,13 @@ return view.extend({
 					padding: 3px 10px;
 				}
 				
+				/* 768px以下仍然隐藏垃圾桶图标，只在480px以下显示 */
 				#batch-uninstall-btn .trash-icon {
-					display: block !important;
+					display: none;
 				}
 				
 				#batch-uninstall-btn .btn-text {
-					display: none !important;
+					display: inline;
 				}
 				
 				#batch-uninstall-btn {
@@ -359,15 +365,16 @@ return view.extend({
 					gap: 6px;
 				}
 				
+				/* 手机版（480px以下）显示垃圾桶图标 */
 				#batch-uninstall-btn .trash-icon {
-					display: none;
+					display: block !important;
 					width: 18px;
 					height: 18px;
 					fill: currentColor;
 				}
 				
 				#batch-uninstall-btn .btn-text {
-					display: inline;
+					display: none !important;
 				}
 				
 				#batch-toolbar > div:nth-child(2) {
