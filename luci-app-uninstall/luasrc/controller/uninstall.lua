@@ -1053,6 +1053,10 @@ function action_remove()
 		sys.call("opkg remove luci-i18n-openclash-zh-cn >/dev/null 2>&1")
 		append_log(log, '+ opkg remove luci-app-openclash')
 		sys.call("opkg remove luci-app-openclash >/dev/null 2>&1")
+		if is_installed('openclash') then
+			append_log(log, '+ opkg remove openclash')
+			sys.call("opkg remove openclash >/dev/null 2>&1")
+		end
 		append_log(log, '+ opkg autoremove')
 		sys.call("opkg autoremove >/dev/null 2>&1")
 
