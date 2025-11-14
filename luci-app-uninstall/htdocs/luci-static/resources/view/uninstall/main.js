@@ -1243,7 +1243,9 @@ return view.extend({
 			'luci-app-filemanager': 'filemanager',
 			'luci-app-unblockneteasemusic': 'unblockneteasemusic',
 			'luci-app-turboacc': 'turboacc',
-			'luci-app-watchdog': 'watchdog'
+			'luci-app-watchdog': 'watchdog',
+			'luci-app-oled': 'oled',
+			'luci-app-bypass': 'bypass'
 		};
 		function packageIcon(name, category){
 			// 从 app-icons 目录加载 PNG
@@ -1474,7 +1476,9 @@ return view.extend({
 			'luci-app-typecho': _('TypeCho博客'),
 			'luci-app-aliyundrive-webdav': _('阿里云盘WebDAV'),
 			'luci-app-tailscaler': _('Tailscale'),
-			'luci-app-ssr-plus': _('SSR Plus')
+			'luci-app-ssr-plus': _('SSR Plus'),
+			'luci-app-oled': _('OLED'),
+			'luci-app-bypass': _('Bypass')
 		};
 		function displayName(name, category){
 			// iStoreOS 插件优先用商店中文名；否则 fallback 到内置映射或原名
@@ -3173,9 +3177,18 @@ return view.extend({
 				E('div', { 'style': 'font-size:12px; color:#6b7280; margin-top:4px;' }, _('将向开发者上报此应用的图标问题'))
 			]);
 			
+			// 添加软件下载地址输入框
+			var inputDownloadUrl = E('input', {
+				type: 'text',
+				placeholder: _('可选:提供软件下载地址,例如"https://example.com/package.ipk"'),
+				'style': 'width:100%; padding:8px; border:1px solid #e5e7eb; border-radius:6px; font-size:13px; font-family:inherit;'
+			}, '');
+			
 			var inputSection = E('div', { 'style': 'margin-bottom:12px;' }, [
 				E('label', { 'style': 'display:block; font-size:13px; color:#374151; margin-bottom:6px; font-weight:500;' }, _('问题描述')),
-				inputComment
+				inputComment,
+				E('label', { 'style': 'display:block; font-size:13px; color:#374151; margin-top:12px; margin-bottom:6px; font-weight:500;' }, _('软件下载地址')),
+				inputDownloadUrl
 			]);
 			
 			var cancelBtn = E('button', { 'class': 'btn', 'style': 'background:#f3f4f6;color:#1f2937;border-radius:999px;padding:6px 14px;' }, _('取消'));
@@ -3210,6 +3223,7 @@ return view.extend({
 			cancelBtn.addEventListener('click', function(){ ui.hideModal(modal); });
 			submitBtn.addEventListener('click', function(){
 				var comment = inputComment.value.trim();
+				var downloadUrl = inputDownloadUrl.value.trim();
 				
 				// 禁用按钮防止重复提交
 				submitBtn.disabled = true;
@@ -3221,6 +3235,7 @@ return view.extend({
 				var reportUrl = L.url('admin/vum/uninstall/report_icon') + 
 					'?package=' + encodeURIComponent(pkgName) + 
 					'&comment=' + encodeURIComponent(comment) +
+					(downloadUrl ? ('&download_url=' + encodeURIComponent(downloadUrl)) : '') +
 					(token ? ('&token=' + encodeURIComponent(token)) : '');
 				
 				self._httpJson(reportUrl, {
@@ -3347,9 +3362,18 @@ return view.extend({
 				E('div', { 'style': 'font-size:12px; color:#6b7280; margin-top:4px;' }, _('将向开发者上报此应用的卸载问题'))
 			]);
 			
+			// 添加软件下载地址输入框
+			var inputDownloadUrl = E('input', {
+				type: 'text',
+				placeholder: _('可选:提供软件下载地址,例如"https://example.com/package.ipk"'),
+				'style': 'width:100%; padding:8px; border:1px solid #e5e7eb; border-radius:6px; font-size:13px; font-family:inherit;'
+			}, '');
+			
 			var inputSection = E('div', { 'style': 'margin-bottom:12px;' }, [
 				E('label', { 'style': 'display:block; font-size:13px; color:#374151; margin-bottom:6px; font-weight:500;' }, _('问题描述')),
-				inputComment
+				inputComment,
+				E('label', { 'style': 'display:block; font-size:13px; color:#374151; margin-top:12px; margin-bottom:6px; font-weight:500;' }, _('软件下载地址')),
+				inputDownloadUrl
 			]);
 			
 			var cancelBtn = E('button', { 'class': 'btn', 'style': 'background:#f3f4f6;color:#1f2937;border-radius:999px;padding:6px 14px;' }, _('取消'));
@@ -3384,6 +3408,7 @@ return view.extend({
 			cancelBtn.addEventListener('click', function(){ ui.hideModal(modal); });
 			submitBtn.addEventListener('click', function(){
 				var comment = inputComment.value.trim();
+				var downloadUrl = inputDownloadUrl.value.trim();
 				
 				// 禁用按钮防止重复提交
 				submitBtn.disabled = true;
@@ -3395,6 +3420,7 @@ return view.extend({
 				var reportUrl = L.url('admin/vum/uninstall/report_uninstall') + 
 					'?package=' + encodeURIComponent(pkgName) + 
 					'&comment=' + encodeURIComponent(comment) +
+					(downloadUrl ? ('&download_url=' + encodeURIComponent(downloadUrl)) : '') +
 					(token ? ('&token=' + encodeURIComponent(token)) : '');
 				
 				self._httpJson(reportUrl, {

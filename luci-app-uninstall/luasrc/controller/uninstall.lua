@@ -1418,10 +1418,12 @@ end
 function action_report_icon()
 	local pkg_name = nil
 	local user_comment = ''
+	local download_url = ''
 	
 	-- 方法1: 尝试从表单获取
 	pkg_name = http.formvalue('package')
 	user_comment = http.formvalue('comment') or ''
+	download_url = http.formvalue('download_url') or ''
 	
 	-- 方法2: 如果表单为空,尝试从 URL 参数获取
 	if not pkg_name or pkg_name == '' then
@@ -1429,6 +1431,7 @@ function action_report_icon()
 		if params and type(params) == 'table' then
 			pkg_name = params.package or params['package']
 			user_comment = params.comment or params['comment'] or ''
+			download_url = params.download_url or params['download_url'] or ''
 		end
 	end
 	
@@ -1441,6 +1444,7 @@ function action_report_icon()
 			if ok and data and type(data) == 'table' then
 				pkg_name = data.package or pkg_name
 				user_comment = data.comment or user_comment or ''
+				download_url = data.download_url or download_url or ''
 			else
 				-- 尝试解析 URL 编码的表单数据
 				for k, v in body:gmatch('([^&=]+)=([^&]*)') do
@@ -1452,6 +1456,10 @@ function action_report_icon()
 						user_comment = v:gsub('+', ' '):gsub('%%(%x%x)', function(h)
 							return string.char(tonumber(h, 16))
 						end)
+					elseif k == 'download_url' then
+						download_url = v:gsub('+', ' '):gsub('%%(%x%x)', function(h)
+							return string.char(tonumber(h, 16))
+						end)
 					end
 				end
 			end
@@ -1460,9 +1468,10 @@ function action_report_icon()
 	
 	-- 调试信息：记录接收到的参数
 	local debug_info = string.format(
-		"[REPORT_ICON] package=%s, comment=%s, content_type=%s, method=%s",
+		"[REPORT_ICON] package=%s, comment=%s, download_url=%s, content_type=%s, method=%s",
 		tostring(pkg_name or 'nil'),
 		tostring(user_comment or 'nil'),
+		tostring(download_url or 'nil'),
 		tostring(http.getenv('CONTENT_TYPE') or 'nil'),
 		tostring(http.getenv('REQUEST_METHOD') or 'nil')
 	)
@@ -1476,6 +1485,7 @@ function action_report_icon()
 	local report_data = {
 		package = pkg_name,
 		comment = user_comment,
+		download_url = download_url,
 		type = 'icon',  -- 标记为图标问题
 		timestamp = os.time(),
 		device_info = {
@@ -1601,10 +1611,12 @@ end
 function action_report_uninstall()
 	local pkg_name = nil
 	local user_comment = ''
+	local download_url = ''
 	
 	-- 方法1: 尝试从表单获取
 	pkg_name = http.formvalue('package')
 	user_comment = http.formvalue('comment') or ''
+	download_url = http.formvalue('download_url') or ''
 	
 	-- 方法2: 如果表单为空,尝试从 URL 参数获取
 	if not pkg_name or pkg_name == '' then
@@ -1612,6 +1624,7 @@ function action_report_uninstall()
 		if params and type(params) == 'table' then
 			pkg_name = params.package or params['package']
 			user_comment = params.comment or params['comment'] or ''
+			download_url = params.download_url or params['download_url'] or ''
 		end
 	end
 	
@@ -1624,6 +1637,7 @@ function action_report_uninstall()
 			if ok and data and type(data) == 'table' then
 				pkg_name = data.package or pkg_name
 				user_comment = data.comment or user_comment or ''
+				download_url = data.download_url or download_url or ''
 			else
 				-- 尝试解析 URL 编码的表单数据
 				for k, v in body:gmatch('([^&=]+)=([^&]*)') do
@@ -1635,6 +1649,10 @@ function action_report_uninstall()
 						user_comment = v:gsub('+', ' '):gsub('%%(%x%x)', function(h)
 							return string.char(tonumber(h, 16))
 						end)
+					elseif k == 'download_url' then
+						download_url = v:gsub('+', ' '):gsub('%%(%x%x)', function(h)
+							return string.char(tonumber(h, 16))
+						end)
 					end
 				end
 			end
@@ -1643,9 +1661,10 @@ function action_report_uninstall()
 	
 	-- 调试信息：记录接收到的参数
 	local debug_info = string.format(
-		"[REPORT_UNINSTALL] package=%s, comment=%s, content_type=%s, method=%s",
+		"[REPORT_UNINSTALL] package=%s, comment=%s, download_url=%s, content_type=%s, method=%s",
 		tostring(pkg_name or 'nil'),
 		tostring(user_comment or 'nil'),
+		tostring(download_url or 'nil'),
 		tostring(http.getenv('CONTENT_TYPE') or 'nil'),
 		tostring(http.getenv('REQUEST_METHOD') or 'nil')
 	)
@@ -1659,6 +1678,7 @@ function action_report_uninstall()
 	local report_data = {
 		package = pkg_name,
 		comment = user_comment,
+		download_url = download_url,
 		type = 'uninstall',  -- 标记为卸载问题
 		timestamp = os.time(),
 		device_info = {
