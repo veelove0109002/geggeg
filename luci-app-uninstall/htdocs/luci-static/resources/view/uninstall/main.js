@@ -411,28 +411,44 @@ return view.extend({
 					white-space: nowrap;
 				}
 				
-				#announcement-bell-btn {
-					margin-left: 0;
-					flex: 0 0 auto;
-					padding: 6px 12px;
-					min-width: 36px;
-				}
+			#announcement-bell-btn {
+				margin-left: 0;
+				flex: 0 0 auto;
+				padding: 6px 12px;
+				min-width: 36px;
+			}
 				
-				#history-log-btn {
-					margin-left: 0;
-					flex: 0 0 auto;
-					padding: 6px 12px;
-					font-size: 13px;
-					white-space: nowrap;
-				}
+			#install-local-btn {
+				margin-left: 0;
+				flex: 0 0 auto;
+				padding: 6px 12px;
+				font-size: 13px;
+				white-space: nowrap;
+			}
 				
-				#history-log-btn span {
-					display: none;
-				}
+			#install-local-btn span {
+				display: none;
+			}
 				
-				#history-log-btn img {
-					margin: 0;
-				}
+			#install-local-btn img {
+				margin: 0;
+			}
+				
+			#history-log-btn {
+				margin-left: 0;
+				flex: 0 0 auto;
+				padding: 6px 12px;
+				font-size: 13px;
+				white-space: nowrap;
+			}
+				
+			#history-log-btn span {
+				display: none;
+			}
+				
+			#history-log-btn img {
+				margin: 0;
+			}
 				
 				#announcement-panel {
 					width: 100%;
@@ -520,15 +536,20 @@ return view.extend({
 					padding: 2px 6px;
 				}
 				
-				#announcement-bell-btn {
-					padding: 5px 10px;
-					min-width: 36px;
-				}
+			#announcement-bell-btn {
+				padding: 5px 10px;
+				min-width: 36px;
+			}
 				
-				#history-log-btn {
-					padding: 5px 10px;
-					min-width: 36px;
-				}
+			#install-local-btn {
+				padding: 5px 10px;
+				min-width: 36px;
+			}
+				
+			#history-log-btn {
+				padding: 5px 10px;
+				min-width: 36px;
+			}
 				
 				#announcement-panel {
 					width: 100%;
@@ -1050,13 +1071,15 @@ return view.extend({
 					searchSection.classList.remove('mobile-collapsed');
 					searchContainer.classList.remove('mobile-icon-only');
 					searchSection.classList.add('search-expanded');
-					// 隐藏其他元素，让搜索框占据更多空间
-					var batchSection = toolbar.querySelector('div:first-child');
-					var historyBtn = document.getElementById('history-log-btn');
-					var bellBtn = document.getElementById('announcement-bell-btn');
-					if (batchSection) batchSection.style.display = 'none';
-					if (historyBtn) historyBtn.style.display = 'none';
-					if (bellBtn) bellBtn.style.display = 'none';
+				// 隐藏其他元素，让搜索框占据更多空间
+				var batchSection = toolbar.querySelector('div:first-child');
+				var installBtn = document.getElementById('install-local-btn');
+				var historyBtn = document.getElementById('history-log-btn');
+				var bellBtn = document.getElementById('announcement-bell-btn');
+				if (batchSection) batchSection.style.display = 'none';
+				if (installBtn) installBtn.style.display = 'none';
+				if (historyBtn) historyBtn.style.display = 'none';
+				if (bellBtn) bellBtn.style.display = 'none';
 					// 让搜索框占据全宽
 					searchContainer.style.flex = '1 1 100%';
 					searchContainer.style.margin = '0';
@@ -1082,13 +1105,15 @@ return view.extend({
 					if (!isExpanded) return;
 					isExpanded = false;
 					searchSection.classList.remove('search-expanded');
-					// 恢复其他元素
-					var batchSection = toolbar.querySelector('div:first-child');
-					var historyBtn = document.getElementById('history-log-btn');
-					var bellBtn = document.getElementById('announcement-bell-btn');
-					if (batchSection) batchSection.style.display = 'flex';
-					if (historyBtn) historyBtn.style.display = '';
-					if (bellBtn) bellBtn.style.display = '';
+				// 恢复其他元素
+				var batchSection = toolbar.querySelector('div:first-child');
+				var installBtn = document.getElementById('install-local-btn');
+				var historyBtn = document.getElementById('history-log-btn');
+				var bellBtn = document.getElementById('announcement-bell-btn');
+				if (batchSection) batchSection.style.display = 'flex';
+				if (installBtn) installBtn.style.display = '';
+				if (historyBtn) historyBtn.style.display = '';
+				if (bellBtn) bellBtn.style.display = '';
 					// 恢复搜索框样式
 					searchContainer.style.flex = '';
 					searchContainer.style.margin = '';
