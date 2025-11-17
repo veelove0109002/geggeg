@@ -4176,6 +4176,12 @@ return view.extend({
 				// 公告按钮的点击事件已经在按钮上定义了，这里不需要额外处理
 				return;
 			}
+			if (t.id === 'install-local-btn' || (t.closest && t.closest('#install-local-btn'))) {
+				ev.preventDefault();
+				ev.stopPropagation();
+				installLocalPackage();
+				return;
+			}
 			if (t.id === 'history-log-btn' || (t.closest && t.closest('#history-log-btn'))) {
 				ev.preventDefault();
 				ev.stopPropagation();
