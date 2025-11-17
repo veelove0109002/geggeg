@@ -165,6 +165,44 @@ return view.extend({
 			.custom-checkbox-wrapper.select-all-checkbox-wrapper {
 				display: inline-flex;
 			}
+
+			.install-progress-spinner {
+				width: 40px;
+				height: 40px;
+				border-radius: 999px;
+				border: 3px solid rgba(59, 130, 246, 0.2);
+				border-top-color: #3b82f6;
+				animation: uninstall-spin 0.8s linear infinite;
+				margin: 0 auto 12px;
+			}
+
+			.install-progress-bar {
+				width: 100%;
+				height: 6px;
+				background: #e5e7eb;
+				border-radius: 999px;
+				overflow: hidden;
+				margin-top: 10px;
+			}
+
+			.install-progress-bar-fill {
+				width: 45%;
+				height: 100%;
+				background: linear-gradient(90deg, #3b82f6 0%, #6366f1 100%);
+				animation: uninstall-progress 1.2s ease-in-out infinite;
+				filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.4));
+			}
+
+			@keyframes uninstall-spin {
+				from { transform: rotate(0deg); }
+				to { transform: rotate(360deg); }
+			}
+
+			@keyframes uninstall-progress {
+				0% { margin-left: -50%; }
+				50% { margin-left: 50%; }
+				100% { margin-left: -20%; }
+			}
 			
 			/* 更新按钮闪烁动画 */
 			@keyframes update-pulse {
@@ -2633,6 +2671,33 @@ return view.extend({
 				fileInput
 			]);
 
+			var progressModal = null;
+			function showInstallProgress(){
+				hideInstallProgress();
+				var body = E('div', { 'style': 'min-width:320px;padding:4px 6px;text-align:center;' }, [
+					E('div', { 'class': 'install-progress-spinner' }),
+					E('p', { 'style': 'margin:0;color:#374151;font-size:14px;font-weight:500;' }, _('系统正在安装，请稍候…')),
+					E('p', { 'style': 'margin:4px 0 0 0;color:#6b7280;font-size:13px;' }, _('不要关闭此页面，安装结束后将自动展示结果')),
+					E('div', { 'class': 'install-progress-bar' }, [
+						E('div', { 'class': 'install-progress-bar-fill' })
+					])
+				]);
+				progressModal = ui.showModal(_('正在安装'), [body]);
+				var ov = progressModal && progressModal.parentNode;
+				if (ov) {
+					ov.style.display = 'flex';
+					ov.style.alignItems = 'center';
+					ov.style.justifyContent = 'center';
+				}
+			}
+
+			function hideInstallProgress(){
+				if (progressModal) {
+					ui.hideModal(progressModal);
+					progressModal = null;
+				}
+			}
+
 			var cancelBtn = E('button', { 'class': 'btn', 'style': 'background:#f3f4f6;color:#1f2937;border-radius:999px;padding:6px 14px;' }, _('取消'));
 			var applyGradient = 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)';
 			var applyGradientHover = 'linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%)';
@@ -2678,12 +2743,16 @@ return view.extend({
 					var formData = new FormData();
 					formData.append('file', file, file.name || 'upload.ipk');
 
+					ui.hideModal(modal);
+					modal = null;
+					showInstallProgress();
+
 					fetch(uploadUrl, {
 						method: 'POST',
 						body: formData,
 						credentials: 'include'
 					}).then(function(res){ return res.json(); }).then(function(res){
-						ui.hideModal(modal);
+						hideInstallProgress();
 						var ok = res && res.ok;
 						var logText = (res && res.log) || '';
 						var title = ok ? _('安装成功') : _('安装失败');
@@ -2704,7 +2773,7 @@ return view.extend({
 							ov.style.justifyContent = 'center';
 						}
 					}).catch(function(err){
-						ui.hideModal(modal);
+						hideInstallProgress();
 						ui.addNotification(null, E('p', {}, _('安装请求失败: ') + String(err)), 'danger');
 					});
 				} else {
@@ -2728,11 +2797,14 @@ return view.extend({
 						'?url=' + encodeURIComponent(url) +
 						(token ? ('&token=' + encodeURIComponent(token)) : '');
 
+					ui.hideModal(modal);
+					modal = null;
+					showInstallProgress();
 					self._httpJson(reqUrl, {
 						method: 'GET',
 						headers: { 'Accept': 'application/json' }
 					}).then(function(res){
-						ui.hideModal(modal);
+						hideInstallProgress();
 						var ok = res && res.ok;
 						var logText = (res && res.log) || '';
 						var title = ok ? _('安装成功') : _('安装失败');
@@ -2753,7 +2825,7 @@ return view.extend({
 							ov.style.justifyContent = 'center';
 						}
 					}).catch(function(err){
-						ui.hideModal(modal);
+						hideInstallProgress();
 						ui.addNotification(null, E('p', {}, _('安装请求失败: ') + String(err)), 'danger');
 					});
 				}
