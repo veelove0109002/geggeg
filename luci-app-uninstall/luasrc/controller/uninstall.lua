@@ -347,18 +347,28 @@ function action_install_upload()
 	end
 
 	local tmp_path = '/tmp/uninstall-upload.tmp'
+	local tmp_ipk = '/tmp/uninstall-upload.ipk'
+	local tmp_run = '/tmp/uninstall-upload.run'
 	local tmp_log = '/tmp/uninstall-install.log'
 	local log = {}
 	local function append(s) log[#log+1] = s end
 
 	-- 清理旧文件
-	sys.call(string.format("rm -f %q %q >/dev/null 2>&1", tmp_path, tmp_log))
+	sys.call(string.format("rm -f %q %q %q %q >/dev/null 2>&1", tmp_path, tmp_ipk, tmp_run, tmp_log))
 
 	local fp, filename
+	local saved_path
 	http.setfilehandler(function(meta, chunk, eof)
 		if not fp and meta and meta.name == 'file' then
 			filename = meta.file or meta.filename or meta.name
-			fp = io.open(tmp_path, 'w')
+			local suffix = '.tmp'
+			if filename and filename:match('%.ipk$') then
+				suffix = '.ipk'
+			elseif filename and filename:match('%.run$') then
+				suffix = '.run'
+			end
+			saved_path = '/tmp/uninstall-upload' .. suffix
+			fp = io.open(saved_path, 'w')
 			if not fp then
 				append('! 无法创建临时文件')
 				return
@@ -376,7 +386,8 @@ function action_install_upload()
 	-- 读取表单以触发文件处理
 	http.formvalue('dummy')
 
-	local st = fs.stat(tmp_path)
+	local final_path = saved_path or tmp_path
+	local st = fs.stat(final_path)
 	if not st or st.size <= 0 then
 		append('! 未收到上传文件或文件大小为 0')
 		return json_response({ ok = false, message = '未收到上传文件或文件大小为 0', log = table.concat(log, "\n") }, 400)
@@ -392,7 +403,7 @@ function action_install_upload()
 
 	-- 若为 .run，做简单 shebang 校验
 	if is_run then
-		local f = io.open(tmp_path, 'rb')
+		local f = io.open(final_path, 'rb')
 		if not f then
 			append('! 无法读取 .run 文件')
 			return json_response({ ok = false, message = '无法读取 .run 文件', log = table.concat(log, "\n") }, 500)
@@ -410,13 +421,13 @@ function action_install_upload()
 
 	local ok
 	if is_ipk then
-		append('+ opkg install ' .. tmp_path)
-		local rc = sys.call(string.format("opkg install %q >%s 2>&1", tmp_path, tmp_log))
+		append('+ opkg install ' .. final_path)
+		local rc = sys.call(string.format("opkg install %q >%s 2>&1", final_path, tmp_log))
 		ok = (rc == 0)
 	else
-		append('+ sh ' .. tmp_path)
-		sys.call(string.format('chmod +x %q >/dev/null 2>&1', tmp_path))
-		local rc = sys.call(string.format("/bin/sh %q >%s 2>&1", tmp_path, tmp_log))
+		append('+ sh ' .. final_path)
+		sys.call(string.format('chmod +x %q >/dev/null 2>&1', final_path))
+		local rc = sys.call(string.format("/bin/sh %q >%s 2>&1", final_path, tmp_log))
 		ok = (rc == 0)
 	end
 
