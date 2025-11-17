@@ -1261,6 +1261,10 @@ return view.extend({
 					return L.resource('icons/' + baseName + '.png');
 				}
 			}
+			if (name === 'luci-app-smartdns') {
+				// SmartDNS 图标在 icons 目录下，直接引用
+				return L.resource('icons/smartdns.png');
+			}
 			var base = SPECIAL_ICON_MAP[name];
 			if (base) return L.resource('app-icons/' + base + '.png');
 			if (name === 'luci-app-uninstall') return L.resource('app-icons/gjxz.png');
