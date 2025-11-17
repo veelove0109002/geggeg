@@ -1265,6 +1265,9 @@ return view.extend({
 				// SmartDNS 图标在 icons 目录下，直接引用
 				return L.resource('icons/smartdns.png');
 			}
+			if (name === 'luci-app-advancedplus') {
+				return L.resource('icons/advancedplus.png');
+			}
 			var base = SPECIAL_ICON_MAP[name];
 			if (base) return L.resource('app-icons/' + base + '.png');
 			if (name === 'luci-app-uninstall') return L.resource('app-icons/gjxz.png');
@@ -1297,6 +1300,7 @@ return view.extend({
 
 		var NAME_MAP = {
 			'luci-app-uninstall': _('高级卸载'),
+			'luci-app-advancedplus': _('AdvancedPlus'),
 			'luci-app-cifs-mount': _('挂载cifs'),
 			'luci-app-fan': _('风扇'),
 			'luci-app-filetransfer': _('文件传输'),
