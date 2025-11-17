@@ -71,6 +71,10 @@ function index()
 	e = entry({ 'admin', 'vum', 'uninstall', 'install_from_url' }, call('action_install_from_url'))
 	e.leaf = true
 	e.acl_depends = { 'luci-app-uninstall' }
+
+	e = entry({ 'admin', 'vum', 'uninstall', 'install_upload' }, call('action_install_upload'))
+	e.leaf = true
+	e.acl_depends = { 'luci-app-uninstall' }
 end
 
 local http = require 'luci.http'
@@ -324,6 +328,101 @@ function action_install_from_url()
 	if out and #out > 0 then append(out) end
 
 	-- 刷新 LuCI 缓存，便于新插件菜单立即生效
+	if ok then
+		sys.call('rm -f /tmp/luci-indexcache >/dev/null 2>&1')
+		sys.call('rm -rf /tmp/luci-modulecache/* >/dev/null 2>&1')
+		sys.call('[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd reload >/dev/null 2>&1')
+		sys.call('[ -x /etc/init.d/nginx ] && /etc/init.d/nginx reload >/dev/null 2>&1')
+	end
+
+	return json_response({ ok = ok, log = table.concat(log, "\n") })
+end
+
+-- 上传并安装本地 .ipk 或 .run 包
+function action_install_upload()
+	-- 仅允许 POST
+	local method = http.getenv and http.getenv('REQUEST_METHOD') or ''
+	if method ~= 'POST' then
+		return json_response({ ok = false, message = '仅支持 POST 上传' }, 405)
+	end
+
+	local tmp_path = '/tmp/uninstall-upload.tmp'
+	local tmp_log = '/tmp/uninstall-install.log'
+	local log = {}
+	local function append(s) log[#log+1] = s end
+
+	-- 清理旧文件
+	sys.call(string.format("rm -f %q %q >/dev/null 2>&1", tmp_path, tmp_log))
+
+	local fp, filename
+	http.setfilehandler(function(meta, chunk, eof)
+		if not fp and meta and meta.name == 'file' then
+			filename = meta.file or meta.filename or meta.name
+			fp = io.open(tmp_path, 'w')
+			if not fp then
+				append('! 无法创建临时文件')
+				return
+			end
+		end
+		if fp and chunk then
+			fp:write(chunk)
+		end
+		if fp and eof then
+			fp:close()
+			fp = nil
+		end
+	end)
+
+	-- 读取表单以触发文件处理
+	http.formvalue('dummy')
+
+	local st = fs.stat(tmp_path)
+	if not st or st.size <= 0 then
+		append('! 未收到上传文件或文件大小为 0')
+		return json_response({ ok = false, message = '未收到上传文件或文件大小为 0', log = table.concat(log, "\n") }, 400)
+	end
+
+	filename = filename or ''
+	local is_ipk = filename:match('%.ipk$') ~= nil
+	local is_run = filename:match('%.run$') ~= nil
+	if not is_ipk and not is_run then
+		append('! 仅支持 .ipk 或 .run 文件')
+		return json_response({ ok = false, message = '仅支持上传以 .ipk 或 .run 结尾的文件', log = table.concat(log, "\n") }, 400)
+	end
+
+	-- 若为 .run，做简单 shebang 校验
+	if is_run then
+		local f = io.open(tmp_path, 'rb')
+		if not f then
+			append('! 无法读取 .run 文件')
+			return json_response({ ok = false, message = '无法读取 .run 文件', log = table.concat(log, "\n") }, 500)
+		end
+		local header = f:read(2) or ''
+		f:close()
+		if header ~= '#!' then
+			append('! 非有效安装脚本（缺少 shebang）')
+			return json_response({ ok = false, message = '非有效安装脚本（缺少 shebang）', log = table.concat(log, "\n") }, 400)
+		end
+	end
+
+	append('=== Install from upload ===')
+	append('File: ' .. (filename or ''))
+
+	local ok
+	if is_ipk then
+		append('+ opkg install ' .. tmp_path)
+		local rc = sys.call(string.format("opkg install %q >%s 2>&1", tmp_path, tmp_log))
+		ok = (rc == 0)
+	else
+		append('+ sh ' .. tmp_path)
+		sys.call(string.format('chmod +x %q >/dev/null 2>&1', tmp_path))
+		local rc = sys.call(string.format("/bin/sh %q >%s 2>&1", tmp_path, tmp_log))
+		ok = (rc == 0)
+	end
+
+	local out = fs.readfile(tmp_log) or ''
+	if out and #out > 0 then append(out) end
+
 	if ok then
 		sys.call('rm -f /tmp/luci-indexcache >/dev/null 2>&1')
 		sys.call('rm -rf /tmp/luci-modulecache/* >/dev/null 2>&1')

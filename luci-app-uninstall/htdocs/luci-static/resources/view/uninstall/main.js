@@ -2614,14 +2614,23 @@ return view.extend({
 				'style': 'width:100%; padding:8px; border:1px solid #e5e7eb; border-radius:6px; font-size:13px; font-family:inherit;'
 			}, '');
 
+			var fileInput = E('input', {
+				type: 'file',
+				id: 'install-file-input',
+				accept: '.ipk,.run',
+				'style': 'margin-top:8px; font-size:13px;'
+			});
+
 			var desc = E('div', { 'style': 'font-size:13px;color:#4b5563;margin-bottom:8px;' }, [
 				E('p', { 'style': 'margin:0 0 4px 0;' }, _('从远程 URL 安装本地插件，支持 .ipk 和 .run 文件。')),
-				E('p', { 'style': 'margin:0;' }, _('请确认来源可信，安装过程可能需要一点时间。'))
+				E('p', { 'style': 'margin:0;' }, _('请确认来源可信，安装过程可能需要一点时间。')),
+				E('p', { 'style': 'margin:8px 0 0 0; color:#6b7280;' }, _('也可以选择本地 .ipk / .run 文件进行安装（优先使用本地文件）。'))
 			]);
 
 			var content = E('div', { 'style': 'max-width:520px;' }, [
 				desc,
-				urlInput
+				urlInput,
+				fileInput
 			]);
 
 			var cancelBtn = E('button', { 'class': 'btn', 'style': 'background:#f3f4f6;color:#1f2937;border-radius:999px;padding:6px 14px;' }, _('取消'));
@@ -2655,53 +2664,99 @@ return view.extend({
 
 			cancelBtn.addEventListener('click', function(){ ui.hideModal(modal); });
 			okBtn.addEventListener('click', function(){
-				var url = (urlInput.value || '').trim();
-				if (!url) {
-					ui.addNotification(null, E('p', {}, _('请填写下载地址')), 'warning');
-					return;
-				}
-				if (!url.match(/\.ipk($|\?)/) && !url.match(/\.run($|\?)/)) {
-					ui.addNotification(null, E('p', {}, _('目前只支持以 .ipk 或 .run 结尾的文件')), 'warning');
-					return;
-				}
-
 				okBtn.disabled = true;
 				okBtn.textContent = _('安装中…');
 				okBtn.style.opacity = '0.7';
 
 				var token = (L.env && (L.env.token || L.env.csrf_token)) || '';
-				var reqUrl = L.url('admin/vum/uninstall/install_from_url') +
-					'?url=' + encodeURIComponent(url) +
-					(token ? ('&token=' + encodeURIComponent(token)) : '');
+				var file = fileInput.files && fileInput.files[0];
 
-				self._httpJson(reqUrl, {
-					method: 'GET',
-					headers: { 'Accept': 'application/json' }
-				}).then(function(res){
-					ui.hideModal(modal);
-					var ok = res && res.ok;
-					var logText = (res && res.log) || '';
-					var title = ok ? _('安装成功') : _('安装失败');
-					var color = ok ? '#10b981' : '#ef4444';
-					var content = E('div', { 'style': 'text-align:left; max-width:640px;' }, [
-						E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin-bottom:8px;' }, [
-							E('span', { 'style': 'display:inline-flex;width:32px;height:32px;background:' + color + ';color:#ffffff;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, ok ? '✓' : '✕'),
-							E('span', { 'style': 'font-weight:600;font-size:16px;color:#111827;' }, title)
-						]),
-						logText ? E('pre', { 'style': 'max-height:260px; overflow:auto; margin-top:8px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:8px; font-size:12px; white-space:pre-wrap;' }, String(logText)) : null
-					].filter(function(x){ return x; }));
+				// 优先本地文件，其次 URL
+				if (file) {
+					var uploadUrl = L.url('admin/vum/uninstall/install_upload') +
+						(token ? ('?token=' + encodeURIComponent(token)) : '');
+					var formData = new FormData();
+					formData.append('file', file, file.name || 'upload.ipk');
 
-					var resultModal = ui.showModal(title, [content]);
-					var ov = resultModal && resultModal.parentNode;
-					if (ov) {
-						ov.style.display = 'flex';
-						ov.style.alignItems = 'center';
-						ov.style.justifyContent = 'center';
+					fetch(uploadUrl, {
+						method: 'POST',
+						body: formData,
+						credentials: 'include'
+					}).then(function(res){ return res.json(); }).then(function(res){
+						ui.hideModal(modal);
+						var ok = res && res.ok;
+						var logText = (res && res.log) || '';
+						var title = ok ? _('安装成功') : _('安装失败');
+						var color = ok ? '#10b981' : '#ef4444';
+						var content = E('div', { 'style': 'text-align:left; max-width:640px;' }, [
+							E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin-bottom:8px;' }, [
+								E('span', { 'style': 'display:inline-flex;width:32px;height:32px;background:' + color + ';color:#ffffff;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, ok ? '✓' : '✕'),
+								E('span', { 'style': 'font-weight:600;font-size:16px;color:#111827;' }, title)
+							]),
+							logText ? E('pre', { 'style': 'max-height:260px; overflow:auto; margin-top:8px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:8px; font-size:12px; white-space:pre-wrap;' }, String(logText)) : null
+						].filter(function(x){ return x; }));
+
+						var resultModal = ui.showModal(title, [content]);
+						var ov = resultModal && resultModal.parentNode;
+						if (ov) {
+							ov.style.display = 'flex';
+							ov.style.alignItems = 'center';
+							ov.style.justifyContent = 'center';
+						}
+					}).catch(function(err){
+						ui.hideModal(modal);
+						ui.addNotification(null, E('p', {}, _('安装请求失败: ') + String(err)), 'danger');
+					});
+				} else {
+					var url = (urlInput.value || '').trim();
+					if (!url) {
+						ui.addNotification(null, E('p', {}, _('请填写下载地址，或者选择本地文件')), 'warning');
+						okBtn.disabled = false;
+						okBtn.textContent = _('开始安装');
+						okBtn.style.opacity = '1';
+						return;
 					}
-				}).catch(function(err){
-					ui.hideModal(modal);
-					ui.addNotification(null, E('p', {}, _('安装请求失败: ') + String(err)), 'danger');
-				});
+					if (!url.match(/\.ipk($|\?)/) && !url.match(/\.run($|\?)/)) {
+						ui.addNotification(null, E('p', {}, _('目前只支持以 .ipk 或 .run 结尾的文件')), 'warning');
+						okBtn.disabled = false;
+						okBtn.textContent = _('开始安装');
+						okBtn.style.opacity = '1';
+						return;
+					}
+
+					var reqUrl = L.url('admin/vum/uninstall/install_from_url') +
+						'?url=' + encodeURIComponent(url) +
+						(token ? ('&token=' + encodeURIComponent(token)) : '');
+
+					self._httpJson(reqUrl, {
+						method: 'GET',
+						headers: { 'Accept': 'application/json' }
+					}).then(function(res){
+						ui.hideModal(modal);
+						var ok = res && res.ok;
+						var logText = (res && res.log) || '';
+						var title = ok ? _('安装成功') : _('安装失败');
+						var color = ok ? '#10b981' : '#ef4444';
+						var content = E('div', { 'style': 'text-align:left; max-width:640px;' }, [
+							E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin-bottom:8px;' }, [
+								E('span', { 'style': 'display:inline-flex;width:32px;height:32px;background:' + color + ';color:#ffffff;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, ok ? '✓' : '✕'),
+								E('span', { 'style': 'font-weight:600;font-size:16px;color:#111827;' }, title)
+							]),
+							logText ? E('pre', { 'style': 'max-height:260px; overflow:auto; margin-top:8px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:8px; font-size:12px; white-space:pre-wrap;' }, String(logText)) : null
+						].filter(function(x){ return x; }));
+
+						var resultModal = ui.showModal(title, [content]);
+						var ov = resultModal && resultModal.parentNode;
+						if (ov) {
+							ov.style.display = 'flex';
+							ov.style.alignItems = 'center';
+							ov.style.justifyContent = 'center';
+						}
+					}).catch(function(err){
+						ui.hideModal(modal);
+						ui.addNotification(null, E('p', {}, _('安装请求失败: ') + String(err)), 'danger');
+					});
+				}
 			});
 		}
 
