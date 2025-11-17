@@ -166,6 +166,85 @@ return view.extend({
 				display: inline-flex;
 			}
 
+			/* 自定义文件上传按钮 */
+			.file-upload-wrapper {
+				margin-top: 12px;
+				width: 100%;
+				display: flex;
+				flex-direction: column;
+				gap: 6px;
+			}
+			.file-upload-control {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+				flex-wrap: wrap;
+			}
+			.file-upload-input {
+				position: absolute;
+				width: 1px;
+				height: 1px;
+				padding: 0;
+				margin: -1px;
+				overflow: hidden;
+				clip: rect(0, 0, 0, 0);
+				border: 0;
+			}
+			.file-upload-label {
+				display: inline-flex;
+				align-items: center;
+				gap: 8px;
+				padding: 8px 16px;
+				border-radius: 999px;
+				background: linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%);
+				color: #fff;
+				font-weight: 600;
+				font-size: 13px;
+				cursor: pointer;
+				box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25), inset 0 1px 0 rgba(255,255,255,0.2);
+				transition: all .2s ease;
+			}
+			.file-upload-label:hover {
+				transform: translateY(-1px);
+				box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35), inset 0 1px 0 rgba(255,255,255,0.25);
+			}
+			.file-upload-icon {
+				display: inline-flex;
+				width: 20px;
+				height: 20px;
+				border-radius: 6px;
+				background: rgba(255,255,255,0.2);
+				align-items: center;
+				justify-content: center;
+				font-size: 12px;
+			}
+			.file-upload-filename {
+				flex: 1;
+				min-width: 140px;
+				font-size: 13px;
+				color: #6b7280;
+				padding: 8px 12px;
+				border-radius: 10px;
+				background: #f9fafb;
+				border: 1px dashed #d1d5db;
+				transition: border-color .2s ease, color .2s ease;
+			}
+			.file-upload-filename[data-has-file="1"] {
+				border-color: #6366f1;
+				color: #111827;
+				background: rgba(99,102,241,0.08);
+			}
+			@media screen and (max-width: 480px) {
+				.file-upload-control {
+					flex-direction: column;
+					align-items: stretch;
+				}
+				.file-upload-label {
+					justify-content: center;
+					width: 100%;
+				}
+			}
+
 			.install-progress-spinner {
 				width: 40px;
 				height: 40px;
@@ -2652,12 +2731,36 @@ return view.extend({
 				'style': 'width:100%; padding:8px; border:1px solid #e5e7eb; border-radius:6px; font-size:13px; font-family:inherit;'
 			}, '');
 
+			var fileInputId = 'install-file-input-' + Math.floor(Math.random() * 1000000);
 			var fileInput = E('input', {
 				type: 'file',
-				id: 'install-file-input',
+				id: fileInputId,
 				accept: '.ipk,.run',
-				'style': 'margin-top:8px; font-size:13px;'
+				'class': 'file-upload-input'
 			});
+			var fileLabel = E('label', {
+				'class': 'file-upload-label',
+				'for': fileInputId
+			}, [
+				E('span', { 'class': 'file-upload-icon' }, 'UP'),
+				E('span', {}, _('选择文件'))
+			]);
+			var fileNameEl = E('div', {
+				'class': 'file-upload-filename',
+				'data-has-file': '0'
+			}, _('尚未选择文件'));
+			fileInput.addEventListener('change', function(){
+				var has = this.files && this.files[0];
+				fileNameEl.textContent = has ? (this.files[0].name || _('已选择文件')) : _('尚未选择文件');
+				fileNameEl.setAttribute('data-has-file', has ? '1' : '0');
+			});
+			var filePicker = E('div', { 'class': 'file-upload-wrapper' }, [
+				E('div', { 'class': 'file-upload-control' }, [
+					fileLabel,
+					fileNameEl,
+					fileInput
+				])
+			]);
 
 			var desc = E('div', { 'style': 'font-size:13px;color:#4b5563;margin-bottom:8px;' }, [
 				E('p', { 'style': 'margin:0 0 4px 0;' }, _('从远程 URL 安装本地插件，支持 .ipk 和 .run 文件。')),
@@ -2668,7 +2771,7 @@ return view.extend({
 			var content = E('div', { 'style': 'max-width:520px;' }, [
 				desc,
 				urlInput,
-				fileInput
+				filePicker
 			]);
 
 			function createInstallProgressModal(options) {
