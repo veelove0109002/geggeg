@@ -2671,30 +2671,264 @@ return view.extend({
 				fileInput
 			]);
 
-			var progressModal = null;
-			function showInstallProgress(){
-				hideInstallProgress();
-				var body = E('div', { 'style': 'min-width:320px;padding:4px 6px;text-align:center;' }, [
-					E('div', { 'class': 'install-progress-spinner' }),
-					E('p', { 'style': 'margin:0;color:#374151;font-size:14px;font-weight:500;' }, _('系统正在安装，请稍候…')),
-					E('p', { 'style': 'margin:4px 0 0 0;color:#6b7280;font-size:13px;' }, _('不要关闭此页面，安装结束后将自动展示结果')),
-					E('div', { 'class': 'install-progress-bar' }, [
-						E('div', { 'class': 'install-progress-bar-fill' })
-					])
+			function createInstallProgressModal(options) {
+				options = options || {};
+				var title = options.title || _('正在安装…');
+				var subtitleText = options.subtitle || _('安装任务');
+				var badgeText = options.badgeText || _('安装');
+				var badgeIcon = options.icon || packageIcon('luci-app-uninstall');
+				var logTitle = options.logTitle || _('执行日志');
+
+				var statusIconEl = E('span', { 'style': 'display:inline-flex;width:22px;height:22px;background:#dbeafe;color:#1d4ed8;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '…');
+				var statusTextEl = E('span', { 'style': 'font-weight:600;color:#1d4ed8;' }, _('正在安装'));
+				var elapsedEl = E('span', { 'style': 'font-size:12px;color:#6b7280;' }, '0s');
+				var badgeEl = E('span', { 'style': 'font-size:12px; color:#6b7280; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:999px; padding:2px 8px;' }, badgeText);
+
+				var progressTrack = E('div', { 'style': 'height:6px;border-radius:999px;background:#0f1838;overflow:hidden;' });
+				var progressBar = E('div', { 'style': 'height:6px;width:0%;background:linear-gradient(90deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%);box-shadow:0 0 8px rgba(59,130,246,.6);transition: width .25s ease;' });
+				progressTrack.appendChild(progressBar);
+
+				var subtitleEl = E('div', { 'style': 'font-size:15px;font-weight:700;color:#e5e7eb;' }, subtitleText);
+
+				var statusBar = E('div', { 'style': 'display:flex; flex-direction:column; gap:8px; margin-bottom:8px;' }, [
+					E('div', { 'style': 'display:flex; align-items:center; justify-content:space-between; gap:8px;' }, [
+						E('div', { 'style': 'display:flex; align-items:center; gap:8px;' }, [ statusIconEl, statusTextEl, elapsedEl ]),
+						E('div', { 'style': 'display:flex; align-items:center; gap:10px;' }, [
+							badgeEl,
+							E('img', { src: badgeIcon, 'style': 'width:24px; height:24px; border-radius:6px; background:#f3f4f6; border:1px solid #e5e7eb; object-fit:contain;' })
+						])
+					]),
+					subtitleEl,
+					progressTrack
 				]);
-				progressModal = ui.showModal(_('正在安装'), [body]);
-				var ov = progressModal && progressModal.parentNode;
-				if (ov) {
-					ov.style.display = 'flex';
-					ov.style.alignItems = 'center';
-					ov.style.justifyContent = 'center';
+
+				var logExpanded = false;
+				var toggleLogBtn = E('button', {
+					type: 'button',
+					'class': 'btn',
+					'style': 'font-size:12px; padding:4px 10px; background:#f3f4f6; border:1px solid #e5e7eb; color:#6b7280; border-radius:6px; cursor:pointer;'
+				}, _('展开日志'));
+
+				var log = E('pre', { 'style': 'max-height:0;overflow:hidden;background:linear-gradient(180deg,#0b1024 0%,#0f1633 100%);color:#cbd5e1;padding:0 10px;border-radius:8px; box-shadow: inset 0 0 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06); transition: max-height .3s ease, padding .3s ease;' }, '');
+
+				toggleLogBtn.addEventListener('click', function(){
+					logExpanded = !logExpanded;
+					if (logExpanded) {
+						log.style.maxHeight = '260px';
+						log.style.padding = '10px';
+						log.style.overflow = 'auto';
+						toggleLogBtn.textContent = _('折叠日志');
+						toggleLogBtn.style.background = '#e0f2fe';
+						toggleLogBtn.style.color = '#0369a1';
+					} else {
+						log.style.maxHeight = '0';
+						log.style.padding = '0 10px';
+						log.style.overflow = 'hidden';
+						toggleLogBtn.textContent = _('展开日志');
+						toggleLogBtn.style.background = '#f3f4f6';
+						toggleLogBtn.style.color = '#6b7280';
+					}
+				});
+
+				var logSection = E('div', { 'style': 'display:flex; flex-direction:column; gap:8px;' }, [
+					E('div', { 'style': 'display:flex; align-items:center; justify-content:space-between;' }, [
+						E('span', { 'style': 'font-size:13px; color:#6b7280; font-weight:600;' }, logTitle),
+						toggleLogBtn
+					]),
+					log
+				]);
+
+				var closeBtn = E('button', { 'class': 'btn', disabled: true, 'style': 'background:linear-gradient(135deg, #6b7280 0%, #4b5563 50%, #374151 100%); color:#fff; border:none; font-weight:600; border-radius:6px; padding:8px 16px; box-shadow:0 2px 8px rgba(107,114,128,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s; opacity:0.5; cursor:not-allowed;' }, _('关闭'));
+				var closeBtnGradient = 'linear-gradient(135deg, #6b7280 0%, #4b5563 50%, #374151 100%)';
+				var closeBtnHover = 'linear-gradient(135deg, #4b5563 0%, #374151 50%, #1f2937 100%)';
+				var successBtnGradient = 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)';
+				var successBtnHover = 'linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%)';
+				var buttonVariant = 'pending';
+
+				var modal = ui.showModal(title, [
+					statusBar,
+					logSection,
+					E('div', { 'style':'margin-top:10px;display:flex;gap:8px;justify-content:flex-end;' }, [ closeBtn ])
+				]);
+				var overlay = modal && modal.parentNode;
+				if (overlay) {
+					overlay.style.display = 'flex';
+					overlay.style.alignItems = 'center';
+					overlay.style.justifyContent = 'center';
 				}
+
+				var startTs = Date.now();
+				var elapsedTimer = setInterval(function(){
+					var s = Math.floor((Date.now() - startTs) / 1000);
+					elapsedEl.textContent = s + 's';
+				}, 1000);
+
+				var currentProgress = 0;
+				function setProgress(p){
+					currentProgress = Math.max(0, Math.min(100, p));
+					progressBar.style.width = currentProgress + '%';
+				}
+
+				function getProgress(){
+					return currentProgress;
+				}
+
+				function stopElapsed(){
+					if (elapsedTimer) {
+						clearInterval(elapsedTimer);
+						elapsedTimer = null;
+					}
+				}
+
+				var autoHandles = [];
+				function startAutoAdvance(max, step, interval){
+					max = Math.max(0, Math.min(100, max || 90));
+					step = step || 1;
+					interval = interval || 400;
+					var handle = setInterval(function(){
+						if (currentProgress >= max) {
+							clearInterval(handle);
+							return;
+						}
+						setProgress(Math.min(max, currentProgress + step));
+					}, interval);
+					autoHandles.push(handle);
+					return handle;
+				}
+
+				function stopAutoAdvance(handle){
+					if (!handle) return;
+					clearInterval(handle);
+					autoHandles = autoHandles.filter(function(h){ return h !== handle; });
+				}
+
+				function stopAllAuto(){
+					autoHandles.forEach(function(h){ clearInterval(h); });
+					autoHandles = [];
+				}
+
+				function println(text){
+					if (text === undefined || text === null) return;
+					var str = String(text);
+					if (!str.length) return;
+					str.split(/\r?\n/).forEach(function(line){
+						log.appendChild(document.createTextNode(line));
+						log.appendChild(document.createTextNode('\n'));
+					});
+					log.scrollTop = log.scrollHeight;
+				}
+
+				var state = 'running';
+				function finalize(success){
+					state = success ? 'success' : 'failure';
+					buttonVariant = success ? 'success' : 'default';
+					closeBtn.disabled = false;
+					closeBtn.textContent = success ? _('返回页面') : _('关闭');
+					closeBtn.style.opacity = '1';
+					closeBtn.style.cursor = 'pointer';
+					if (success) {
+						closeBtn.style.background = successBtnGradient;
+						closeBtn.style.boxShadow = '0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
+					} else {
+						closeBtn.style.background = closeBtnGradient;
+						closeBtn.style.boxShadow = '0 2px 8px rgba(107,114,128,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
+					}
+				}
+
+				function markSuccess(message){
+					stopElapsed();
+					stopAllAuto();
+					setProgress(100);
+					statusIconEl.textContent = '✓';
+					statusIconEl.setAttribute('style', 'display:inline-flex;width:22px;height:22px;background:#dcfce7;color:#065f46;border-radius:999px;align-items:center;justify-content:center;font-weight:700;');
+					statusTextEl.textContent = message || _('安装完成');
+					statusTextEl.setAttribute('style', 'font-weight:600;color:#065f46;');
+					finalize(true);
+				}
+
+				function markFailure(message){
+					stopElapsed();
+					stopAllAuto();
+					setProgress(Math.max(currentProgress, 100));
+					progressBar.style.background = 'linear-gradient(90deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
+					progressBar.style.boxShadow = '0 0 8px rgba(239,68,68,.6)';
+					statusIconEl.textContent = '✕';
+					statusIconEl.setAttribute('style', 'display:inline-flex;width:22px;height:22px;background:#fee2e2;color:#7f1d1d;border-radius:999px;align-items:center;justify-content:center;font-weight:700;');
+					statusTextEl.textContent = message || _('安装失败');
+					statusTextEl.setAttribute('style', 'font-weight:600;color:#7f1d1d;');
+					finalize(false);
+				}
+
+				function setStatus(text, color){
+					statusTextEl.textContent = text;
+					if (color) statusTextEl.style.color = color;
+				}
+
+				closeBtn.addEventListener('mouseenter', function(){
+					if (closeBtn.disabled) return;
+					if (buttonVariant === 'success') {
+						this.style.background = successBtnHover;
+						this.style.boxShadow = '0 4px 12px rgba(16,185,129,0.4), inset 0 1px 0 rgba(255,255,255,0.2)';
+					} else {
+						this.style.background = closeBtnHover;
+						this.style.boxShadow = '0 4px 12px rgba(107,114,128,0.4), inset 0 1px 0 rgba(255,255,255,0.2)';
+					}
+				});
+				closeBtn.addEventListener('mouseleave', function(){
+					if (closeBtn.disabled) return;
+					if (buttonVariant === 'success') {
+						this.style.background = successBtnGradient;
+						this.style.boxShadow = '0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
+					} else {
+						this.style.background = closeBtnGradient;
+						this.style.boxShadow = '0 2px 8px rgba(107,114,128,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
+					}
+				});
+				closeBtn.addEventListener('click', function(){
+					if (state === 'running') return;
+					ui.hideModal(modal);
+					if (state === 'success') {
+						if (typeof refresh === 'function') {
+							try { refresh(); }
+							catch (err) { window.location.reload(); }
+						} else {
+							window.location.reload();
+						}
+					}
+				});
+
+				return {
+					println: println,
+					setProgress: setProgress,
+					getProgress: getProgress,
+					setStatus: setStatus,
+					setSubtitle: function(text){ subtitleEl.textContent = text || _('安装任务'); },
+					markSuccess: markSuccess,
+					markFailure: markFailure,
+					startAutoAdvance: startAutoAdvance,
+					stopAutoAdvance: stopAutoAdvance,
+					stopAllAuto: stopAllAuto,
+					destroy: function(){ stopElapsed(); stopAllAuto(); ui.hideModal(modal); }
+				};
 			}
 
-			function hideInstallProgress(){
-				if (progressModal) {
-					ui.hideModal(progressModal);
-					progressModal = null;
+			function appendLogText(progressUI, text){
+				if (!text) return;
+				String(text).split(/\r?\n/).forEach(function(line){
+					if (line.length === 0) return;
+					progressUI.println(line);
+				});
+			}
+
+			function handleInstallResponse(progressUI, res, successMessage){
+				if (res && res.log) appendLogText(progressUI, res.log);
+				if (res && res.message) progressUI.println(res.message);
+				if (res && res.ok) {
+					progressUI.markSuccess(successMessage || _('安装完成'));
+				} else {
+					var msg = (res && (res.message || res.error || res.reason)) || _('安装失败');
+					progressUI.println(msg);
+					progressUI.markFailure(msg);
 				}
 			}
 
@@ -2736,7 +2970,6 @@ return view.extend({
 				var token = (L.env && (L.env.token || L.env.csrf_token)) || '';
 				var file = fileInput.files && fileInput.files[0];
 
-				// 优先本地文件，其次 URL
 				if (file) {
 					var uploadUrl = L.url('admin/vum/uninstall/install_upload') +
 						(token ? ('?token=' + encodeURIComponent(token)) : '');
@@ -2745,37 +2978,69 @@ return view.extend({
 
 					ui.hideModal(modal);
 					modal = null;
-					showInstallProgress();
-
-					fetch(uploadUrl, {
-						method: 'POST',
-						body: formData,
-						credentials: 'include'
-					}).then(function(res){ return res.json(); }).then(function(res){
-						hideInstallProgress();
-						var ok = res && res.ok;
-						var logText = (res && res.log) || '';
-						var title = ok ? _('安装成功') : _('安装失败');
-						var color = ok ? '#10b981' : '#ef4444';
-						var content = E('div', { 'style': 'text-align:left; max-width:640px;' }, [
-							E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin-bottom:8px;' }, [
-								E('span', { 'style': 'display:inline-flex;width:32px;height:32px;background:' + color + ';color:#ffffff;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, ok ? '✓' : '✕'),
-								E('span', { 'style': 'font-weight:600;font-size:16px;color:#111827;' }, title)
-							]),
-							logText ? E('pre', { 'style': 'max-height:260px; overflow:auto; margin-top:8px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:8px; font-size:12px; white-space:pre-wrap;' }, String(logText)) : null
-						].filter(function(x){ return x; }));
-
-						var resultModal = ui.showModal(title, [content]);
-						var ov = resultModal && resultModal.parentNode;
-						if (ov) {
-							ov.style.display = 'flex';
-							ov.style.alignItems = 'center';
-							ov.style.justifyContent = 'center';
-						}
-					}).catch(function(err){
-						hideInstallProgress();
-						ui.addNotification(null, E('p', {}, _('安装请求失败: ') + String(err)), 'danger');
+					var progressUI = createInstallProgressModal({
+						title: _('正在安装本地文件'),
+						subtitle: file.name || _('本地安装包'),
+						badgeText: _('本地安装'),
+						icon: packageIcon('luci-app-uninstall')
 					});
+					progressUI.println('=== Install from upload ===');
+					progressUI.setStatus(_('准备上传…'));
+					progressUI.setProgress(5);
+					progressUI.println('> POST ' + uploadUrl);
+
+					var xhr = new XMLHttpRequest();
+					var waitTimer = null;
+
+					xhr.open('POST', uploadUrl, true);
+					xhr.responseType = 'text';
+					xhr.setRequestHeader('Accept', 'application/json');
+
+					xhr.upload.addEventListener('progress', function(ev){
+						if (!ev.lengthComputable) {
+							progressUI.setProgress(Math.max(progressUI.getProgress(), 20));
+							return;
+						}
+						var percent = Math.round((ev.loaded / ev.total) * 45) + 5;
+						progressUI.setProgress(Math.min(70, percent));
+						progressUI.setStatus(_('正在上传文件… ') + percent + '%');
+					});
+					xhr.upload.addEventListener('load', function(){
+						progressUI.setStatus(_('上传完成，正在安装…'));
+						progressUI.println(_('上传完成，等待系统执行安装…'));
+						waitTimer = progressUI.startAutoAdvance(90, 1, 450);
+					});
+					xhr.addEventListener('error', function(){
+						if (waitTimer) progressUI.stopAutoAdvance(waitTimer);
+						progressUI.println('! HTTP upload error');
+						progressUI.markFailure(_('上传失败或网络中断'));
+					});
+					xhr.addEventListener('abort', function(){
+						if (waitTimer) progressUI.stopAutoAdvance(waitTimer);
+						progressUI.println('! Upload aborted');
+						progressUI.markFailure(_('上传被取消'));
+					});
+					xhr.onreadystatechange = function(){
+						if (xhr.readyState !== 4) return;
+						if (waitTimer) progressUI.stopAutoAdvance(waitTimer);
+						progressUI.setProgress(Math.max(progressUI.getProgress(), 95));
+						progressUI.setStatus(_('正在应用返回结果…'));
+						var text = xhr.responseText || '';
+						if (text) progressUI.println('< HTTP ' + xhr.status + ': ' + (xhr.statusText || ''));
+						if (text) progressUI.println(text);
+						var res = null;
+						try {
+							res = text ? JSON.parse(text) : null;
+						} catch (err) {
+							progressUI.println('! JSON parse error: ' + err.message);
+						}
+						if (!res) {
+							progressUI.markFailure(_('服务器返回无效数据'));
+							return;
+						}
+						handleInstallResponse(progressUI, res, _('安装完成'));
+					};
+					xhr.send(formData);
 				} else {
 					var url = (urlInput.value || '').trim();
 					if (!url) {
@@ -2799,34 +3064,29 @@ return view.extend({
 
 					ui.hideModal(modal);
 					modal = null;
-					showInstallProgress();
+					var progressUI = createInstallProgressModal({
+						title: _('正在安装远程文件'),
+						subtitle: url,
+						badgeText: _('在线安装'),
+						icon: packageIcon('luci-app-uninstall')
+					});
+					progressUI.println('=== Install from URL ===');
+					progressUI.println('> GET ' + reqUrl);
+					progressUI.setProgress(10);
+					progressUI.setStatus(_('正在请求远程安装…'));
+					var autoTimer = progressUI.startAutoAdvance(92, 1, 600);
+
 					self._httpJson(reqUrl, {
 						method: 'GET',
 						headers: { 'Accept': 'application/json' }
 					}).then(function(res){
-						hideInstallProgress();
-						var ok = res && res.ok;
-						var logText = (res && res.log) || '';
-						var title = ok ? _('安装成功') : _('安装失败');
-						var color = ok ? '#10b981' : '#ef4444';
-						var content = E('div', { 'style': 'text-align:left; max-width:640px;' }, [
-							E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin-bottom:8px;' }, [
-								E('span', { 'style': 'display:inline-flex;width:32px;height:32px;background:' + color + ';color:#ffffff;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, ok ? '✓' : '✕'),
-								E('span', { 'style': 'font-weight:600;font-size:16px;color:#111827;' }, title)
-							]),
-							logText ? E('pre', { 'style': 'max-height:260px; overflow:auto; margin-top:8px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:8px; font-size:12px; white-space:pre-wrap;' }, String(logText)) : null
-						].filter(function(x){ return x; }));
-
-						var resultModal = ui.showModal(title, [content]);
-						var ov = resultModal && resultModal.parentNode;
-						if (ov) {
-							ov.style.display = 'flex';
-							ov.style.alignItems = 'center';
-							ov.style.justifyContent = 'center';
-						}
+						if (autoTimer) progressUI.stopAutoAdvance(autoTimer);
+						progressUI.setProgress(100);
+						handleInstallResponse(progressUI, res, _('安装完成'));
 					}).catch(function(err){
-						hideInstallProgress();
-						ui.addNotification(null, E('p', {}, _('安装请求失败: ') + String(err)), 'danger');
+						if (autoTimer) progressUI.stopAutoAdvance(autoTimer);
+						progressUI.println('! ' + String(err));
+						progressUI.markFailure(_('安装请求失败: ') + String(err));
 					});
 				}
 			});
