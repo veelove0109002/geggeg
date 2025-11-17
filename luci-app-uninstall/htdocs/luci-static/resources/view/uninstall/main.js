@@ -1125,14 +1125,43 @@ return view.extend({
 				};
 				document.addEventListener('click', announcementClickHandler);
 				
-				// 右侧：查看历史更新日志按钮
+				// 右侧：本地安装 + 查看历史更新日志按钮
+				var installGradient = 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)';
+				var installGradientHover = 'linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%)';
+				var installBtn = E('button', {
+					id: 'install-local-btn',
+					type: 'button',
+					'class': 'btn',
+					'style': 'margin-left:auto; background:' + installGradient + '; color:#fff; border:none; border-radius:8px; padding:6px 14px; font-weight:500; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:6px; box-shadow:0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2);'
+				}, [
+					E('img', {
+						src: L.resource('icons/pkg.png'),
+						alt: 'install',
+						width: 16,
+						height: 16,
+						'style': 'display:block; object-fit:contain; filter:brightness(0) invert(1);'
+					}),
+					E('span', {}, _('安装 .ipk / .run'))
+				]);
+				installBtn.addEventListener('mouseenter', function(){
+					this.style.background = installGradientHover;
+					this.style.transform = 'translateY(-1px)';
+					this.style.boxShadow = '0 4px 12px rgba(16,185,129,0.4), inset 0 1px 0 rgba(255,255,255,0.3)';
+				});
+				installBtn.addEventListener('mouseleave', function(){
+					this.style.background = installGradient;
+					this.style.transform = 'translateY(0)';
+					this.style.boxShadow = '0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
+				});
+
+				// 历史更新日志按钮
 				var historyLogGradient = 'linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%)';
 				var historyLogGradientHover = 'linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #7c3aed 100%)';
 				var historyLogBtn = E('button', {
 					id: 'history-log-btn',
 					type: 'button',
 					'class': 'btn',
-					'style': 'margin-left:auto; background:' + historyLogGradient + '; color:#fff; border:none; border-radius:8px; padding:6px 16px; font-weight:500; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:6px; box-shadow:0 2px 8px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.2);'
+					'style': 'margin-left:8px; background:' + historyLogGradient + '; color:#fff; border:none; border-radius:8px; padding:6px 16px; font-weight:500; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:6px; box-shadow:0 2px 8px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.2);'
 				}, [
 					E('img', { 
 						src: L.resource('icons/update.svg'), 
@@ -1150,7 +1179,7 @@ return view.extend({
 					this.style.transform = 'translateY(-1px)';
 					this.style.boxShadow = '0 4px 12px rgba(99,102,241,0.4), inset 0 1px 0 rgba(255,255,255,0.3)';
 				});
-				historyLogBtn.addEventListener('mouseleave', function(){ 
+				historyLogBtn.addEventListener('mouseleave', function(){
 					this.style.background = historyLogGradient;
 					this.style.transform = 'translateY(0)';
 					this.style.boxShadow = '0 2px 8px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
@@ -1159,6 +1188,7 @@ return view.extend({
 				toolbar.appendChild(batchSection);
 				toolbar.appendChild(searchContainer);
 				toolbar.appendChild(announcementBellBtn);
+				toolbar.appendChild(installBtn);
 				toolbar.appendChild(historyLogBtn);
 				
 				// 创建包装器，包含工具栏和公告面板
@@ -2577,6 +2607,104 @@ return view.extend({
 				closeBtn.addEventListener('click', function(){ ui.hideModal(modal); });
 			});
 		}
+		function installLocalPackage(){
+			var urlInput = E('input', {
+				type: 'text',
+				placeholder: _('请输入 .ipk 或 .run 的下载地址，例如 "https://example.com/package.ipk"'),
+				'style': 'width:100%; padding:8px; border:1px solid #e5e7eb; border-radius:6px; font-size:13px; font-family:inherit;'
+			}, '');
+
+			var desc = E('div', { 'style': 'font-size:13px;color:#4b5563;margin-bottom:8px;' }, [
+				E('p', { 'style': 'margin:0 0 4px 0;' }, _('从远程 URL 安装本地插件，支持 .ipk 和 .run 文件。')),
+				E('p', { 'style': 'margin:0;' }, _('请确认来源可信，安装过程可能需要一点时间。'))
+			]);
+
+			var content = E('div', { 'style': 'max-width:520px;' }, [
+				desc,
+				urlInput
+			]);
+
+			var cancelBtn = E('button', { 'class': 'btn', 'style': 'background:#f3f4f6;color:#1f2937;border-radius:999px;padding:6px 14px;' }, _('取消'));
+			var applyGradient = 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)';
+			var applyGradientHover = 'linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%)';
+			var okBtn = E('button', {
+				'class': 'btn cbi-button-apply',
+				'style': 'background:' + applyGradient + '; color:#fff; border:none; border-radius:999px; padding:6px 16px; font-weight:500; box-shadow:0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2); transition:all 0.2s;'
+			}, _('开始安装'));
+			okBtn.addEventListener('mouseenter', function(){
+				this.style.background = applyGradientHover;
+				this.style.boxShadow = '0 4px 12px rgba(16,185,129,0.4), inset 0 1px 0 rgba(255,255,255,0.3)';
+				this.style.transform = 'translateY(-1px)';
+			});
+			okBtn.addEventListener('mouseleave', function(){
+				this.style.background = applyGradient;
+				this.style.boxShadow = '0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
+				this.style.transform = 'translateY(0)';
+			});
+
+			var modal = ui.showModal(_('从 URL 安装插件 (.ipk / .run)'), [
+				content,
+				E('div', { 'style':'margin-top:12px;display:flex;gap:8px;justify-content:flex-end;' }, [ cancelBtn, okBtn ])
+			]);
+			var overlay = modal && modal.parentNode;
+			if (overlay) {
+				overlay.style.display = 'flex';
+				overlay.style.alignItems = 'center';
+				overlay.style.justifyContent = 'center';
+			}
+
+			cancelBtn.addEventListener('click', function(){ ui.hideModal(modal); });
+			okBtn.addEventListener('click', function(){
+				var url = (urlInput.value || '').trim();
+				if (!url) {
+					ui.addNotification(null, E('p', {}, _('请填写下载地址')), 'warning');
+					return;
+				}
+				if (!url.match(/\.ipk($|\?)/) && !url.match(/\.run($|\?)/)) {
+					ui.addNotification(null, E('p', {}, _('目前只支持以 .ipk 或 .run 结尾的文件')), 'warning');
+					return;
+				}
+
+				okBtn.disabled = true;
+				okBtn.textContent = _('安装中…');
+				okBtn.style.opacity = '0.7';
+
+				var token = (L.env && (L.env.token || L.env.csrf_token)) || '';
+				var reqUrl = L.url('admin/vum/uninstall/install_from_url') +
+					'?url=' + encodeURIComponent(url) +
+					(token ? ('&token=' + encodeURIComponent(token)) : '');
+
+				self._httpJson(reqUrl, {
+					method: 'GET',
+					headers: { 'Accept': 'application/json' }
+				}).then(function(res){
+					ui.hideModal(modal);
+					var ok = res && res.ok;
+					var logText = (res && res.log) || '';
+					var title = ok ? _('安装成功') : _('安装失败');
+					var color = ok ? '#10b981' : '#ef4444';
+					var content = E('div', { 'style': 'text-align:left; max-width:640px;' }, [
+						E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin-bottom:8px;' }, [
+							E('span', { 'style': 'display:inline-flex;width:32px;height:32px;background:' + color + ';color:#ffffff;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, ok ? '✓' : '✕'),
+							E('span', { 'style': 'font-weight:600;font-size:16px;color:#111827;' }, title)
+						]),
+						logText ? E('pre', { 'style': 'max-height:260px; overflow:auto; margin-top:8px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:8px; font-size:12px; white-space:pre-wrap;' }, String(logText)) : null
+					].filter(function(x){ return x; }));
+
+					var resultModal = ui.showModal(title, [content]);
+					var ov = resultModal && resultModal.parentNode;
+					if (ov) {
+						ov.style.display = 'flex';
+						ov.style.alignItems = 'center';
+						ov.style.justifyContent = 'center';
+					}
+				}).catch(function(err){
+					ui.hideModal(modal);
+					ui.addNotification(null, E('p', {}, _('安装请求失败: ') + String(err)), 'danger');
+				});
+			});
+		}
+
 		function updateAction(){
 			self._httpJson(L.url('admin/vum/uninstall/check_update'), { headers: { 'Accept': 'application/json' } }).then(function(res){
 				var cur = (res && res.current) || (function(){ var el = document.getElementById('uninstall-card-version'); return el ? (el.textContent||'').trim() : ''; })();

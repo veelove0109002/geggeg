@@ -67,6 +67,10 @@ function index()
 	e = entry({ 'admin', 'vum', 'uninstall', 'get_lock_state' }, call('action_get_lock_state'))
 	e.leaf = true
 	e.acl_depends = { 'luci-app-uninstall' }
+
+	e = entry({ 'admin', 'vum', 'uninstall', 'install_from_url' }, call('action_install_from_url'))
+	e.leaf = true
+	e.acl_depends = { 'luci-app-uninstall' }
 end
 
 local http = require 'luci.http'
@@ -245,6 +249,89 @@ function action_upgrade()
 	sys.call('[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd reload >/dev/null 2>&1')
 	sys.call('[ -x /etc/init.d/nginx ] && /etc/init.d/nginx reload >/dev/null 2>&1')
 	return json_response({ ok = (rc == 0), log = table.concat(log, "\n") })
+end
+
+-- 从 URL 安装任意 .ipk 或 .run 包
+function action_install_from_url()
+	local url = http.formvalue('url') or ''
+	url = tostring(url):gsub('^%s+', ''):gsub('%s+$', '')
+	if url == '' then
+		return json_response({ ok = false, message = '缺少 url 参数' }, 400)
+	end
+
+	local is_ipk = url:match('%.ipk$')
+	local is_run = url:match('%.run$')
+	if not is_ipk and not is_run then
+		return json_response({ ok = false, message = '仅支持以 .ipk 或 .run 结尾的文件' }, 400)
+	end
+
+	local tmp_path = is_ipk and '/tmp/uninstall-install.ipk' or '/tmp/uninstall-install.run'
+	local tmp_log = '/tmp/uninstall-install.log'
+	local log = {}
+	local function append(s) log[#log+1] = s end
+
+	append('=== Install from URL ===')
+	append('URL: ' .. url)
+
+	-- 清理旧文件
+	sys.call(string.format("rm -f %q %q >/dev/null 2>&1", tmp_path, tmp_log))
+
+	-- 下载文件（优先 uclient-fetch，其次 wget，最后 curl）
+	append('> Download: ' .. url)
+	local rc = sys.call(string.format("uclient-fetch -L -O %q '%s' >/dev/null 2>&1", tmp_path, url))
+	if rc ~= 0 then
+		rc = sys.call(string.format("wget --no-check-certificate -O %q '%s' >/dev/null 2>&1", tmp_path, url))
+	end
+	if rc ~= 0 then
+		rc = sys.call(string.format("command -v curl >/dev/null 2>&1 && curl -L -o %q '%s' >/dev/null 2>&1 || true", tmp_path, url))
+	end
+
+	local st = fs.stat(tmp_path)
+	if not st or st.size <= 0 then
+		append('! 下载失败或文件为空')
+		return json_response({ ok = false, message = '下载失败或文件为空', log = table.concat(log, "\n") }, 500)
+	end
+
+	if is_run then
+		-- 简单校验 .run：检查 shebang
+		local f = io.open(tmp_path, 'rb')
+		if not f then
+			append('! 无法读取 .run 文件')
+			return json_response({ ok = false, message = '无法读取 .run 文件', log = table.concat(log, "\n") }, 500)
+		end
+		local header = f:read(2) or ''
+		f:close()
+		if header ~= '#!' then
+			append('! 非有效安装脚本（缺少 shebang）')
+			return json_response({ ok = false, message = '非有效安装脚本（缺少 shebang）', log = table.concat(log, "\n") }, 400)
+		end
+	end
+
+	-- 执行安装
+	local ok
+	if is_ipk then
+		append('+ opkg install ' .. tmp_path)
+		rc = sys.call(string.format("opkg install %q >%s 2>&1", tmp_path, tmp_log))
+		ok = (rc == 0)
+	else
+		append('+ sh ' .. tmp_path)
+		sys.call(string.format('chmod +x %q >/dev/null 2>&1', tmp_path))
+		rc = sys.call(string.format("/bin/sh %q >%s 2>&1", tmp_path, tmp_log))
+		ok = (rc == 0)
+	end
+
+	local out = fs.readfile(tmp_log) or ''
+	if out and #out > 0 then append(out) end
+
+	-- 刷新 LuCI 缓存，便于新插件菜单立即生效
+	if ok then
+		sys.call('rm -f /tmp/luci-indexcache >/dev/null 2>&1')
+		sys.call('rm -rf /tmp/luci-modulecache/* >/dev/null 2>&1')
+		sys.call('[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd reload >/dev/null 2>&1')
+		sys.call('[ -x /etc/init.d/nginx ] && /etc/init.d/nginx reload >/dev/null 2>&1')
+	end
+
+	return json_response({ ok = ok, log = table.concat(log, "\n") })
 end
 
 -- 根据文件名关键词匹配：返回包含该文件的已安装包名列表
