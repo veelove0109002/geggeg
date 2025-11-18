@@ -1276,13 +1276,13 @@ return view.extend({
 					'class': 'btn',
 					'style': 'margin-left:auto; background:' + installGradient + '; color:#fff; border:none; border-radius:8px; padding:6px 14px; font-weight:500; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:6px; box-shadow:0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2);'
 				}, [
-					E('img', {
-						src: L.resource('icons/pkg.png'),
-						alt: 'install',
-						width: 16,
-						height: 16,
-						'style': 'display:block; object-fit:contain; filter:brightness(0) invert(1);'
-					}),
+				E('img', {
+					src: L.resource('icons/install.png'),
+					alt: 'install',
+					width: 16,
+					height: 16,
+					'style': 'display:block; object-fit:contain; filter:brightness(0) invert(1);'
+				}),
 					E('span', {}, _('安装 .ipk / .run'))
 				]);
 				installBtn.addEventListener('mouseenter', function(){
@@ -1417,7 +1417,8 @@ return view.extend({
 			'luci-app-turboacc': 'turboacc',
 			'luci-app-watchdog': 'watchdog',
 			'luci-app-oled': 'oled',
-			'luci-app-bypass': 'bypass'
+			'luci-app-bypass': 'bypass',
+			'luci-app-trojan-server': 'trojan'
 		};
 		function packageIcon(name, category){
 			// 从 app-icons 目录加载 PNG
@@ -1658,7 +1659,8 @@ return view.extend({
 			'luci-app-tailscaler': _('Tailscale'),
 			'luci-app-ssr-plus': _('SSR Plus'),
 			'luci-app-oled': _('OLED'),
-			'luci-app-bypass': _('Bypass')
+			'luci-app-bypass': _('Bypass'),
+			'luci-app-trojan-server': 'trojan-server'
 		};
 		function displayName(name, category){
 			// iStoreOS 插件优先用商店中文名；否则 fallback 到内置映射或原名
