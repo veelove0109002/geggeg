@@ -3121,10 +3121,70 @@ return view.extend({
 
 					var xhr = new XMLHttpRequest();
 					var waitTimer = null;
+					var uploadCompleted = false; // 标记上传是否已完成
+					var errorHandled = false; // 标记错误是否已处理
+
+					// 从文件名推断包名
+					function extractPackageName(filename) {
+						if (!filename) return null;
+						// 移除扩展名
+						var name = filename.replace(/\.(ipk|run)$/i, '');
+						// 移除版本号和架构信息（例如：luci-app-openclash_1.2.3-1_all.ipk）
+						name = name.replace(/_[^_]+$/, ''); // 移除最后一个下划线后的内容
+						// 如果已经是 luci-app- 开头，直接返回
+						if (name.match(/^luci-app-/)) {
+							return name;
+						}
+						// 如果不是，尝试添加 luci-app- 前缀
+						if (name && !name.match(/^luci-/)) {
+							return 'luci-app-' + name;
+						}
+						return name;
+					}
+
+					// 检查包是否已安装
+					function checkPackageInstalled(packageName, retries) {
+						retries = retries || 0;
+						if (retries > 10) { // 最多检查10次，每次间隔2秒，总共20秒
+							progressUI.println('! ' + _('无法确认安装状态，请手动检查'));
+							progressUI.markFailure(_('连接中断，无法确认安装状态'));
+							return;
+						}
+						
+						progressUI.println('> ' + _('正在检查安装状态…') + ' (尝试 ' + (retries + 1) + '/10)');
+						self.pollList().then(function(res) {
+							if (res && res.packages) {
+								var found = res.packages.some(function(pkg) {
+									return pkg.name === packageName;
+								});
+								if (found) {
+									progressUI.println('✓ ' + _('检测到包已安装: ') + packageName);
+									progressUI.setProgress(100);
+									progressUI.markSuccess(_('安装完成（已通过验证）'));
+									// 刷新页面列表
+									if (typeof refresh === 'function') {
+										setTimeout(function() { refresh(); }, 500);
+									}
+									return;
+								}
+							}
+							// 如果没找到，等待2秒后重试
+							setTimeout(function() {
+								checkPackageInstalled(packageName, retries + 1);
+							}, 2000);
+						}).catch(function(err) {
+							// 如果查询失败，也等待后重试
+							setTimeout(function() {
+								checkPackageInstalled(packageName, retries + 1);
+							}, 2000);
+						});
+					}
 
 					xhr.open('POST', uploadUrl, true);
 					xhr.responseType = 'text';
 					xhr.setRequestHeader('Accept', 'application/json');
+					// 增加超时时间到5分钟（300000毫秒），因为某些包安装时间较长
+					xhr.timeout = 300000;
 
 					xhr.upload.addEventListener('progress', function(ev){
 						if (!ev.lengthComputable) {
@@ -3136,39 +3196,104 @@ return view.extend({
 						progressUI.setStatus(_('正在上传文件… ') + percent + '%');
 					});
 					xhr.upload.addEventListener('load', function(){
+						uploadCompleted = true;
 						progressUI.setStatus(_('上传完成，正在安装…'));
 						progressUI.println(_('上传完成，等待系统执行安装…'));
 						waitTimer = progressUI.startAutoAdvance(90, 1, 450);
 					});
 					xhr.addEventListener('error', function(){
+						if (errorHandled) return;
+						errorHandled = true;
+						
 						if (waitTimer) progressUI.stopAutoAdvance(waitTimer);
-						progressUI.println('! HTTP upload error');
-						progressUI.markFailure(_('上传失败或网络中断'));
+						
+						// 如果上传已完成，可能是安装过程中的连接中断，尝试检查安装状态
+						if (uploadCompleted) {
+							progressUI.println('! ' + _('连接中断，但上传已完成，正在验证安装状态…'));
+							var packageName = extractPackageName(file.name);
+							if (packageName) {
+								progressUI.println('> ' + _('尝试检查包: ') + packageName);
+								checkPackageInstalled(packageName);
+							} else {
+								progressUI.println('! ' + _('无法从文件名推断包名，请手动检查安装状态'));
+								progressUI.markFailure(_('连接中断，无法确认安装状态'));
+							}
+						} else {
+							// 上传未完成，确实是上传失败
+							progressUI.println('! HTTP upload error');
+							progressUI.markFailure(_('上传失败或网络中断'));
+						}
+					});
+					xhr.addEventListener('timeout', function(){
+						if (errorHandled) return;
+						errorHandled = true;
+						
+						if (waitTimer) progressUI.stopAutoAdvance(waitTimer);
+						
+						// 超时也可能是安装时间过长，如果上传已完成，尝试检查安装状态
+						if (uploadCompleted) {
+							progressUI.println('! ' + _('请求超时，但上传已完成，正在验证安装状态…'));
+							var packageName = extractPackageName(file.name);
+							if (packageName) {
+								progressUI.println('> ' + _('尝试检查包: ') + packageName);
+								checkPackageInstalled(packageName);
+							} else {
+								progressUI.println('! ' + _('无法从文件名推断包名，请手动检查安装状态'));
+								progressUI.markFailure(_('请求超时，无法确认安装状态'));
+							}
+						} else {
+							progressUI.println('! Request timeout');
+							progressUI.markFailure(_('请求超时'));
+						}
 					});
 					xhr.addEventListener('abort', function(){
+						if (errorHandled) return;
+						errorHandled = true;
+						
 						if (waitTimer) progressUI.stopAutoAdvance(waitTimer);
 						progressUI.println('! Upload aborted');
 						progressUI.markFailure(_('上传被取消'));
 					});
 					xhr.onreadystatechange = function(){
 						if (xhr.readyState !== 4) return;
+						
+						// 如果已经处理过错误，不再处理响应
+						if (errorHandled && xhr.status !== 200) return;
+						
 						if (waitTimer) progressUI.stopAutoAdvance(waitTimer);
 						progressUI.setProgress(Math.max(progressUI.getProgress(), 95));
 						progressUI.setStatus(_('正在应用返回结果…'));
 						var text = xhr.responseText || '';
 						if (text) progressUI.println('< HTTP ' + xhr.status + ': ' + (xhr.statusText || ''));
 						if (text) progressUI.println(text);
+						
+						// 即使状态码不是200，也尝试解析响应（某些情况下服务器可能返回错误但包含有用信息）
 						var res = null;
 						try {
 							res = text ? JSON.parse(text) : null;
 						} catch (err) {
 							progressUI.println('! JSON parse error: ' + err.message);
 						}
-						if (!res) {
+						
+						if (res) {
+							errorHandled = true; // 标记已处理，避免 error 事件再次处理
+							handleInstallResponse(progressUI, res, _('安装完成'));
+						} else if (xhr.status === 200) {
+							// 状态码200但没有有效响应，可能是响应格式问题
 							progressUI.markFailure(_('服务器返回无效数据'));
-							return;
+						} else if (uploadCompleted) {
+							// 上传已完成但响应异常，尝试检查安装状态
+							progressUI.println('! ' + _('服务器响应异常，但上传已完成，正在验证安装状态…'));
+							var packageName = extractPackageName(file.name);
+							if (packageName) {
+								progressUI.println('> ' + _('尝试检查包: ') + packageName);
+								checkPackageInstalled(packageName);
+							} else {
+								progressUI.markFailure(_('服务器返回无效数据'));
+							}
+						} else {
+							progressUI.markFailure(_('服务器返回无效数据'));
 						}
-						handleInstallResponse(progressUI, res, _('安装完成'));
 					};
 					xhr.send(formData);
 				} else {
