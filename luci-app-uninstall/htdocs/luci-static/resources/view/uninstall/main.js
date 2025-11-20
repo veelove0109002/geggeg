@@ -1441,6 +1441,14 @@ return view.extend({
 			if (name === 'luci-app-advancedplus') {
 				return L.resource('icons/advancedplus.png');
 			}
+			if (name === 'luci-app-wolplus') {
+				// 电源Plus 图标在 icons 目录下
+				return L.resource('icons/wolplus.png');
+			}
+			if (name === 'luci-app-watchcat-plus') {
+				// Watchcat Plus 图标在 icons 目录下
+				return L.resource('icons/watchcat.png');
+			}
 			var base = SPECIAL_ICON_MAP[name];
 			if (base) return L.resource('app-icons/' + base + '.png');
 			if (name === 'luci-app-uninstall') return L.resource('app-icons/gjxz.png');
@@ -1495,6 +1503,8 @@ return view.extend({
 			'luci-app-cloudflared': _('Cloudflare Tunnel'),
 			'luci-app-ddnsto': _('DDNSTO路由远程'),
 			'luci-app-wol': _('网络唤醒'),
+			'luci-app-wolplus': _('电源Plus'),
+			'luci-app-watchcat-plus': _('Watchcat Plus'),
 			'luci-app-firewall': _('防火墙'),
 			'luci-app-transmission': _('BT下载'),
 			'luci-app-openvpn': _('OpenVpn'),
