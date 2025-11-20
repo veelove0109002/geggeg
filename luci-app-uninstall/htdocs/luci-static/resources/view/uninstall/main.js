@@ -272,6 +272,34 @@ return view.extend({
 				filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.4));
 			}
 
+			.install-stuck-help-btn {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				font-size: 12px;
+				padding: 4px 10px;
+				border-radius: 999px;
+				border: 1px dashed rgba(249, 115, 22, 0.9);
+				background: rgba(254, 243, 199, 0.15);
+				color: #f97316;
+				font-weight: 600;
+				cursor: pointer;
+				animation: install-help-blink 1.4s ease-in-out infinite;
+				box-shadow: 0 2px 6px rgba(249, 115, 22, 0.15);
+				transition: transform 0.2s ease, box-shadow 0.2s ease;
+			}
+
+			.install-stuck-help-btn:hover {
+				transform: translateY(-1px);
+				box-shadow: 0 4px 10px rgba(249, 115, 22, 0.25);
+			}
+
+			@keyframes install-help-blink {
+				0% { opacity: 0.4; box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.3); }
+				50% { opacity: 1; box-shadow: 0 0 0 6px rgba(249, 115, 22, 0); }
+				100% { opacity: 0.6; box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+			}
+
 			@keyframes uninstall-spin {
 				from { transform: rotate(0deg); }
 				to { transform: rotate(360deg); }
@@ -2884,11 +2912,70 @@ return view.extend({
 				var successBtnGradient = 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)';
 				var successBtnHover = 'linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%)';
 				var buttonVariant = 'pending';
+				var state = 'running';
+
+				var stuckHelpBtn = E('button', {
+					type: 'button',
+					'class': 'install-stuck-help-btn',
+					'style': 'display:none;'
+				}, _('无法安装？'));
+				stuckHelpBtn.style.marginRight = 'auto';
+
+				var actionBar = E('div', {
+					'style':'margin-top:10px;display:flex;gap:8px;align-items:center;justify-content:flex-end;'
+				}, [
+					stuckHelpBtn,
+					closeBtn
+				]);
+
+				var stuckHelpTimer = null;
+				var stuckHelpVisible = false;
+
+				function showStuckHelpHint(){
+					if (stuckHelpVisible || state !== 'running') return;
+					stuckHelpVisible = true;
+					stuckHelpBtn.style.display = 'inline-flex';
+				}
+
+				function hideStuckHelpHint(){
+					stuckHelpVisible = false;
+					stuckHelpBtn.style.display = 'none';
+				}
+
+				function clearStuckHelpHint(){
+					if (stuckHelpTimer) {
+						clearTimeout(stuckHelpTimer);
+						stuckHelpTimer = null;
+					}
+				}
+
+				function scheduleStuckHelpHint(){
+					clearStuckHelpHint();
+					stuckHelpTimer = setTimeout(showStuckHelpHint, 60000);
+				}
+
+				scheduleStuckHelpHint();
+
+				stuckHelpBtn.addEventListener('click', function(){
+					var knowBtn = E('button', {
+						'class': 'btn',
+						'style': 'background:linear-gradient(135deg,#3b82f6 0%,#6366f1 50%,#8b5cf6 100%);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-weight:600;'
+					}, _('我知道了'));
+					var infoModal = ui.showModal(_('安装无法继续？'), [
+						E('div', { 'style': 'max-width:420px;line-height:1.7;color:#374151;' }, [
+							E('p', { 'style': 'margin:0 0 6px 0;' }, _('安装过程长时间没有新的进展。')),
+							E('p', { 'style': 'margin:0 0 6px 0;color:#b45309;' }, _('请返回首页，更换其他源后再重试安装。')),
+							E('p', { 'style': 'margin:0;color:#6b7280;font-size:12px;' }, _('更换源后请重新进入 "高级卸载" 再尝试安装。'))
+						]),
+						E('div', { 'style':'margin-top:14px;display:flex;gap:8px;justify-content:flex-end;' }, [ knowBtn ])
+					]);
+					knowBtn.addEventListener('click', function(){ ui.hideModal(infoModal); });
+				});
 
 				var modal = ui.showModal(title, [
 					statusBar,
 					logSection,
-					E('div', { 'style':'margin-top:10px;display:flex;gap:8px;justify-content:flex-end;' }, [ closeBtn ])
+					actionBar
 				]);
 				var overlay = modal && modal.parentNode;
 				if (overlay) {
@@ -2958,7 +3045,6 @@ return view.extend({
 					log.scrollTop = log.scrollHeight;
 				}
 
-				var state = 'running';
 				function finalize(success){
 					state = success ? 'success' : 'failure';
 					buttonVariant = success ? 'success' : 'default';
@@ -2966,6 +3052,8 @@ return view.extend({
 					closeBtn.textContent = success ? _('返回页面') : _('关闭');
 					closeBtn.style.opacity = '1';
 					closeBtn.style.cursor = 'pointer';
+					clearStuckHelpHint();
+					hideStuckHelpHint();
 					if (success) {
 						closeBtn.style.background = successBtnGradient;
 						closeBtn.style.boxShadow = '0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
@@ -3048,7 +3136,8 @@ return view.extend({
 					startAutoAdvance: startAutoAdvance,
 					stopAutoAdvance: stopAutoAdvance,
 					stopAllAuto: stopAllAuto,
-					destroy: function(){ stopElapsed(); stopAllAuto(); ui.hideModal(modal); }
+					showHelpHint: showStuckHelpHint,
+					destroy: function(){ stopElapsed(); stopAllAuto(); clearStuckHelpHint(); hideStuckHelpHint(); ui.hideModal(modal); }
 				};
 			}
 
