@@ -3053,6 +3053,14 @@ return view.extend({
 			function handleInstallResponse(progressUI, res, successMessage){
 				if (res && res.log) appendLogText(progressUI, res.log);
 				if (res && res.message) progressUI.println(res.message);
+				
+				// 如果是异步安装，开始轮询检查状态
+				if (res && res.async) {
+					progressUI.println('> ' + _('安装已在后台启动，正在检查安装状态…'));
+					pollInstallStatus(progressUI, res.status_file, res.log_file, 0);
+					return;
+				}
+				
 				if (res && res.ok) {
 					progressUI.markSuccess(successMessage || _('安装完成'));
 				} else {
@@ -3060,6 +3068,67 @@ return view.extend({
 					progressUI.println(msg);
 					progressUI.markFailure(msg);
 				}
+			}
+			
+			// 轮询检查安装状态
+			function pollInstallStatus(progressUI, statusFile, logFile, retryCount) {
+				retryCount = retryCount || 0;
+				var maxRetries = 300; // 最多检查300次，每次2秒，总共10分钟
+				
+				if (retryCount >= maxRetries) {
+					progressUI.println('! ' + _('安装超时，请手动检查安装状态'));
+					progressUI.markFailure(_('安装超时'));
+					return;
+				}
+				
+				// 每2秒检查一次
+				setTimeout(function() {
+					var token = (L.env && (L.env.token || L.env.csrf_token)) || '';
+					var checkUrl = L.url('admin/vum/uninstall/check_install_status') +
+						(token ? ('?token=' + encodeURIComponent(token)) : '');
+					
+					self._httpJson(checkUrl, {
+						method: 'GET',
+						headers: { 'Accept': 'application/json' }
+					}).then(function(res) {
+						if (res && res.log) {
+							// 只显示新的日志内容（避免重复）
+							var newLog = res.log;
+							if (newLog && newLog.trim()) {
+								appendLogText(progressUI, newLog);
+							}
+						}
+						
+						if (res && res.status === 'done') {
+							// 安装完成
+							if (res.ok) {
+								progressUI.setProgress(100);
+								progressUI.markSuccess(_('安装完成'));
+								// 刷新页面列表
+								if (typeof refresh === 'function') {
+									setTimeout(function() { refresh(); }, 500);
+								}
+							} else {
+								progressUI.println('! ' + _('安装失败，退出码: ') + (res.exit_code || 'unknown'));
+								progressUI.markFailure(_('安装失败'));
+							}
+						} else if (res && res.status === 'running') {
+							// 仍在运行，继续轮询
+							var progress = Math.min(90, 50 + Math.floor((retryCount / maxRetries) * 40));
+							progressUI.setProgress(progress);
+							progressUI.setStatus(_('正在安装…') + ' (' + retryCount + 's)');
+							pollInstallStatus(progressUI, statusFile, logFile, retryCount + 1);
+						} else {
+							// 状态未知，继续轮询
+							progressUI.setStatus(_('检查安装状态…') + ' (' + retryCount + 's)');
+							pollInstallStatus(progressUI, statusFile, logFile, retryCount + 1);
+						}
+					}).catch(function(err) {
+						// 查询失败，继续轮询
+						progressUI.setStatus(_('检查安装状态…') + ' (' + retryCount + 's)');
+						pollInstallStatus(progressUI, statusFile, logFile, retryCount + 1);
+					});
+				}, 2000); // 每2秒检查一次
 			}
 
 			var cancelBtn = E('button', { 'class': 'btn', 'style': 'background:#f3f4f6;color:#1f2937;border-radius:999px;padding:6px 14px;' }, _('取消'));
@@ -3277,7 +3346,12 @@ return view.extend({
 						
 						if (res) {
 							errorHandled = true; // 标记已处理，避免 error 事件再次处理
+							// 如果是异步安装，handleInstallResponse 会处理轮询
 							handleInstallResponse(progressUI, res, _('安装完成'));
+							// 如果是异步安装，不需要继续处理
+							if (res && res.async) {
+								return;
+							}
 						} else if (xhr.status === 200) {
 							// 状态码200但没有有效响应，可能是响应格式问题
 							progressUI.markFailure(_('服务器返回无效数据'));

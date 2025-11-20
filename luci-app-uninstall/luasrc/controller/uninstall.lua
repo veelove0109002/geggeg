@@ -75,6 +75,10 @@ function index()
 	e = entry({ 'admin', 'vum', 'uninstall', 'install_upload' }, call('action_install_upload'))
 	e.leaf = true
 	e.acl_depends = { 'luci-app-uninstall' }
+
+	e = entry({ 'admin', 'vum', 'uninstall', 'check_install_status' }, call('action_check_install_status'))
+	e.leaf = true
+	e.acl_depends = { 'luci-app-uninstall' }
 end
 
 local http = require 'luci.http'
@@ -425,10 +429,82 @@ function action_install_upload()
 		local rc = sys.call(string.format("opkg install %q >%s 2>&1", final_path, tmp_log))
 		ok = (rc == 0)
 	else
-		append('+ sh ' .. final_path)
+		-- 对于 .run 文件，使用后台执行以避免长时间阻塞 HTTP 连接
+		-- 特别是对于 OpenClash 等需要长时间安装的包
+		append('+ sh ' .. final_path .. ' (background)')
 		sys.call(string.format('chmod +x %q >/dev/null 2>&1', final_path))
-		local rc = sys.call(string.format("/bin/sh %q >%s 2>&1", final_path, tmp_log))
-		ok = (rc == 0)
+		
+		-- 使用 nohup 在后台执行，并将输出重定向到日志文件
+		-- 同时创建一个状态文件来跟踪安装进度
+		local status_file = '/tmp/uninstall-install-status.txt'
+		local pid_file = '/tmp/uninstall-install.pid'
+		
+		-- 清理旧的状态文件
+		sys.call(string.format("rm -f %q %q >/dev/null 2>&1", status_file, pid_file))
+		
+		-- 写入初始状态
+		local status_fp = io.open(status_file, 'w')
+		if status_fp then
+			status_fp:write('running\n')
+			status_fp:close()
+		end
+		
+		-- 后台执行安装脚本
+		-- 使用 nohup 和 & 让脚本在后台运行，即使 HTTP 连接断开也继续执行
+		-- 创建一个包装脚本来捕获退出码
+		local wrapper_script = '/tmp/uninstall-install-wrapper.sh'
+		local wrapper_content = string.format(
+			'#!/bin/sh\n' ..
+			'%q >%q 2>&1\n' ..
+			'EXIT_CODE=$?\n' ..
+			'echo "$EXIT_CODE" > %q\n' ..
+			'echo "done" >> %q\n' ..
+			'rm -f %q\n',  -- 清理包装脚本
+			final_path, tmp_log, status_file, status_file, wrapper_script
+		)
+		local wrapper_fp = io.open(wrapper_script, 'w')
+		if wrapper_fp then
+			wrapper_fp:write(wrapper_content)
+			wrapper_fp:close()
+			sys.call(string.format('chmod +x %q >/dev/null 2>&1', wrapper_script))
+		end
+		
+		-- 使用 nohup 在后台执行包装脚本
+		-- 注意：使用 sh -c 来确保命令正确执行
+		local bg_cmd = string.format(
+			"nohup sh -c %q >/dev/null 2>&1 &",
+			wrapper_script
+		)
+		sys.call(bg_cmd)
+		
+		-- 等待一小段时间，检查脚本是否立即失败
+		sys.call('sleep 2 >/dev/null 2>&1')
+		
+		-- 检查状态文件
+		local status_content = fs.readfile(status_file) or ''
+		if status_content:match('done') then
+			-- 安装已完成（可能是快速失败或快速成功）
+			local exit_code = status_content:match('(%d+)')
+			if exit_code then
+				ok = (tonumber(exit_code) == 0)
+			else
+				-- 读取日志文件最后几行判断
+				local log_content = fs.readfile(tmp_log) or ''
+				ok = (log_content:match('安装完成') ~= nil or log_content:match('Install.*complete') ~= nil or log_content:match('✓') ~= nil)
+			end
+		else
+			-- 安装仍在进行中，返回特殊状态让前端轮询
+			append('> 安装脚本已在后台启动，正在执行中...')
+			append('> 请等待安装完成，前端将自动检查安装状态')
+			return json_response({ 
+				ok = true, 
+				async = true,  -- 标记为异步安装
+				message = '安装已开始，正在后台执行',
+				log = table.concat(log, "\n"),
+				status_file = status_file,
+				log_file = tmp_log
+			})
+		end
 	end
 
 	local out = fs.readfile(tmp_log) or ''
@@ -442,6 +518,59 @@ function action_install_upload()
 	end
 
 	return json_response({ ok = ok, log = table.concat(log, "\n") })
+end
+
+-- 检查后台安装状态
+function action_check_install_status()
+	local status_file = '/tmp/uninstall-install-status.txt'
+	local tmp_log = '/tmp/uninstall-install.log'
+	
+	local status = 'unknown'
+	local log_content = ''
+	local exit_code = nil
+	
+	if fs.stat(status_file) then
+		local content = fs.readfile(status_file) or ''
+		if content:match('done') then
+			status = 'done'
+			-- 提取退出码
+			for line in content:gmatch('[^\n]+') do
+				local code = line:match('^(%d+)$')
+				if code then
+					exit_code = tonumber(code)
+					break
+				end
+			end
+		elseif content:match('running') then
+			status = 'running'
+		end
+	end
+	
+	-- 读取日志文件（只读最后 50 行以避免响应过大）
+	if fs.stat(tmp_log) then
+		local full_log = fs.readfile(tmp_log) or ''
+		local lines = {}
+		for line in full_log:gmatch('[^\n]+') do
+			table.insert(lines, line)
+		end
+		-- 只取最后 50 行
+		local start = math.max(1, #lines - 49)
+		for i = start, #lines do
+			log_content = log_content .. lines[i] .. '\n'
+		end
+	end
+	
+	local ok = (status == 'done' and exit_code == 0)
+	if status == 'done' and exit_code ~= 0 then
+		ok = false
+	end
+	
+	return json_response({
+		ok = ok,
+		status = status,
+		exit_code = exit_code,
+		log = log_content
+	})
 end
 
 -- 根据文件名关键词匹配：返回包含该文件的已安装包名列表
