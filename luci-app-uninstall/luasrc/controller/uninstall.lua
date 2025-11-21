@@ -458,12 +458,18 @@ function action_install_upload()
 			'# 执行安装脚本并捕获退出码\n' ..
 			'# 确保状态文件存在并标记为运行中\n' ..
 			'echo "running" > %q\n' ..
+			'# 在执行安装脚本之前，先更新 opkg 源列表\n' ..
+			'# 这对于需要下载依赖的包（如 openclash）非常重要\n' ..
+			'echo "Updating opkg package lists..." >> %q\n' ..
+			'opkg update >>%q 2>&1\n' ..
 			'# 执行安装脚本，将输出重定向到日志文件（使用 unbuffered 模式确保实时输出）\n' ..
 			'# 使用 stdbuf 或 script 命令确保输出实时刷新\n' ..
+			'# 注意：使用 >> 追加模式，确保所有输出都被记录\n' ..
+			'echo "Executing installation script..." >> %q\n' ..
 			'if command -v stdbuf >/dev/null 2>&1; then\n' ..
-			'  stdbuf -oL -eL %q >>%q 2>&1\n' ..
+			'  stdbuf -oL -eL sh %q >>%q 2>&1\n' ..
 			'else\n' ..
-			'  %q >>%q 2>&1\n' ..
+			'  sh %q >>%q 2>&1\n' ..
 			'fi\n' ..
 			'EXIT_CODE=$?\n' ..
 			'# 先写入退出码，再添加 done 标记，确保状态文件格式正确\n' ..
@@ -474,7 +480,7 @@ function action_install_upload()
 			'# 清理包装脚本（延迟清理，确保状态文件已写入）\n' ..
 			'sleep 1\n' ..
 			'rm -f %q\n',
-			status_file, final_path, tmp_log, final_path, tmp_log, status_file, status_file, wrapper_script
+			status_file, tmp_log, tmp_log, tmp_log, final_path, tmp_log, final_path, tmp_log, status_file, status_file, wrapper_script
 		)
 		local wrapper_fp = io.open(wrapper_script, 'w')
 		if wrapper_fp then
@@ -908,15 +914,24 @@ function action_check_install_status()
 			full_log = fs.readfile(tmp_log) or ''
 		end
 		
-		local lines = {}
-		for line in full_log:gmatch('[^\n]+') do
-			table.insert(lines, line)
-		end
-		-- 只取最后 100 行（如果 tail 失败，则取最后 50 行）
-		local max_lines = #lines > 100 and 100 or #lines
-		local start = math.max(1, #lines - max_lines + 1)
-		for i = start, #lines do
-			log_content = log_content .. lines[i] .. '\n'
+		-- 如果日志文件存在但内容为空，可能是安装脚本还没有开始输出
+		-- 这种情况下，如果状态是 running，应该继续等待
+		if full_log and #full_log > 0 then
+			local lines = {}
+			for line in full_log:gmatch('[^\n]+') do
+				table.insert(lines, line)
+			end
+			-- 只取最后 100 行（如果 tail 失败，则取最后 50 行）
+			local max_lines = #lines > 100 and 100 or #lines
+			local start = math.max(1, #lines - max_lines + 1)
+			for i = start, #lines do
+				log_content = log_content .. lines[i] .. '\n'
+			end
+		else
+			-- 日志文件为空，如果状态是 running，继续等待
+			if status == 'running' then
+				log_content = '等待安装脚本输出日志...\n'
+			end
 		end
 		
 		-- 如果状态是 running 但日志文件很久没有更新，可能是安装已完成但状态文件写入失败
@@ -939,9 +954,28 @@ function action_check_install_status()
 			                          full_log:match('Packages%.gz') or
 			                          full_log:match('Packages%.sig')
 			
-			-- 如果有 opkg 活动，即使超过超时时间也认为还在运行（除非超过2倍超时时间）
-			if has_opkg_activity and time_since_update < (timeout_seconds * 2) then
-				status = 'running'
+			-- 如果有 opkg 活动，即使超过超时时间也认为还在运行（最多等待5分钟）
+			if has_opkg_activity then
+				if time_since_update < 300 then  -- 5分钟内认为还在运行
+					status = 'running'
+				else
+					-- 超过5分钟，检查是否有完成标记
+					if full_log:match('Save installed pkg list') or 
+					   full_log:match('The following packages were added') or
+					   full_log:match('Configuring luci%-app%-') then
+						status = 'done'
+						exit_code = 0
+						-- 更新状态文件
+						local status_fp = io.open(status_file, 'w')
+						if status_fp then
+							status_fp:write('0\n')
+							status_fp:write('done\n')
+							status_fp:close()
+						end
+					else
+						status = 'running'  -- 继续等待
+					end
+				end
 			-- 如果日志超过超时时间没有更新，检查是否有完成标记
 			elseif time_since_update > timeout_seconds then
 				if full_log:match('安装完成') or 
@@ -1030,14 +1064,34 @@ function action_check_install_status()
 		wrapper_script_exists = fs.stat(wrapper_script) ~= nil,
 		log_file_exists = fs.stat(tmp_log) ~= nil,
 		log_size = log_size,
-		log_mtime = log_mtime_check
+		log_mtime = log_mtime_check,
+		log_content_length = log_content and #log_content or 0
 	}
+	
+	-- 如果日志内容为空但日志文件存在，尝试直接读取日志文件
+	if (not log_content or #log_content == 0) and fs.stat(tmp_log) then
+		local direct_log = fs.readfile(tmp_log) or ''
+		if direct_log and #direct_log > 0 then
+			log_content = direct_log
+			-- 只取最后 100 行
+			local lines = {}
+			for line in direct_log:gmatch('[^\n]+') do
+				table.insert(lines, line)
+			end
+			local max_lines = #lines > 100 and 100 or #lines
+			local start = math.max(1, #lines - max_lines + 1)
+			log_content = ''
+			for i = start, #lines do
+				log_content = log_content .. lines[i] .. '\n'
+			end
+		end
+	end
 	
 	return json_response({
 		ok = ok,
 		status = status,
 		exit_code = exit_code,
-		log = log_content,
+		log = log_content or '',
 		debug = debug_info  -- 调试信息，帮助排查问题
 	})
 end
