@@ -1735,6 +1735,78 @@ local function clear_istore_state(pkg)
 	return removed
 end
 
+-- 清理离线安装记录（参考 luci-app-store 的逻辑）
+-- 当卸载一个包时，检查该包是否在某个离线安装记录中
+-- 如果该记录中的所有包都已卸载，则删除该记录
+local function clear_offline_install_records(pkg)
+	local removed = {}
+	local run_records_dir = '/usr/share/istore/run-records'
+	
+	-- 检查记录目录是否存在
+	if not fs.stat(run_records_dir) then
+		return removed
+	end
+	
+	-- 遍历所有记录文件
+	local dir = fs.dir(run_records_dir)
+	if not dir then
+		return removed
+	end
+	
+	for record_file in dir do
+		if record_file:match('%.txt$') then
+			local record_path = run_records_dir .. '/' .. record_file
+			local record_content = fs.readfile(record_path) or ''
+			
+			if record_content and #record_content > 0 then
+				-- 解析记录文件：第一行是 JSON，后面是包列表
+				local lines = {}
+				for line in record_content:gmatch('[^\n]+') do
+					table.insert(lines, line)
+				end
+				
+				if #lines > 1 then
+					-- 第一行是 JSON 元数据，跳过
+					-- 从第二行开始是包列表
+					local packages_in_record = {}
+					local found_pkg = false
+					
+					for i = 2, #lines do
+						local pkg_name = lines[i]:gsub('^%s+', ''):gsub('%s+$', '')
+						if pkg_name and #pkg_name > 0 then
+							packages_in_record[#packages_in_record + 1] = pkg_name
+							-- 检查是否包含要卸载的包（精确匹配）
+							if pkg_name == pkg then
+								found_pkg = true
+							end
+						end
+					end
+					
+					-- 如果找到了要卸载的包，检查该记录中的所有包是否都已卸载
+					if found_pkg then
+						local all_uninstalled = true
+						for _, record_pkg in ipairs(packages_in_record) do
+							if is_installed(record_pkg) then
+								all_uninstalled = false
+								break
+							end
+						end
+						
+						-- 如果所有包都已卸载，删除该记录文件
+						if all_uninstalled then
+							if fs.remove(record_path) then
+								removed[#removed + 1] = '离线安装记录: ' .. record_file
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	
+	return removed
+end
+
 local function clear_caches(app)
 	local removed = {}
 	-- 1) 清理 LuCI 相关缓存
@@ -1989,6 +2061,13 @@ function action_remove()
 		local removed_istore = clear_istore_state('luci-app-openclash')
 		for _, item in ipairs(removed_istore or {}) do
 			append_log(log, '+ cleared: ' .. item)
+		end
+		
+		-- 清理离线安装记录
+		local offline_records_removed = clear_offline_install_records('luci-app-openclash')
+		for _, item in ipairs(offline_records_removed or {}) do
+			append_log(log, '+ cleared: ' .. item)
+			removed_istore[#removed_istore+1] = item
 		end
 
 		return json_response({
@@ -2248,6 +2327,17 @@ function action_remove()
 			if not is_installed(related_pkg) then
 				local pkg_removed = clear_istore_state(related_pkg)
 				for _, item in ipairs(pkg_removed) do
+					removed_istore[#removed_istore+1] = item
+				end
+			end
+		end
+		
+		-- 清理离线安装记录（如果该记录中的所有包都已卸载）
+		-- 检查主包和所有相关包
+		for _, related_pkg in ipairs(related_pkgs_for_istore) do
+			if not is_installed(related_pkg) then
+				local offline_records_removed = clear_offline_install_records(related_pkg)
+				for _, item in ipairs(offline_records_removed) do
 					removed_istore[#removed_istore+1] = item
 				end
 			end
