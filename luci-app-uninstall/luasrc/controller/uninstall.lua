@@ -369,8 +369,9 @@ function action_install_upload()
 			if filename then
 				-- 只保留文件名部分，移除路径
 				local basename = filename:match('([^/\\]+)$') or filename
-				-- 移除可能的不安全字符，只保留字母、数字、点、下划线、连字符
-				basename = basename:gsub('[^%w%.%-%_]', '_')
+				-- 移除可能的不安全字符，但保留加号（+）和等号（=），因为这些在包名中很常见
+				-- 只移除真正的危险字符（路径分隔符、空字符等）
+				basename = basename:gsub('[%c/\\%z]', '_')  -- 只移除控制字符、路径分隔符和空字符
 				-- 确保文件名不为空
 				if basename and #basename > 0 then
 					saved_path = '/tmp/' .. basename
@@ -1086,19 +1087,29 @@ function action_check_install_status()
 	
 	-- 如果日志内容为空但日志文件存在，尝试直接读取日志文件
 	if (not log_content or #log_content == 0) and fs.stat(tmp_log) then
-		local direct_log = fs.readfile(tmp_log) or ''
+		local direct_log = sys.exec(string.format("tail -n 100 %q 2>/dev/null", tmp_log)) or ''
+		if not direct_log or #direct_log == 0 then
+			direct_log = fs.readfile(tmp_log) or ''
+		end
 		if direct_log and #direct_log > 0 then
 			log_content = direct_log
-			-- 只取最后 100 行
+			-- 如果内容太长，只取最后 100 行
 			local lines = {}
 			for line in direct_log:gmatch('[^\n]+') do
 				table.insert(lines, line)
 			end
-			local max_lines = #lines > 100 and 100 or #lines
-			local start = math.max(1, #lines - max_lines + 1)
-			log_content = ''
-			for i = start, #lines do
-				log_content = log_content .. lines[i] .. '\n'
+			if #lines > 100 then
+				local max_lines = 100
+				local start = math.max(1, #lines - max_lines + 1)
+				log_content = ''
+				for i = start, #lines do
+					log_content = log_content .. lines[i] .. '\n'
+				end
+			end
+		else
+			-- 日志文件存在但内容为空，可能是安装脚本还没有开始输出
+			if status == 'running' then
+				log_content = '等待安装脚本输出日志...\n'
 			end
 		end
 	end
