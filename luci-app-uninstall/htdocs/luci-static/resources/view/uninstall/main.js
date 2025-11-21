@@ -3198,6 +3198,18 @@ return view.extend({
 							}
 						}
 						
+						// 显示调试信息（如果有）
+						if (res && res.debug) {
+							var debugMsg = '[' + _('调试') + '] ';
+							if (res.debug.status_file_exists) debugMsg += '状态文件存在; ';
+							if (res.debug.log_file_exists) debugMsg += '日志文件存在; ';
+							if (res.debug.log_size) debugMsg += '日志大小: ' + res.debug.log_size + '; ';
+							// 只在长时间等待后显示调试信息，避免日志过多
+							if (retryCount > 30) {
+								progressUI.println(debugMsg);
+							}
+						}
+						
 						if (res && res.status === 'done') {
 							// 安装完成
 							if (res.ok) {
@@ -3215,16 +3227,42 @@ return view.extend({
 							// 仍在运行，继续轮询
 							var progress = Math.min(90, 50 + Math.floor((retryCount / maxRetries) * 40));
 							progressUI.setProgress(progress);
-							progressUI.setStatus(_('正在安装…') + ' (' + retryCount + 's)');
+							var statusMsg = _('正在安装…') + ' (' + retryCount + 's)';
+							// 如果等待时间较长，显示提示信息
+							if (retryCount > 60) {
+								statusMsg += ' - ' + _('安装可能需要较长时间，请耐心等待…');
+							}
+							progressUI.setStatus(statusMsg);
 							pollInstallStatus(progressUI, statusFile, logFile, retryCount + 1);
 						} else {
 							// 状态未知，继续轮询
-							progressUI.setStatus(_('检查安装状态…') + ' (' + retryCount + 's)');
+							// 如果等待时间较长，尝试通过日志判断
+							if (retryCount > 90 && res && res.log) {
+								var logText = res.log.toLowerCase();
+								if (logText.match('完成') || logText.match('complete') || logText.match('success')) {
+									// 日志显示可能已完成，但状态文件未更新
+									// 等待更长时间后再次检查
+									if (retryCount > 120) {
+										progressUI.println('! ' + _('检测到安装可能已完成，但状态文件未更新，请手动检查'));
+										progressUI.markFailure(_('状态检查异常'));
+										return;
+									}
+								}
+							}
+							var statusMsg = _('检查安装状态…') + ' (' + retryCount + 's)';
+							if (retryCount > 60) {
+								statusMsg += ' - ' + _('安装可能需要较长时间，请耐心等待…');
+							}
+							progressUI.setStatus(statusMsg);
 							pollInstallStatus(progressUI, statusFile, logFile, retryCount + 1);
 						}
 					}).catch(function(err) {
 						// 查询失败，继续轮询
-						progressUI.setStatus(_('检查安装状态…') + ' (' + retryCount + 's)');
+						var statusMsg = _('检查安装状态…') + ' (' + retryCount + 's)';
+						if (retryCount > 60) {
+							statusMsg += ' - ' + _('网络连接可能不稳定，正在重试…');
+						}
+						progressUI.setStatus(statusMsg);
 						pollInstallStatus(progressUI, statusFile, logFile, retryCount + 1);
 					});
 				}, 2000); // 每2秒检查一次

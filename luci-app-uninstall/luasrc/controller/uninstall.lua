@@ -456,15 +456,20 @@ function action_install_upload()
 		local wrapper_content = string.format(
 			'#!/bin/sh\n' ..
 			'# 执行安装脚本并捕获退出码\n' ..
-			'%q >%q 2>&1\n' ..
+			'# 确保状态文件存在并标记为运行中\n' ..
+			'echo "running" > %q\n' ..
+			'# 执行安装脚本，将输出重定向到日志文件\n' ..
+			'%q >>%q 2>&1\n' ..
 			'EXIT_CODE=$?\n' ..
 			'# 先写入退出码，再添加 done 标记，确保状态文件格式正确\n' ..
 			'echo "$EXIT_CODE" > %q\n' ..
 			'echo "done" >> %q\n' ..
+			'# 同步文件系统，确保状态文件已写入磁盘\n' ..
+			'sync\n' ..
 			'# 清理包装脚本（延迟清理，确保状态文件已写入）\n' ..
 			'sleep 1\n' ..
 			'rm -f %q\n',
-			final_path, tmp_log, status_file, status_file, wrapper_script
+			status_file, final_path, tmp_log, status_file, status_file, wrapper_script
 		)
 		local wrapper_fp = io.open(wrapper_script, 'w')
 		if wrapper_fp then
@@ -572,11 +577,28 @@ function action_check_install_status()
 	if status == 'unknown' or status == 'running' then
 		-- 检查包装脚本进程是否还在运行
 		local wrapper_running = false
+		-- 检查多种可能的进程模式
 		if fs.stat(wrapper_script) then
 			-- 检查是否有 sh 进程在执行包装脚本
-			local ps_output = sys.exec("ps | grep -F '" .. wrapper_script .. "' | grep -v grep") or ''
+			local ps_output = sys.exec("ps w | grep -F '" .. wrapper_script .. "' | grep -v grep") or ''
 			if ps_output and #ps_output > 0 then
 				wrapper_running = true
+			end
+		end
+		
+		-- 也检查是否有进程在执行安装脚本本身（通过检查日志文件路径）
+		-- 这对于检测 openclash 等长时间运行的安装脚本很重要
+		if not wrapper_running and fs.stat(tmp_log) then
+			-- 检查是否有进程在写入日志文件（通过 lsof 或 fuser，如果可用）
+			local lsof_output = sys.exec(string.format("lsof %q 2>/dev/null | grep -v grep", tmp_log)) or ''
+			if lsof_output and #lsof_output > 0 then
+				wrapper_running = true
+			else
+				-- 备用方法：检查是否有 sh 进程在执行 .run 文件
+				local run_process = sys.exec("ps w | grep -E '\\.run|uninstall-upload\\.run|uninstall-install\\.run' | grep -v grep") or ''
+				if run_process and #run_process > 0 then
+					wrapper_running = true
+				end
 			end
 		end
 		
@@ -585,55 +607,129 @@ function action_check_install_status()
 		if not wrapper_running and not fs.stat(status_file) then
 			-- 检查日志文件是否有完成标记
 			if fs.stat(tmp_log) then
-				local log_content_check = fs.readfile(tmp_log) or ''
-				-- 检查日志中是否有安装完成的标记
-				if log_content_check:match('安装完成') or 
-				   log_content_check:match('Install.*complete') or 
-				   log_content_check:match('successfully') or
-				   log_content_check:match('✓') or
-				   log_content_check:match('completed') then
-					status = 'done'
-					exit_code = 0
-				elseif log_content_check:match('error') or 
-				       log_content_check:match('failed') or
-				       log_content_check:match('失败') then
-					status = 'done'
-					exit_code = 1
+				-- 先检查日志文件是否还在更新（通过修改时间）
+				local mtime_str = sys.exec(string.format("stat -c %%Y %q 2>/dev/null || stat -f %%m %q 2>/dev/null || echo 0", tmp_log, tmp_log)) or '0'
+				local log_mtime = tonumber(mtime_str:match('(%d+)')) or 0
+				local current_time = os.time()
+				local time_since_update = current_time - log_mtime
+				
+				-- 如果日志文件最近有更新（30秒内），认为安装还在进行中
+				if log_mtime > 0 and time_since_update < 30 then
+					status = 'running'
+				else
+					-- 日志文件很久没有更新，检查是否有完成标记
+					local log_content_check = fs.readfile(tmp_log) or ''
+					-- 检查日志中是否有安装完成的标记
+					if log_content_check:match('安装完成') or 
+					   log_content_check:match('Install.*complete') or 
+					   log_content_check:match('successfully') or
+					   log_content_check:match('✓') or
+					   log_content_check:match('completed') or
+					   log_content_check:match('done') or
+					   log_content_check:match('完成') then
+						status = 'done'
+						exit_code = 0
+					elseif log_content_check:match('error') or 
+					       log_content_check:match('failed') or
+					       log_content_check:match('失败') or
+					       log_content_check:match('Error') or
+					       log_content_check:match('Failed') then
+						status = 'done'
+						exit_code = 1
+					else
+						-- 无法判断，如果日志文件很大，可能安装已完成
+						local log_stat = fs.stat(tmp_log)
+						if log_stat and log_stat.size and log_stat.size > 5000 then
+							-- 日志文件较大，可能安装已完成，假设成功
+							status = 'done'
+							exit_code = 0
+						else
+							-- 日志文件较小且很久没更新，可能安装失败或还在进行中
+							-- 如果超过2分钟没更新，认为已完成（可能是静默完成）
+							if time_since_update > 120 then
+								status = 'done'
+								exit_code = 0  -- 假设成功
+							else
+								status = 'running'
+							end
+						end
+					end
 				end
 			end
 		elseif wrapper_running then
 			status = 'running'
 		elseif status == 'unknown' then
 			-- 如果包装脚本不存在，状态文件也不存在，但日志文件存在，可能是安装已完成
-			-- 检查日志文件的最后修改时间，如果超过30秒没有更新，认为安装已完成
+			-- 检查日志文件的最后修改时间，如果超过一定时间没有更新，认为安装已完成
 			if fs.stat(tmp_log) then
 				-- 使用 stat 命令获取文件修改时间（更可靠）
 				local mtime_str = sys.exec(string.format("stat -c %%Y %q 2>/dev/null || stat -f %%m %q 2>/dev/null || echo 0", tmp_log, tmp_log)) or '0'
 				local log_mtime = tonumber(mtime_str:match('(%d+)')) or 0
 				local current_time = os.time()
-				-- 如果日志文件超过30秒没有更新，且没有运行中的进程，认为安装已完成
-				if log_mtime > 0 and (current_time - log_mtime) > 30 then
+				-- 读取日志内容，检查是否有完成标记
+				local log_content_check = fs.readfile(tmp_log) or ''
+				
+				-- 如果日志文件超过60秒没有更新，且没有运行中的进程，认为安装已完成
+				-- 对于 openclash 等长时间安装的包，给更多时间
+				local timeout_seconds = 60
+				if log_content_check:match('openclash') or log_content_check:match('OpenClash') then
+					timeout_seconds = 120  -- openclash 安装可能需要更长时间
+				end
+				
+				if log_mtime > 0 and (current_time - log_mtime) > timeout_seconds then
 					status = 'done'
 					-- 尝试从日志判断成功或失败
-					local log_content_check = fs.readfile(tmp_log) or ''
 					if log_content_check:match('安装完成') or 
 					   log_content_check:match('Install.*complete') or 
 					   log_content_check:match('successfully') or
 					   log_content_check:match('✓') or
-					   log_content_check:match('completed') then
+					   log_content_check:match('completed') or
+					   log_content_check:match('done') or
+					   log_content_check:match('完成') then
 						exit_code = 0
-					else
+					elseif log_content_check:match('error') or 
+					       log_content_check:match('failed') or
+					       log_content_check:match('失败') or
+					       log_content_check:match('Error') or
+					       log_content_check:match('Failed') then
 						exit_code = 1
+					else
+						-- 如果无法判断，检查日志文件大小，如果很大可能安装完成了
+						local log_stat = fs.stat(tmp_log)
+						if log_stat and log_stat.size and log_stat.size > 1000 then
+							-- 日志文件较大，可能安装已完成，假设成功
+							exit_code = 0
+						else
+							exit_code = 1
+						end
 					end
 				else
-					status = 'running'
+					-- 日志文件最近有更新，或者还在等待中
+					-- 检查日志内容，看是否有明显的错误
+					if log_content_check:match('error') or 
+					   log_content_check:match('failed') or
+					   log_content_check:match('失败') then
+						-- 有错误但还在运行，继续等待
+						status = 'running'
+					else
+						status = 'running'
+					end
 				end
 			end
 		end
 	end
 	
 	-- 读取日志文件（只读最后 50 行以避免响应过大）
+	-- 同时检查日志文件是否有更新（通过文件大小和修改时间）
+	local log_size = 0
+	local log_mtime_check = 0
 	if fs.stat(tmp_log) then
+		local log_stat = fs.stat(tmp_log)
+		log_size = log_stat.size or 0
+		-- 获取日志文件修改时间
+		local mtime_str = sys.exec(string.format("stat -c %%Y %q 2>/dev/null || stat -f %%m %q 2>/dev/null || echo 0", tmp_log, tmp_log)) or '0'
+		log_mtime_check = tonumber(mtime_str:match('(%d+)')) or 0
+		
 		local full_log = fs.readfile(tmp_log) or ''
 		local lines = {}
 		for line in full_log:gmatch('[^\n]+') do
@@ -643,6 +739,31 @@ function action_check_install_status()
 		local start = math.max(1, #lines - 49)
 		for i = start, #lines do
 			log_content = log_content .. lines[i] .. '\n'
+		end
+		
+		-- 如果状态是 running 但日志文件很久没有更新，可能是安装已完成但状态文件写入失败
+		-- 检查日志内容是否有完成标记
+		if status == 'running' and log_mtime_check > 0 then
+			local current_time = os.time()
+			local time_since_update = current_time - log_mtime_check
+			-- 如果日志超过90秒没有更新，检查是否有完成标记
+			if time_since_update > 90 then
+				if full_log:match('安装完成') or 
+				   full_log:match('Install.*complete') or 
+				   full_log:match('successfully') or
+				   full_log:match('✓') or
+				   full_log:match('completed') or
+				   full_log:match('done') or
+				   full_log:match('完成') then
+					status = 'done'
+					exit_code = 0
+				elseif full_log:match('error') or 
+				       full_log:match('failed') or
+				       full_log:match('失败') then
+					status = 'done'
+					exit_code = 1
+				end
+			end
 		end
 	end
 	
@@ -672,11 +793,21 @@ function action_check_install_status()
 		end
 	end
 	
+	-- 添加调试信息（在生产环境可以移除）
+	local debug_info = {
+		status_file_exists = fs.stat(status_file) ~= nil,
+		wrapper_script_exists = fs.stat(wrapper_script) ~= nil,
+		log_file_exists = fs.stat(tmp_log) ~= nil,
+		log_size = log_size,
+		log_mtime = log_mtime_check
+	}
+	
 	return json_response({
 		ok = ok,
 		status = status,
 		exit_code = exit_code,
-		log = log_content
+		log = log_content,
+		debug = debug_info  -- 调试信息，帮助排查问题
 	})
 end
 
