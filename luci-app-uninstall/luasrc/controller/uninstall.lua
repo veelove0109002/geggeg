@@ -455,11 +455,15 @@ function action_install_upload()
 		local wrapper_script = '/tmp/uninstall-install-wrapper.sh'
 		local wrapper_content = string.format(
 			'#!/bin/sh\n' ..
+			'# 执行安装脚本并捕获退出码\n' ..
 			'%q >%q 2>&1\n' ..
 			'EXIT_CODE=$?\n' ..
+			'# 先写入退出码，再添加 done 标记，确保状态文件格式正确\n' ..
 			'echo "$EXIT_CODE" > %q\n' ..
 			'echo "done" >> %q\n' ..
-			'rm -f %q\n',  -- 清理包装脚本
+			'# 清理包装脚本（延迟清理，确保状态文件已写入）\n' ..
+			'sleep 1\n' ..
+			'rm -f %q\n',
 			final_path, tmp_log, status_file, status_file, wrapper_script
 		)
 		local wrapper_fp = io.open(wrapper_script, 'w')
@@ -524,25 +528,107 @@ end
 function action_check_install_status()
 	local status_file = '/tmp/uninstall-install-status.txt'
 	local tmp_log = '/tmp/uninstall-install.log'
+	local wrapper_script = '/tmp/uninstall-install-wrapper.sh'
 	
 	local status = 'unknown'
 	local log_content = ''
 	local exit_code = nil
 	
+	-- 首先检查状态文件
 	if fs.stat(status_file) then
 		local content = fs.readfile(status_file) or ''
+		-- 清理空白字符
+		content = content:gsub('^%s+', ''):gsub('%s+$', '')
 		if content:match('done') then
 			status = 'done'
-			-- 提取退出码
+			-- 提取退出码（查找所有数字行，取最后一个作为退出码）
+			local codes = {}
 			for line in content:gmatch('[^\n]+') do
+				-- 移除空白字符
+				line = line:gsub('^%s+', ''):gsub('%s+$', '')
 				local code = line:match('^(%d+)$')
 				if code then
-					exit_code = tonumber(code)
-					break
+					table.insert(codes, tonumber(code))
 				end
+			end
+			if #codes > 0 then
+				exit_code = codes[#codes]  -- 取最后一个退出码
 			end
 		elseif content:match('running') then
 			status = 'running'
+		elseif #content > 0 then
+			-- 如果状态文件存在但内容不是预期的格式，尝试解析
+			-- 可能是只有退出码，没有 done 标记
+			local code = content:match('^(%d+)$')
+			if code then
+				status = 'done'
+				exit_code = tonumber(code)
+			end
+		end
+	end
+	
+	-- 如果状态文件不存在或状态未知，检查包装脚本是否还在运行
+	-- 这对于 openclash 等长时间安装的包很重要
+	if status == 'unknown' or status == 'running' then
+		-- 检查包装脚本进程是否还在运行
+		local wrapper_running = false
+		if fs.stat(wrapper_script) then
+			-- 检查是否有 sh 进程在执行包装脚本
+			local ps_output = sys.exec("ps | grep -F '" .. wrapper_script .. "' | grep -v grep") or ''
+			if ps_output and #ps_output > 0 then
+				wrapper_running = true
+			end
+		end
+		
+		-- 如果没有找到包装脚本进程，但状态文件也不存在，可能是安装已完成但状态文件被清理
+		-- 或者安装脚本已经执行完毕但状态文件写入失败
+		if not wrapper_running and not fs.stat(status_file) then
+			-- 检查日志文件是否有完成标记
+			if fs.stat(tmp_log) then
+				local log_content_check = fs.readfile(tmp_log) or ''
+				-- 检查日志中是否有安装完成的标记
+				if log_content_check:match('安装完成') or 
+				   log_content_check:match('Install.*complete') or 
+				   log_content_check:match('successfully') or
+				   log_content_check:match('✓') or
+				   log_content_check:match('completed') then
+					status = 'done'
+					exit_code = 0
+				elseif log_content_check:match('error') or 
+				       log_content_check:match('failed') or
+				       log_content_check:match('失败') then
+					status = 'done'
+					exit_code = 1
+				end
+			end
+		elseif wrapper_running then
+			status = 'running'
+		elseif status == 'unknown' then
+			-- 如果包装脚本不存在，状态文件也不存在，但日志文件存在，可能是安装已完成
+			-- 检查日志文件的最后修改时间，如果超过30秒没有更新，认为安装已完成
+			if fs.stat(tmp_log) then
+				-- 使用 stat 命令获取文件修改时间（更可靠）
+				local mtime_str = sys.exec(string.format("stat -c %%Y %q 2>/dev/null || stat -f %%m %q 2>/dev/null || echo 0", tmp_log, tmp_log)) or '0'
+				local log_mtime = tonumber(mtime_str:match('(%d+)')) or 0
+				local current_time = os.time()
+				-- 如果日志文件超过30秒没有更新，且没有运行中的进程，认为安装已完成
+				if log_mtime > 0 and (current_time - log_mtime) > 30 then
+					status = 'done'
+					-- 尝试从日志判断成功或失败
+					local log_content_check = fs.readfile(tmp_log) or ''
+					if log_content_check:match('安装完成') or 
+					   log_content_check:match('Install.*complete') or 
+					   log_content_check:match('successfully') or
+					   log_content_check:match('✓') or
+					   log_content_check:match('completed') then
+						exit_code = 0
+					else
+						exit_code = 1
+					end
+				else
+					status = 'running'
+				end
+			end
 		end
 	end
 	
@@ -563,6 +649,27 @@ function action_check_install_status()
 	local ok = (status == 'done' and exit_code == 0)
 	if status == 'done' and exit_code ~= 0 then
 		ok = false
+	end
+	
+	-- 如果状态是 done 但 exit_code 是 nil，尝试从日志判断
+	if status == 'done' and exit_code == nil then
+		if log_content and #log_content > 0 then
+			if log_content:match('安装完成') or 
+			   log_content:match('Install.*complete') or 
+			   log_content:match('successfully') or
+			   log_content:match('✓') or
+			   log_content:match('completed') then
+				exit_code = 0
+				ok = true
+			else
+				exit_code = 1
+				ok = false
+			end
+		else
+			-- 如果无法判断，假设成功（因为状态是 done）
+			exit_code = 0
+			ok = true
+		end
 	end
 	
 	return json_response({
