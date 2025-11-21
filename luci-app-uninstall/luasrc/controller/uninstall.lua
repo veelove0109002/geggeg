@@ -81,12 +81,13 @@ function index()
 	e.acl_depends = { 'luci-app-uninstall' }
 end
 
-local http = require 'luci.http'
-local sys = require 'luci.sys'
-local ipkg = require 'luci.model.ipkg'
-local json = require 'luci.jsonc'
-local fs = require 'nixio.fs'
-local util = require 'luci.util'
+	local http = require 'luci.http'
+	local sys = require 'luci.sys'
+	local ipkg = require 'luci.model.ipkg'
+	local json = require 'luci.jsonc'
+	local fs = require 'nixio.fs'
+	local util = require 'luci.util'
+	local os = require 'os'
 
 local function json_response(tbl, code)
 	code = code or 200
@@ -440,127 +441,99 @@ function action_install_upload()
 	append('=== Install from upload ===')
 	append('File: ' .. (filename or ''))
 
-	local ok
+	-- 参考 luci-app-store 的方式：使用类似 is-opkg dotrun 的逻辑
+	-- 直接执行 .run 或 .ipk 文件，不需要包装脚本
+	local status_file = '/tmp/uninstall-install-status.txt'
+	local stdout_log = '/tmp/uninstall-install.stdout'
+	local stderr_log = '/tmp/uninstall-install.stderr'
+	
+	-- 清理旧文件
+	sys.call(string.format("rm -f %q %q %q >/dev/null 2>&1", status_file, stdout_log, stderr_log))
+	
+	-- 写入初始状态
+	local status_fp = io.open(status_file, 'w')
+	if status_fp then
+		status_fp:write('running\n')
+		status_fp:close()
+	end
+	
+	-- 构建执行命令（参考 is-opkg dotrun 的方式）
+	-- 创建一个包装脚本来执行安装并捕获退出码
+	local wrapper_script = '/tmp/uninstall-install-wrapper.sh'
+	local wrapper_content
 	if is_ipk then
-		append('+ opkg install ' .. final_path)
-		local rc = sys.call(string.format("opkg install %q >%s 2>&1", final_path, tmp_log))
-		ok = (rc == 0)
-	else
-		-- 对于 .run 文件，使用后台执行以避免长时间阻塞 HTTP 连接
-		-- 特别是对于 OpenClash 等需要长时间安装的包
-		append('+ sh ' .. final_path .. ' (background)')
-		sys.call(string.format('chmod +x %q >/dev/null 2>&1', final_path))
-		
-		-- 使用 nohup 在后台执行，并将输出重定向到日志文件
-		-- 同时创建一个状态文件来跟踪安装进度
-		local status_file = '/tmp/uninstall-install-status.txt'
-		local pid_file = '/tmp/uninstall-install.pid'
-		
-		-- 清理旧的状态文件
-		sys.call(string.format("rm -f %q %q >/dev/null 2>&1", status_file, pid_file))
-		
-		-- 写入初始状态
-		local status_fp = io.open(status_file, 'w')
-		if status_fp then
-			status_fp:write('running\n')
-			status_fp:close()
-		end
-		
-		-- 后台执行安装脚本
-		-- 使用 nohup 和 & 让脚本在后台运行，即使 HTTP 连接断开也继续执行
-		-- 创建一个包装脚本来捕获退出码
-		local wrapper_script = '/tmp/uninstall-install-wrapper.sh'
-		local wrapper_content = string.format(
+		wrapper_content = string.format(
 			'#!/bin/sh\n' ..
-			'# 执行安装脚本并捕获退出码\n' ..
-			'# 确保状态文件存在并标记为运行中\n' ..
-			'echo "running" > %q\n' ..
-			'# 在执行安装脚本之前，先更新 opkg 源列表\n' ..
-			'# 这对于需要下载依赖的包（如 openclash）非常重要\n' ..
-			'echo "Updating opkg package lists..." >> %q\n' ..
-			'opkg update >>%q 2>&1\n' ..
-			'# 执行安装脚本，将输出重定向到日志文件（使用 unbuffered 模式确保实时输出）\n' ..
-			'# 使用 stdbuf 或 script 命令确保输出实时刷新\n' ..
-			'# 注意：使用 >> 追加模式，确保所有输出都被记录\n' ..
-			'echo "Executing installation script..." >> %q\n' ..
-			'if command -v stdbuf >/dev/null 2>&1; then\n' ..
-			'  stdbuf -oL -eL sh %q >>%q 2>&1\n' ..
-			'else\n' ..
-			'  sh %q >>%q 2>&1\n' ..
-			'fi\n' ..
+			'opkg install %q >%q 2>%q\n' ..
 			'EXIT_CODE=$?\n' ..
-			'# 先写入退出码，再添加 done 标记，确保状态文件格式正确\n' ..
 			'echo "$EXIT_CODE" > %q\n' ..
 			'echo "done" >> %q\n' ..
-			'# 同步文件系统，确保状态文件已写入磁盘\n' ..
-			'sync\n' ..
-			'# 清理包装脚本（延迟清理，确保状态文件已写入）\n' ..
-			'sleep 1\n' ..
 			'rm -f %q\n',
-			status_file, tmp_log, tmp_log, tmp_log, final_path, tmp_log, final_path, tmp_log, status_file, status_file, wrapper_script
+			final_path, stdout_log, stderr_log, status_file, status_file, wrapper_script
 		)
-		local wrapper_fp = io.open(wrapper_script, 'w')
-		if wrapper_fp then
-			wrapper_fp:write(wrapper_content)
-			wrapper_fp:close()
-			sys.call(string.format('chmod +x %q >/dev/null 2>&1', wrapper_script))
-		end
-		
-		-- 使用 nohup 在后台执行包装脚本
-		-- 注意：使用 sh -c 来确保命令正确执行
-		local bg_cmd = string.format(
-			"nohup sh -c %q >/dev/null 2>&1 &",
-			wrapper_script
+	else
+		-- 对于 .run 文件，直接执行（参考 is-opkg dotrun 的方式）
+		-- 不需要 opkg update，.run 文件内部会处理
+		wrapper_content = string.format(
+			'#!/bin/sh\n' ..
+			'chmod 0755 %q\n' ..
+			'%q >%q 2>%q\n' ..
+			'EXIT_CODE=$?\n' ..
+			'echo "$EXIT_CODE" > %q\n' ..
+			'echo "done" >> %q\n' ..
+			'rm -f %q\n' ..
+			'rm -f %q\n',  -- 清理上传的文件
+			final_path, final_path, stdout_log, stderr_log, status_file, status_file, wrapper_script, final_path
 		)
-		sys.call(bg_cmd)
-		
-		-- 等待一小段时间，检查脚本是否立即失败
-		sys.call('sleep 2 >/dev/null 2>&1')
-		
-		-- 检查状态文件
-		local status_content = fs.readfile(status_file) or ''
-		if status_content:match('done') then
-			-- 安装已完成（可能是快速失败或快速成功）
-			local exit_code = status_content:match('(%d+)')
-			if exit_code then
-				ok = (tonumber(exit_code) == 0)
-			else
-				-- 读取日志文件最后几行判断
-				local log_content = fs.readfile(tmp_log) or ''
-				ok = (log_content:match('安装完成') ~= nil or log_content:match('Install.*complete') ~= nil or log_content:match('✓') ~= nil)
-			end
-		else
-			-- 安装仍在进行中，返回特殊状态让前端轮询
-			append('> 安装脚本已在后台启动，正在执行中...')
-			append('> 请等待安装完成，前端将自动检查安装状态')
-			return json_response({ 
-				ok = true, 
-				async = true,  -- 标记为异步安装
-				message = '安装已开始，正在后台执行',
-				log = table.concat(log, "\n"),
-				status_file = status_file,
-				log_file = tmp_log
-			})
-		end
 	end
-
-	local out = fs.readfile(tmp_log) or ''
-	if out and #out > 0 then append(out) end
-
-	if ok then
-		sys.call('rm -f /tmp/luci-indexcache >/dev/null 2>&1')
-		sys.call('rm -rf /tmp/luci-modulecache/* >/dev/null 2>&1')
-		sys.call('[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd reload >/dev/null 2>&1')
-		sys.call('[ -x /etc/init.d/nginx ] && /etc/init.d/nginx reload >/dev/null 2>&1')
+	
+	local wrapper_fp = io.open(wrapper_script, 'w')
+	if wrapper_fp then
+		wrapper_fp:write(wrapper_content)
+		wrapper_fp:close()
+		sys.call(string.format('chmod +x %q >/dev/null 2>&1', wrapper_script))
+	else
+		return json_response({ ok = false, message = '无法创建包装脚本', log = table.concat(log, "\n") }, 500)
 	end
-
-	return json_response({ ok = ok, log = table.concat(log, "\n") })
+	
+	-- 检查是否有 tasks 系统可用（参考 luci-app-store 的 is_exec 函数）
+	local has_tasks = fs.stat('/etc/init.d/tasks') ~= nil
+	local async_cmd
+	
+	if has_tasks then
+		-- 使用 tasks 系统异步执行（参考 luci-app-store）
+		async_cmd = string.format("/etc/init.d/tasks task_add uninstall %s", util.shellquote(wrapper_script))
+		append('> 使用 tasks 系统异步执行安装')
+	else
+		-- 使用 nohup 在后台执行
+		async_cmd = string.format("nohup sh %q >/dev/null 2>&1 &", wrapper_script)
+		append('> 使用 nohup 在后台执行安装')
+	end
+	
+	-- 执行命令
+	sys.call(async_cmd)
+	
+	-- 异步执行，返回状态让前端轮询
+	append('> 安装已在后台启动，正在执行中...')
+	append('> 请等待安装完成，前端将自动检查安装状态')
+	return json_response({ 
+		ok = true, 
+		async = true,  -- 标记为异步安装
+		message = '安装已开始，正在后台执行',
+		log = table.concat(log, "\n"),
+		status_file = status_file,
+		log_file = stdout_log,
+		stderr_file = stderr_log,
+		has_tasks = has_tasks
+	})
 end
 
 -- 检查后台安装状态
 function action_check_install_status()
 	local status_file = '/tmp/uninstall-install-status.txt'
-	local tmp_log = '/tmp/uninstall-install.log'
+	local stdout_log = '/tmp/uninstall-install.stdout'
+	local stderr_log = '/tmp/uninstall-install.stderr'
+	local tmp_log = stdout_log  -- 兼容旧版本
 	local wrapper_script = '/tmp/uninstall-install-wrapper.sh'
 	
 	local status = 'unknown'
@@ -596,8 +569,12 @@ function action_check_install_status()
 			status = 'running'
 			-- 如果状态文件显示 running，立即检查日志文件，看是否安装已完成
 			-- 这对于 openclash 等长时间安装的包很重要
-			if fs.stat(tmp_log) then
-				local log_content_check = fs.readfile(tmp_log) or ''
+			local log_file_check = stdout_log
+			if not fs.stat(log_file_check) then
+				log_file_check = '/tmp/uninstall-install.log'  -- 兼容旧版本
+			end
+			if fs.stat(log_file_check) then
+				local log_content_check = fs.readfile(log_file_check) or ''
 				local mtime_str = sys.exec(string.format("stat -c %%Y %q 2>/dev/null || stat -f %%m %q 2>/dev/null || echo 0", tmp_log, tmp_log)) or '0'
 				local log_mtime = tonumber(mtime_str:match('(%d+)')) or 0
 				local current_time = os.time()
@@ -733,9 +710,9 @@ function action_check_install_status()
 		
 		-- 也检查是否有进程在执行安装脚本本身（通过检查日志文件路径）
 		-- 这对于检测 openclash 等长时间运行的安装脚本很重要
-		if not wrapper_running and fs.stat(tmp_log) then
+		if not wrapper_running and fs.stat(log_file) then
 			-- 检查是否有进程在写入日志文件（通过 lsof 或 fuser，如果可用）
-			local lsof_output = sys.exec(string.format("lsof %q 2>/dev/null | grep -v grep", tmp_log)) or ''
+			local lsof_output = sys.exec(string.format("lsof %q 2>/dev/null | grep -v grep", log_file)) or ''
 			if lsof_output and #lsof_output > 0 then
 				wrapper_running = true
 			else
@@ -757,7 +734,7 @@ function action_check_install_status()
 			
 			-- 检查日志文件是否有 opkg 相关的活动（下载、安装等）
 			if not wrapper_running then
-				local log_content_check = fs.readfile(tmp_log) or ''
+				local log_content_check = fs.readfile(log_file) or ''
 				-- 如果日志中有 "Downloading"、"Installing"、"Configuring" 等关键词，且日志最近有更新，认为还在运行
 				if log_content_check:match('Downloading') or 
 				   log_content_check:match('Installing') or 
@@ -765,7 +742,7 @@ function action_check_install_status()
 				   log_content_check:match('Updated list') or
 				   log_content_check:match('Signature check') then
 					-- 检查日志文件的修改时间
-					local mtime_str = sys.exec(string.format("stat -c %%Y %q 2>/dev/null || stat -f %%m %q 2>/dev/null || echo 0", tmp_log, tmp_log)) or '0'
+					local mtime_str = sys.exec(string.format("stat -c %%Y %q 2>/dev/null || stat -f %%m %q 2>/dev/null || echo 0", log_file, log_file)) or '0'
 					local log_mtime = tonumber(mtime_str:match('(%d+)')) or 0
 					local current_time = os.time()
 					local time_since_update = current_time - log_mtime
@@ -781,12 +758,15 @@ function action_check_install_status()
 		-- 或者安装脚本已经执行完毕但状态文件写入失败
 		if not wrapper_running and not fs.stat(status_file) then
 			-- 检查日志文件是否有完成标记
-			if fs.stat(tmp_log) then
+			if fs.stat(log_file) then
 				-- 先检查日志文件是否还在更新（通过修改时间）
-				local mtime_str = sys.exec(string.format("stat -c %%Y %q 2>/dev/null || stat -f %%m %q 2>/dev/null || echo 0", tmp_log, tmp_log)) or '0'
+				local mtime_str = sys.exec(string.format("stat -c %%Y %q 2>/dev/null || stat -f %%m %q 2>/dev/null || echo 0", log_file, log_file)) or '0'
 				local log_mtime = tonumber(mtime_str:match('(%d+)')) or 0
 				local current_time = os.time()
 				local time_since_update = current_time - log_mtime
+				
+				-- 读取日志内容
+				local log_content_check = fs.readfile(log_file) or ''
 				
 				-- 如果日志文件最近有更新（30秒内），认为安装还在进行中
 				-- 或者日志中有 opkg 相关的活动（下载、安装依赖等）
@@ -802,7 +782,6 @@ function action_check_install_status()
 					status = 'running'
 				else
 					-- 日志文件很久没有更新，检查是否有完成标记
-					local log_content_check = fs.readfile(tmp_log) or ''
 					-- 检查日志中是否有安装完成的标记
 					if log_content_check:match('安装完成') or 
 					   log_content_check:match('Install.*complete') or 
@@ -822,7 +801,7 @@ function action_check_install_status()
 						exit_code = 1
 					else
 						-- 无法判断，如果日志文件很大，可能安装已完成
-						local log_stat = fs.stat(tmp_log)
+						local log_stat = fs.stat(log_file)
 						if log_stat and log_stat.size and log_stat.size > 5000 then
 							-- 日志文件较大，可能安装已完成，假设成功
 							status = 'done'
@@ -845,13 +824,14 @@ function action_check_install_status()
 		elseif status == 'unknown' then
 			-- 如果包装脚本不存在，状态文件也不存在，但日志文件存在，可能是安装已完成
 			-- 检查日志文件的最后修改时间，如果超过一定时间没有更新，认为安装已完成
-			if fs.stat(tmp_log) then
+			if fs.stat(log_file) then
 				-- 使用 stat 命令获取文件修改时间（更可靠）
-				local mtime_str = sys.exec(string.format("stat -c %%Y %q 2>/dev/null || stat -f %%m %q 2>/dev/null || echo 0", tmp_log, tmp_log)) or '0'
+				local mtime_str = sys.exec(string.format("stat -c %%Y %q 2>/dev/null || stat -f %%m %q 2>/dev/null || echo 0", log_file, log_file)) or '0'
 				local log_mtime = tonumber(mtime_str:match('(%d+)')) or 0
 				local current_time = os.time()
+				local time_since_update = current_time - log_mtime
 				-- 读取日志内容，检查是否有完成标记
-				local log_content_check = fs.readfile(tmp_log) or ''
+				local log_content_check = fs.readfile(log_file) or ''
 				
 				-- 如果日志文件超过60秒没有更新，且没有运行中的进程，认为安装已完成
 				-- 对于 openclash 等长时间安装的包，给更多时间
@@ -889,7 +869,7 @@ function action_check_install_status()
 						exit_code = 1
 					else
 						-- 如果无法判断，检查日志文件大小，如果很大可能安装完成了
-						local log_stat = fs.stat(tmp_log)
+						local log_stat = fs.stat(log_file)
 						if log_stat and log_stat.size and log_stat.size > 1000 then
 							-- 日志文件较大，可能安装已完成，假设成功
 							exit_code = 0
@@ -915,20 +895,26 @@ function action_check_install_status()
 	
 	-- 读取日志文件（只读最后 100 行以避免响应过大，但确保能看到下载依赖的过程）
 	-- 同时检查日志文件是否有更新（通过文件大小和修改时间）
+	-- 优先读取 stdout_log，如果没有则读取旧的 tmp_log（兼容性）
+	local log_file = stdout_log
+	if not fs.stat(log_file) then
+		log_file = '/tmp/uninstall-install.log'  -- 兼容旧版本
+	end
+	
 	local log_size = 0
 	local log_mtime_check = 0
-	if fs.stat(tmp_log) then
-		local log_stat = fs.stat(tmp_log)
+	if fs.stat(log_file) then
+		local log_stat = fs.stat(log_file)
 		log_size = log_stat.size or 0
 		-- 获取日志文件修改时间
-		local mtime_str = sys.exec(string.format("stat -c %%Y %q 2>/dev/null || stat -f %%m %q 2>/dev/null || echo 0", tmp_log, tmp_log)) or '0'
+		local mtime_str = sys.exec(string.format("stat -c %%Y %q 2>/dev/null || stat -f %%m %q 2>/dev/null || echo 0", log_file, log_file)) or '0'
 		log_mtime_check = tonumber(mtime_str:match('(%d+)')) or 0
 		
 		-- 使用 tail 命令读取最后 100 行，确保能看到最新的日志（包括下载依赖的过程）
 		-- 如果 tail 不可用，则使用 readfile
-		local full_log = sys.exec(string.format("tail -n 100 %q 2>/dev/null", tmp_log)) or ''
+		local full_log = sys.exec(string.format("tail -n 100 %q 2>/dev/null", log_file)) or ''
 		if not full_log or #full_log == 0 then
-			full_log = fs.readfile(tmp_log) or ''
+			full_log = fs.readfile(log_file) or ''
 		end
 		
 		-- 如果日志文件存在但内容为空，可能是安装脚本还没有开始输出
@@ -948,6 +934,26 @@ function action_check_install_status()
 			-- 日志文件为空，如果状态是 running，继续等待
 			if status == 'running' then
 				log_content = '等待安装脚本输出日志...\n'
+			end
+		end
+		
+		-- 如果有 stderr 日志，也读取（但只取最后 20 行，避免响应过大）
+		if fs.stat(stderr_log) then
+			local stderr_content = sys.exec(string.format("tail -n 20 %q 2>/dev/null", stderr_log)) or ''
+			if not stderr_content or #stderr_content == 0 then
+				stderr_content = fs.readfile(stderr_log) or ''
+			end
+			if stderr_content and #stderr_content > 0 then
+				-- 只取最后 20 行
+				local lines = {}
+				for line in stderr_content:gmatch('[^\n]+') do
+					table.insert(lines, line)
+				end
+				local max_lines = #lines > 20 and 20 or #lines
+				local start = math.max(1, #lines - max_lines + 1)
+				for i = start, #lines do
+					log_content = log_content .. '[stderr] ' .. lines[i] .. '\n'
+				end
 			end
 		end
 		
@@ -1079,17 +1085,17 @@ function action_check_install_status()
 	local debug_info = {
 		status_file_exists = fs.stat(status_file) ~= nil,
 		wrapper_script_exists = fs.stat(wrapper_script) ~= nil,
-		log_file_exists = fs.stat(tmp_log) ~= nil,
+		log_file_exists = fs.stat(log_file) ~= nil,
 		log_size = log_size,
 		log_mtime = log_mtime_check,
 		log_content_length = log_content and #log_content or 0
 	}
 	
 	-- 如果日志内容为空但日志文件存在，尝试直接读取日志文件
-	if (not log_content or #log_content == 0) and fs.stat(tmp_log) then
-		local direct_log = sys.exec(string.format("tail -n 100 %q 2>/dev/null", tmp_log)) or ''
+	if (not log_content or #log_content == 0) and fs.stat(log_file) then
+		local direct_log = sys.exec(string.format("tail -n 100 %q 2>/dev/null", log_file)) or ''
 		if not direct_log or #direct_log == 0 then
-			direct_log = fs.readfile(tmp_log) or ''
+			direct_log = fs.readfile(log_file) or ''
 		end
 		if direct_log and #direct_log > 0 then
 			log_content = direct_log
