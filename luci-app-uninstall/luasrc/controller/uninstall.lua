@@ -365,13 +365,29 @@ function action_install_upload()
 	http.setfilehandler(function(meta, chunk, eof)
 		if not fp and meta and meta.name == 'file' then
 			filename = meta.file or meta.filename or meta.name
-			local suffix = '.tmp'
-			if filename and filename:match('%.ipk$') then
-				suffix = '.ipk'
-			elseif filename and filename:match('%.run$') then
-				suffix = '.run'
+			-- 保持原始文件名，但确保文件名安全（移除路径分隔符等）
+			if filename then
+				-- 只保留文件名部分，移除路径
+				local basename = filename:match('([^/\\]+)$') or filename
+				-- 移除可能的不安全字符，只保留字母、数字、点、下划线、连字符
+				basename = basename:gsub('[^%w%.%-%_]', '_')
+				-- 确保文件名不为空
+				if basename and #basename > 0 then
+					saved_path = '/tmp/' .. basename
+				else
+					-- 如果文件名无效，使用默认名称
+					local suffix = '.tmp'
+					if filename:match('%.ipk$') then
+						suffix = '.ipk'
+					elseif filename:match('%.run$') then
+						suffix = '.run'
+					end
+					saved_path = '/tmp/uninstall-upload' .. suffix
+				end
+			else
+				-- 如果没有文件名，使用默认名称
+				saved_path = '/tmp/uninstall-upload.tmp'
 			end
-			saved_path = '/tmp/uninstall-upload' .. suffix
 			fp = io.open(saved_path, 'w')
 			if not fp then
 				append('! 无法创建临时文件')
