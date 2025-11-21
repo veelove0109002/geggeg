@@ -458,8 +458,13 @@ function action_install_upload()
 			'# 执行安装脚本并捕获退出码\n' ..
 			'# 确保状态文件存在并标记为运行中\n' ..
 			'echo "running" > %q\n' ..
-			'# 执行安装脚本，将输出重定向到日志文件\n' ..
-			'%q >>%q 2>&1\n' ..
+			'# 执行安装脚本，将输出重定向到日志文件（使用 unbuffered 模式确保实时输出）\n' ..
+			'# 使用 stdbuf 或 script 命令确保输出实时刷新\n' ..
+			'if command -v stdbuf >/dev/null 2>&1; then\n' ..
+			'  stdbuf -oL -eL %q >>%q 2>&1\n' ..
+			'else\n' ..
+			'  %q >>%q 2>&1\n' ..
+			'fi\n' ..
 			'EXIT_CODE=$?\n' ..
 			'# 先写入退出码，再添加 done 标记，确保状态文件格式正确\n' ..
 			'echo "$EXIT_CODE" > %q\n' ..
@@ -469,7 +474,7 @@ function action_install_upload()
 			'# 清理包装脚本（延迟清理，确保状态文件已写入）\n' ..
 			'sleep 1\n' ..
 			'rm -f %q\n',
-			status_file, final_path, tmp_log, status_file, status_file, wrapper_script
+			status_file, final_path, tmp_log, final_path, tmp_log, status_file, status_file, wrapper_script
 		)
 		local wrapper_fp = io.open(wrapper_script, 'w')
 		if wrapper_fp then
@@ -576,13 +581,45 @@ function action_check_install_status()
 				local time_since_update = current_time - log_mtime
 				
 				-- 如果日志文件超过60秒没有更新，检查是否有完成标记
-				-- 对于 openclash，给更多时间（120秒）
+				-- 对于 openclash，给更多时间（30秒）
 				local timeout_seconds = 60
 				if log_content_check:match('openclash') or log_content_check:match('OpenClash') then
-					timeout_seconds = 120
+					timeout_seconds = 30  -- openclash 安装超时时间（30秒）
 				end
 				
-				if log_mtime > 0 and time_since_update > timeout_seconds then
+				-- 检查是否有 opkg 相关的活动（下载、安装依赖等）
+				local has_opkg_activity = log_content_check:match('Downloading') or 
+				                          log_content_check:match('Installing') or 
+				                          log_content_check:match('Configuring') or
+				                          log_content_check:match('Updated list') or
+				                          log_content_check:match('Signature check') or
+				                          log_content_check:match('Packages%.gz') or
+				                          log_content_check:match('Packages%.sig')
+				
+				-- 如果有 opkg 活动，即使超过超时时间也认为还在运行（除非超过5分钟）
+				-- 因为下载依赖可能需要较长时间
+				if has_opkg_activity then
+					if time_since_update < 300 then  -- 5分钟内认为还在运行
+						status = 'running'
+					else
+						-- 超过5分钟，检查是否有完成标记
+						if log_content_check:match('Save installed pkg list') or 
+						   log_content_check:match('The following packages were added') or
+						   log_content_check:match('Configuring luci%-app%-') then
+							status = 'done'
+							exit_code = 0
+							-- 更新状态文件
+							local status_fp = io.open(status_file, 'w')
+							if status_fp then
+								status_fp:write('0\n')
+								status_fp:write('done\n')
+								status_fp:close()
+							end
+						else
+							status = 'running'  -- 继续等待
+						end
+					end
+				elseif log_mtime > 0 and time_since_update > timeout_seconds then
 					-- 检查日志中是否有完成标记
 					if log_content_check:match('安装完成') or 
 					   log_content_check:match('Install.*complete') or 
@@ -592,7 +629,10 @@ function action_check_install_status()
 					   log_content_check:match('done') or
 					   log_content_check:match('完成') or
 					   log_content_check:match('Success') or
-					   log_content_check:match('SUCCESS') then
+					   log_content_check:match('SUCCESS') or
+					   log_content_check:match('Save installed pkg list') or
+					   log_content_check:match('The following packages were added') or
+					   log_content_check:match('Configuring luci%-app%-') then
 						status = 'done'
 						exit_code = 0
 						-- 更新状态文件，确保下次检查时能正确识别
@@ -682,6 +722,36 @@ function action_check_install_status()
 					wrapper_running = true
 				end
 			end
+			
+			-- 关键：检查是否有 opkg 进程在运行（.run 文件内部会调用 opkg 安装依赖）
+			-- 这对于 openclash 等需要下载依赖的包非常重要
+			if not wrapper_running then
+				local opkg_process = sys.exec("ps w | grep -E 'opkg|wget.*Packages|uclient-fetch.*Packages' | grep -v grep") or ''
+				if opkg_process and #opkg_process > 0 then
+					wrapper_running = true
+				end
+			end
+			
+			-- 检查日志文件是否有 opkg 相关的活动（下载、安装等）
+			if not wrapper_running then
+				local log_content_check = fs.readfile(tmp_log) or ''
+				-- 如果日志中有 "Downloading"、"Installing"、"Configuring" 等关键词，且日志最近有更新，认为还在运行
+				if log_content_check:match('Downloading') or 
+				   log_content_check:match('Installing') or 
+				   log_content_check:match('Configuring') or
+				   log_content_check:match('Updated list') or
+				   log_content_check:match('Signature check') then
+					-- 检查日志文件的修改时间
+					local mtime_str = sys.exec(string.format("stat -c %%Y %q 2>/dev/null || stat -f %%m %q 2>/dev/null || echo 0", tmp_log, tmp_log)) or '0'
+					local log_mtime = tonumber(mtime_str:match('(%d+)')) or 0
+					local current_time = os.time()
+					local time_since_update = current_time - log_mtime
+					-- 如果日志文件在最近30秒内有更新，认为还在运行
+					if log_mtime > 0 and time_since_update < 30 then
+						wrapper_running = true
+					end
+				end
+			end
 		end
 		
 		-- 如果没有找到包装脚本进程，但状态文件也不存在，可能是安装已完成但状态文件被清理
@@ -696,7 +766,16 @@ function action_check_install_status()
 				local time_since_update = current_time - log_mtime
 				
 				-- 如果日志文件最近有更新（30秒内），认为安装还在进行中
-				if log_mtime > 0 and time_since_update < 30 then
+				-- 或者日志中有 opkg 相关的活动（下载、安装依赖等）
+				local has_opkg_activity = log_content_check:match('Downloading') or 
+				                          log_content_check:match('Installing') or 
+				                          log_content_check:match('Configuring') or
+				                          log_content_check:match('Updated list') or
+				                          log_content_check:match('Signature check') or
+				                          log_content_check:match('Packages%.gz') or
+				                          log_content_check:match('Packages%.sig')
+				
+				if log_mtime > 0 and (time_since_update < 30 or has_opkg_activity) then
 					status = 'running'
 				else
 					-- 日志文件很久没有更新，检查是否有完成标记
@@ -755,10 +834,20 @@ function action_check_install_status()
 				-- 对于 openclash 等长时间安装的包，给更多时间
 				local timeout_seconds = 60
 				if log_content_check:match('openclash') or log_content_check:match('OpenClash') then
-					timeout_seconds = 120  -- openclash 安装可能需要更长时间
+					timeout_seconds = 30  -- openclash 安装超时时间（30秒）
 				end
 				
-				if log_mtime > 0 and (current_time - log_mtime) > timeout_seconds then
+				-- 检查是否有 opkg 相关的活动
+				local has_opkg_activity = log_content_check:match('Downloading') or 
+				                          log_content_check:match('Installing') or 
+				                          log_content_check:match('Configuring') or
+				                          log_content_check:match('Updated list') or
+				                          log_content_check:match('Signature check')
+				
+				-- 如果有 opkg 活动，即使超过超时时间也认为还在运行（除非超过2倍超时时间）
+				if has_opkg_activity and time_since_update < (timeout_seconds * 2) then
+					status = 'running'
+				elseif log_mtime > 0 and (current_time - log_mtime) > timeout_seconds then
 					status = 'done'
 					-- 尝试从日志判断成功或失败
 					if log_content_check:match('安装完成') or 
@@ -801,7 +890,7 @@ function action_check_install_status()
 		end
 	end
 	
-	-- 读取日志文件（只读最后 50 行以避免响应过大）
+	-- 读取日志文件（只读最后 100 行以避免响应过大，但确保能看到下载依赖的过程）
 	-- 同时检查日志文件是否有更新（通过文件大小和修改时间）
 	local log_size = 0
 	local log_mtime_check = 0
@@ -812,13 +901,20 @@ function action_check_install_status()
 		local mtime_str = sys.exec(string.format("stat -c %%Y %q 2>/dev/null || stat -f %%m %q 2>/dev/null || echo 0", tmp_log, tmp_log)) or '0'
 		log_mtime_check = tonumber(mtime_str:match('(%d+)')) or 0
 		
-		local full_log = fs.readfile(tmp_log) or ''
+		-- 使用 tail 命令读取最后 100 行，确保能看到最新的日志（包括下载依赖的过程）
+		-- 如果 tail 不可用，则使用 readfile
+		local full_log = sys.exec(string.format("tail -n 100 %q 2>/dev/null", tmp_log)) or ''
+		if not full_log or #full_log == 0 then
+			full_log = fs.readfile(tmp_log) or ''
+		end
+		
 		local lines = {}
 		for line in full_log:gmatch('[^\n]+') do
 			table.insert(lines, line)
 		end
-		-- 只取最后 50 行
-		local start = math.max(1, #lines - 49)
+		-- 只取最后 100 行（如果 tail 失败，则取最后 50 行）
+		local max_lines = #lines > 100 and 100 or #lines
+		local start = math.max(1, #lines - max_lines + 1)
 		for i = start, #lines do
 			log_content = log_content .. lines[i] .. '\n'
 		end
@@ -831,11 +927,23 @@ function action_check_install_status()
 			-- 对于 openclash 等长时间安装的包，给更多时间
 			local timeout_seconds = 60
 			if full_log:match('openclash') or full_log:match('OpenClash') then
-				timeout_seconds = 120
+				timeout_seconds = 30  -- openclash 安装超时时间（30秒）
 			end
 			
+			-- 检查是否有 opkg 相关的活动（下载、安装依赖等）
+			local has_opkg_activity = full_log:match('Downloading') or 
+			                          full_log:match('Installing') or 
+			                          full_log:match('Configuring') or
+			                          full_log:match('Updated list') or
+			                          full_log:match('Signature check') or
+			                          full_log:match('Packages%.gz') or
+			                          full_log:match('Packages%.sig')
+			
+			-- 如果有 opkg 活动，即使超过超时时间也认为还在运行（除非超过2倍超时时间）
+			if has_opkg_activity and time_since_update < (timeout_seconds * 2) then
+				status = 'running'
 			-- 如果日志超过超时时间没有更新，检查是否有完成标记
-			if time_since_update > timeout_seconds then
+			elseif time_since_update > timeout_seconds then
 				if full_log:match('安装完成') or 
 				   full_log:match('Install.*complete') or 
 				   full_log:match('successfully') or
@@ -844,7 +952,10 @@ function action_check_install_status()
 				   full_log:match('done') or
 				   full_log:match('完成') or
 				   full_log:match('Success') or
-				   full_log:match('SUCCESS') then
+				   full_log:match('SUCCESS') or
+				   full_log:match('Save installed pkg list') or
+				   full_log:match('The following packages were added') or
+				   full_log:match('Configuring luci%-app%-') then
 					status = 'done'
 					exit_code = 0
 					-- 更新状态文件，确保下次检查时能正确识别
