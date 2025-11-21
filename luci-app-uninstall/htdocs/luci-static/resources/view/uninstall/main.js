@@ -3198,15 +3198,18 @@ return view.extend({
 							}
 						}
 						
-						// 显示调试信息（如果有）
-						if (res && res.debug) {
-							var debugMsg = '[' + _('调试') + '] ';
-							if (res.debug.status_file_exists) debugMsg += '状态文件存在; ';
-							if (res.debug.log_file_exists) debugMsg += '日志文件存在; ';
-							if (res.debug.log_size) debugMsg += '日志大小: ' + res.debug.log_size + '; ';
-							// 只在长时间等待后显示调试信息，避免日志过多
-							if (retryCount > 30) {
-								progressUI.println(debugMsg);
+						// 显示调试信息（如果有）- 只在状态异常时显示
+						if (res && res.debug && retryCount > 60) {
+							// 只在长时间等待且状态不是 done 时显示调试信息
+							if (res.status !== 'done') {
+								var debugMsg = '[' + _('调试') + '] ';
+								if (res.debug.status_file_exists) debugMsg += '状态文件存在; ';
+								if (res.debug.log_file_exists) debugMsg += '日志文件存在; ';
+								if (res.debug.log_size) debugMsg += '日志大小: ' + res.debug.log_size + '; ';
+								// 每10次检查才显示一次，避免日志过多
+								if (retryCount % 10 === 0) {
+									progressUI.println(debugMsg);
+								}
 							}
 						}
 						

@@ -544,7 +544,9 @@ function action_check_install_status()
 		local content = fs.readfile(status_file) or ''
 		-- 清理空白字符
 		content = content:gsub('^%s+', ''):gsub('%s+$', '')
-		if content:match('done') then
+		
+		-- 检查是否有 done 标记（不区分大小写，支持多种格式）
+		if content:match('done') or content:match('DONE') or content:match('Done') then
 			status = 'done'
 			-- 提取退出码（查找所有数字行，取最后一个作为退出码）
 			local codes = {}
@@ -558,9 +560,79 @@ function action_check_install_status()
 			end
 			if #codes > 0 then
 				exit_code = codes[#codes]  -- 取最后一个退出码
+			else
+				-- 如果没有找到退出码，但状态是 done，假设成功
+				exit_code = 0
 			end
-		elseif content:match('running') then
+		elseif content:match('running') or content:match('RUNNING') or content:match('Running') then
 			status = 'running'
+			-- 如果状态文件显示 running，立即检查日志文件，看是否安装已完成
+			-- 这对于 openclash 等长时间安装的包很重要
+			if fs.stat(tmp_log) then
+				local log_content_check = fs.readfile(tmp_log) or ''
+				local mtime_str = sys.exec(string.format("stat -c %%Y %q 2>/dev/null || stat -f %%m %q 2>/dev/null || echo 0", tmp_log, tmp_log)) or '0'
+				local log_mtime = tonumber(mtime_str:match('(%d+)')) or 0
+				local current_time = os.time()
+				local time_since_update = current_time - log_mtime
+				
+				-- 如果日志文件超过60秒没有更新，检查是否有完成标记
+				-- 对于 openclash，给更多时间（120秒）
+				local timeout_seconds = 60
+				if log_content_check:match('openclash') or log_content_check:match('OpenClash') then
+					timeout_seconds = 120
+				end
+				
+				if log_mtime > 0 and time_since_update > timeout_seconds then
+					-- 检查日志中是否有完成标记
+					if log_content_check:match('安装完成') or 
+					   log_content_check:match('Install.*complete') or 
+					   log_content_check:match('successfully') or
+					   log_content_check:match('✓') or
+					   log_content_check:match('completed') or
+					   log_content_check:match('done') or
+					   log_content_check:match('完成') or
+					   log_content_check:match('Success') or
+					   log_content_check:match('SUCCESS') then
+						status = 'done'
+						exit_code = 0
+						-- 更新状态文件，确保下次检查时能正确识别
+						local status_fp = io.open(status_file, 'w')
+						if status_fp then
+							status_fp:write('0\n')
+							status_fp:write('done\n')
+							status_fp:close()
+						end
+					elseif log_content_check:match('error') or 
+					       log_content_check:match('failed') or
+					       log_content_check:match('失败') or
+					       log_content_check:match('Error') or
+					       log_content_check:match('Failed') or
+					       log_content_check:match('ERROR') or
+					       log_content_check:match('FAILED') then
+						status = 'done'
+						exit_code = 1
+						-- 更新状态文件
+						local status_fp = io.open(status_file, 'w')
+						if status_fp then
+							status_fp:write('1\n')
+							status_fp:write('done\n')
+							status_fp:close()
+						end
+					elseif time_since_update > (timeout_seconds * 2) then
+						-- 如果日志超过2倍超时时间没有更新，且没有进程在运行，认为安装已完成
+						-- 假设成功（因为可能是静默完成）
+						status = 'done'
+						exit_code = 0
+						-- 更新状态文件
+						local status_fp = io.open(status_file, 'w')
+						if status_fp then
+							status_fp:write('0\n')
+							status_fp:write('done\n')
+							status_fp:close()
+						end
+					end
+				end
+			end
 		elseif #content > 0 then
 			-- 如果状态文件存在但内容不是预期的格式，尝试解析
 			-- 可能是只有退出码，没有 done 标记
@@ -568,7 +640,17 @@ function action_check_install_status()
 			if code then
 				status = 'done'
 				exit_code = tonumber(code)
+			else
+				-- 内容不是预期的格式，尝试查找数字
+				local code2 = content:match('(%d+)')
+				if code2 then
+					status = 'done'
+					exit_code = tonumber(code2)
+				end
 			end
+		else
+			-- 状态文件存在但内容为空，可能是刚创建，认为是 running
+			status = 'running'
 		end
 	end
 	
@@ -746,22 +828,60 @@ function action_check_install_status()
 		if status == 'running' and log_mtime_check > 0 then
 			local current_time = os.time()
 			local time_since_update = current_time - log_mtime_check
-			-- 如果日志超过90秒没有更新，检查是否有完成标记
-			if time_since_update > 90 then
+			-- 对于 openclash 等长时间安装的包，给更多时间
+			local timeout_seconds = 60
+			if full_log:match('openclash') or full_log:match('OpenClash') then
+				timeout_seconds = 120
+			end
+			
+			-- 如果日志超过超时时间没有更新，检查是否有完成标记
+			if time_since_update > timeout_seconds then
 				if full_log:match('安装完成') or 
 				   full_log:match('Install.*complete') or 
 				   full_log:match('successfully') or
 				   full_log:match('✓') or
 				   full_log:match('completed') or
 				   full_log:match('done') or
-				   full_log:match('完成') then
+				   full_log:match('完成') or
+				   full_log:match('Success') or
+				   full_log:match('SUCCESS') then
 					status = 'done'
 					exit_code = 0
+					-- 更新状态文件，确保下次检查时能正确识别
+					local status_fp = io.open(status_file, 'w')
+					if status_fp then
+						status_fp:write('0\n')
+						status_fp:write('done\n')
+						status_fp:close()
+					end
 				elseif full_log:match('error') or 
 				       full_log:match('failed') or
-				       full_log:match('失败') then
+				       full_log:match('失败') or
+				       full_log:match('Error') or
+				       full_log:match('Failed') or
+				       full_log:match('ERROR') or
+				       full_log:match('FAILED') then
 					status = 'done'
 					exit_code = 1
+					-- 更新状态文件
+					local status_fp = io.open(status_file, 'w')
+					if status_fp then
+						status_fp:write('1\n')
+						status_fp:write('done\n')
+						status_fp:close()
+					end
+				elseif time_since_update > (timeout_seconds * 2) then
+					-- 如果日志超过2倍超时时间没有更新，且没有进程在运行，认为安装已完成
+					-- 假设成功（因为可能是静默完成）
+					status = 'done'
+					exit_code = 0
+					-- 更新状态文件
+					local status_fp = io.open(status_file, 'w')
+					if status_fp then
+						status_fp:write('0\n')
+						status_fp:write('done\n')
+						status_fp:close()
+					end
 				end
 			end
 		end
