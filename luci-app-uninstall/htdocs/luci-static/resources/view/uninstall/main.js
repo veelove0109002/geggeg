@@ -3228,7 +3228,11 @@ return view.extend({
 							}
 						} else if (res && res.status === 'running') {
 							// 仍在运行，继续轮询
-							var progress = Math.min(90, 50 + Math.floor((retryCount / maxRetries) * 40));
+							// 确保进度条不会回退，基于当前进度和轮询次数计算新进度
+							var currentProgress = progressUI.getProgress();
+							var calculatedProgress = Math.min(90, 50 + Math.floor((retryCount / maxRetries) * 40));
+							// 使用较大的值，确保进度条只增加不减少
+							var progress = Math.max(currentProgress, calculatedProgress);
 							progressUI.setProgress(progress);
 							var statusMsg = _('正在安装…') + ' (' + retryCount + 's)';
 							// 如果等待时间较长，显示提示信息
