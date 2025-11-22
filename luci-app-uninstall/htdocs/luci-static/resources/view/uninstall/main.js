@@ -2932,7 +2932,7 @@ return view.extend({
 				var stuckHelpVisible = false;
 
 				function showStuckHelpHint(){
-					if (stuckHelpVisible || state !== 'running') return;
+					if (stuckHelpVisible || (state !== 'running' && state !== 'failure')) return;
 					stuckHelpVisible = true;
 					stuckHelpBtn.style.display = 'inline-flex';
 				}
@@ -3053,11 +3053,15 @@ return view.extend({
 					closeBtn.style.opacity = '1';
 					closeBtn.style.cursor = 'pointer';
 					clearStuckHelpHint();
-					hideStuckHelpHint();
 					if (success) {
+						// 成功时隐藏提示按钮
+						hideStuckHelpHint();
 						closeBtn.style.background = successBtnGradient;
 						closeBtn.style.boxShadow = '0 2px 8px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
 					} else {
+						// 失败时显示提示按钮
+						stuckHelpVisible = false; // 重置标志，允许显示
+						showStuckHelpHint();
 						closeBtn.style.background = closeBtnGradient;
 						closeBtn.style.boxShadow = '0 2px 8px rgba(107,114,128,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
 					}
