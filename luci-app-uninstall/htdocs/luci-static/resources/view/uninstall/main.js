@@ -2918,7 +2918,7 @@ return view.extend({
 					type: 'button',
 					'class': 'install-stuck-help-btn',
 					'style': 'display:none;'
-				}, _('无法安装？'));
+				}, _('安装较慢慢或无法安装？'));
 				stuckHelpBtn.style.marginRight = 'auto';
 
 				var actionBar = E('div', {
