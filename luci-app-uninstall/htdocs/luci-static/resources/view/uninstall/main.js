@@ -1446,7 +1446,9 @@ return view.extend({
 			'luci-app-watchdog': 'watchdog',
 			'luci-app-oled': 'oled',
 			'luci-app-bypass': 'bypass',
-			'luci-app-trojan-server': 'trojan'
+			'luci-app-trojan-server': 'trojan',
+			'luci-app-qbittorrent-ee': 'qBittorrent',
+			'luci-app-virtualhere': 'virtualhere'
 		};
 		function packageIcon(name, category){
 			// 从 app-icons 目录加载 PNG
@@ -1663,7 +1665,8 @@ return view.extend({
 			'luci-app-rtbwmon': _('实时流量'),
 			'luci-app-arcadia': _('Arcadia一站式代码运维'),
 			'luci-app-rebatedog': _('旺财狗'),
-			'luci-app-qbittorrent-ee': _('qBittorrent增强版'),
+			'luci-app-qbittorrent-ee': _('qBittorrent-ee'),
+			'luci-app-virtualhere': _('VirtualHere'),
 			'luci-app-pve': _('Proxmox虚拟机(PVE)'),
 			'luci-app-pushbot': _('全能推送PushBot'),
 			'luci-app-poweroff': _('关机'),
