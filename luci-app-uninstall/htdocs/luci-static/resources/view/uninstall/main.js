@@ -1476,12 +1476,19 @@ return view.extend({
 				return L.resource('icons/wolplus.png');
 			}
 			if (name === 'luci-app-watchcat-plus') {
-				// Watchcat Plus 图标在 icons 目录下
-				return L.resource('icons/watchcat.png');
-			}
-			var base = SPECIAL_ICON_MAP[name];
-			if (base) return L.resource('app-icons/' + base + '.png');
-			if (name === 'luci-app-uninstall') return L.resource('app-icons/gjxz.png');
+			// Watchcat Plus 图标在 icons 目录下
+			return L.resource('icons/watchcat.png');
+		}
+		// 特殊处理：使用指定的图标路径
+		if (name === 'luci-app-virtualhere') {
+			return '/luci-static/resources/icons/virtualhere.png';
+		}
+		if (name === 'luci-app-qbittorrent-ee') {
+			return '/luci-static/resources/icons/qBittorrentee.png';
+		}
+		var base = SPECIAL_ICON_MAP[name];
+		if (base) return L.resource('app-icons/' + base + '.png');
+		if (name === 'luci-app-uninstall') return L.resource('app-icons/gjxz.png');
 			// 例如：luci-app-ddns-go -> ddnsgo.png
 			var short = (name || '').replace(/^luci-app-/, '').replace(/-/g, '');
 			return L.resource('app-icons/' + short + '.png');
