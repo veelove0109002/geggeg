@@ -3900,10 +3900,10 @@ return view.extend({
 					renderSection(_('iStoreOS插件类'), g_istore);
 					renderSection(_('其他插件类'), g_manual);
 					renderSection(_('系统默认插件类'), g_default);
-					// 渲染后重新检查升级状态，避免按钮误显
-					try { checkUpdate(); } catch (e) {}
-					// 渲染完成后，强制同步一次交互状态，防止出现“需要锁定再解锁”才能选择的问题
-					ensureInteractiveCheckboxes();
+					// 渲染完成后重新检查升级状态，避免按钮误显
+		try { checkUpdate(); } catch (e) {}
+		// 渲染完成后，强制同步一次交互状态，防止出现“需要锁定再解锁”才能选择的问题
+		ensureInteractiveCheckboxes();
 				}
 				if (!q || q.length < 3) { renderWith(list); return; }
 				// 文件名匹配（>=3字符才触发），结果缓存

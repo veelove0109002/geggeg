@@ -3142,8 +3142,8 @@ end
 
 -- 保存折叠状态到系统文件
 function action_save_collapse_state()
-	-- 使用 /var/lib 目录，通常有写入权限（系统级别，跨浏览器）
-	local state_dir = '/var/lib/luci-app-uninstall'
+	-- 使用 /etc 目录，持久化存储，重启后不会丢失
+	local state_dir = '/etc/luci-app-uninstall'
 	local state_file = state_dir .. '/collapse-state.json'
 	
 	-- 确保目录存在（使用 sys.call 更可靠）
@@ -3284,8 +3284,8 @@ end
 
 -- 从系统文件读取折叠状态（系统级别，跨浏览器）
 function action_get_collapse_state()
-	-- 使用 /var/lib 目录，通常有写入权限
-	local state_dir = '/var/lib/luci-app-uninstall'
+	-- 使用 /etc 目录，持久化存储，重启后不会丢失
+	local state_dir = '/etc/luci-app-uninstall'
 	local state_file = state_dir .. '/collapse-state.json'
 	local state = {}
 	
@@ -3305,8 +3305,8 @@ end
 
 -- 保存锁状态到系统文件
 function action_save_lock_state()
-	-- 使用 /var/lib 目录，通常有写入权限（系统级别，跨浏览器）
-	local state_dir = '/var/lib/luci-app-uninstall'
+	-- 使用 /etc 目录，持久化存储，重启后不会丢失
+	local state_dir = '/etc/luci-app-uninstall'
 	local state_file = state_dir .. '/lock-state.json'
 	
 	-- 确保目录存在（使用 sys.call 更可靠）
@@ -3437,8 +3437,8 @@ end
 
 -- 从系统文件读取锁状态（系统级别，跨浏览器）
 function action_get_lock_state()
-	-- 使用 /var/lib 目录，通常有写入权限
-	local state_dir = '/var/lib/luci-app-uninstall'
+	-- 使用 /etc 目录，持久化存储，重启后不会丢失
+	local state_dir = '/etc/luci-app-uninstall'
 	local state_file = state_dir .. '/lock-state.json'
 	local state = {}
 	
