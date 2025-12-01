@@ -4190,14 +4190,14 @@ return view.extend({
 			// 添加软件下载地址输入框
 			var inputDownloadUrl = E('input', {
 				type: 'text',
-				placeholder: _('可选:提供软件下载地址,例如"https://example.com/package.ipk"'),
+				placeholder: _('请提供软件下载地址,例如"https://example.com/package.ipk"'),
 				'style': 'width:100%; padding:8px; border:1px solid #e5e7eb; border-radius:6px; font-size:13px; font-family:inherit;'
 			}, '');
 			
 			var inputSection = E('div', { 'style': 'margin-bottom:12px;' }, [
 				E('label', { 'style': 'display:block; font-size:13px; color:#374151; margin-bottom:6px; font-weight:500;' }, _('问题描述')),
 				inputComment,
-				E('label', { 'style': 'display:block; font-size:13px; color:#374151; margin-top:12px; margin-bottom:6px; font-weight:500;' }, _('软件下载地址')),
+				E('label', { 'style': 'display:block; font-size:13px; color:#374151; margin-top:12px; margin-bottom:6px; font-weight:500;' }, _('软件下载地址') + ' <span style="color: #ef4444;">*</span>'),
 				inputDownloadUrl
 			]);
 			
@@ -4234,6 +4234,32 @@ return view.extend({
 			submitBtn.addEventListener('click', function(){
 				var comment = inputComment.value.trim();
 				var downloadUrl = inputDownloadUrl.value.trim();
+				
+				// 验证必填项
+				if (!downloadUrl) {
+					// 显示错误提示
+					var errorEl = document.getElementById('download-url-error');
+					if (errorEl) {
+						errorEl.style.display = 'block';
+					} else {
+						var newErrorEl = E('div', {
+							id: 'download-url-error',
+							'style': 'color: #ef4444; font-size: 12px; margin-top: 4px; display: block;'
+						}, _('请填写软件下载地址'));
+						inputDownloadUrl.parentNode.appendChild(newErrorEl);
+					}
+					// 高亮输入框
+					inputDownloadUrl.style.borderColor = '#ef4444';
+					inputDownloadUrl.focus();
+					return;
+				}
+				
+				// 移除之前的错误提示
+				var errorEl = document.getElementById('download-url-error');
+				if (errorEl) {
+					errorEl.style.display = 'none';
+				}
+				inputDownloadUrl.style.borderColor = '#e5e7eb';
 				
 				// 禁用按钮防止重复提交
 				submitBtn.disabled = true;
@@ -4375,14 +4401,14 @@ return view.extend({
 			// 添加软件下载地址输入框
 			var inputDownloadUrl = E('input', {
 				type: 'text',
-				placeholder: _('可选:提供软件下载地址,例如"https://example.com/package.ipk"'),
+				placeholder: _('请提供软件下载地址,例如"https://example.com/package.ipk"'),
 				'style': 'width:100%; padding:8px; border:1px solid #e5e7eb; border-radius:6px; font-size:13px; font-family:inherit;'
 			}, '');
 			
 			var inputSection = E('div', { 'style': 'margin-bottom:12px;' }, [
 				E('label', { 'style': 'display:block; font-size:13px; color:#374151; margin-bottom:6px; font-weight:500;' }, _('问题描述')),
 				inputComment,
-				E('label', { 'style': 'display:block; font-size:13px; color:#374151; margin-top:12px; margin-bottom:6px; font-weight:500;' }, _('软件下载地址')),
+				E('label', { 'style': 'display:block; font-size:13px; color:#374151; margin-top:12px; margin-bottom:6px; font-weight:500;' }, _('软件下载地址') + ' <span style="color: #ef4444;">*</span>'),
 				inputDownloadUrl
 			]);
 			
@@ -4419,6 +4445,32 @@ return view.extend({
 			submitBtn.addEventListener('click', function(){
 				var comment = inputComment.value.trim();
 				var downloadUrl = inputDownloadUrl.value.trim();
+				
+				// 验证必填项
+				if (!downloadUrl) {
+					// 显示错误提示
+					var errorEl = document.getElementById('download-url-error');
+					if (errorEl) {
+						errorEl.style.display = 'block';
+					} else {
+						var newErrorEl = E('div', {
+							id: 'download-url-error',
+							'style': 'color: #ef4444; font-size: 12px; margin-top: 4px; display: block;'
+						}, _('请填写软件下载地址'));
+						inputDownloadUrl.parentNode.appendChild(newErrorEl);
+					}
+					// 高亮输入框
+					inputDownloadUrl.style.borderColor = '#ef4444';
+					inputDownloadUrl.focus();
+					return;
+				}
+				
+				// 移除之前的错误提示
+				var errorEl = document.getElementById('download-url-error');
+				if (errorEl) {
+					errorEl.style.display = 'none';
+				}
+				inputDownloadUrl.style.borderColor = '#e5e7eb';
 				
 				// 禁用按钮防止重复提交
 				submitBtn.disabled = true;
