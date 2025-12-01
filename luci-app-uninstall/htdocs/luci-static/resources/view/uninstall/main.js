@@ -2444,8 +2444,8 @@ return view.extend({
 				}
 			}
 			// 顶部右侧：仅在"高级卸载"卡片上展示图标按钮与远端版本
-			if (pkg && pkg.name === 'luci-app-uninstall') {
-				var actionsTop = E('div', { 'style': 'position:absolute; right:10px; top:8px; display:flex; gap:8px; align-items:center; z-index:1000; pointer-events:auto;' }, [
+				if (pkg && pkg.name === 'luci-app-uninstall') {
+					var actionsTop = E('div', { 'style': 'position:absolute; right:10px; top:8px; display:flex; gap:8px; align-items:center; z-index:50; pointer-events:auto;' }, [
 					E('span', { id: 'remote-version', 'style': 'font-size:12px; color:#111827; background:#e0f2fe; border:1px solid #93c5fd; border-radius:999px; padding:2px 8px; display:none; pointer-events:none;' }, ''),
 					E('button', { id: 'update-action', type: 'button', 'style': 'width:32px;height:32px; padding:0; display:none; align-items:center; justify-content:center; border-radius:50% !important; background:#ffffff; border:1px solid #e5e7eb; box-shadow:0 2px 6px rgba(0,0,0,0.06); cursor:pointer; line-height:0; box-sizing:border-box; overflow:hidden; user-select:none;' }, [
 						E('span', { 'style': 'display:inline-flex; width:20px; height:20px; border-radius:50%; overflow:hidden;' }, [
