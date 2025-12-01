@@ -1486,6 +1486,13 @@ return view.extend({
 		if (name === 'luci-app-qbittorrent-ee') {
 			return '/luci-static/resources/icons/qBittorrentee.png';
 		}
+		// 指定使用 icons 目录下图标的应用
+		if (name === 'luci-app-syncthing') {
+			return L.resource('icons/syncthing.png');
+		}
+		if (name === 'luci-app-adblock-fast') {
+			return L.resource('icons/adblock-fast.png');
+		}
 		var base = SPECIAL_ICON_MAP[name];
 		if (base) return L.resource('app-icons/' + base + '.png');
 		if (name === 'luci-app-uninstall') return L.resource('app-icons/gjxz.png');
@@ -1675,6 +1682,9 @@ return view.extend({
 			'luci-app-qbittorrent-ee': _('qBittorrent-ee'),
 			'luci-app-virtualhere': _('VirtualHere'),
 			'luci-app-pve': _('Proxmox虚拟机(PVE)'),
+			// 额外名称映射
+			'luci-app-syncthing': _('SyncThing'),
+			'luci-app-adblock-fast': _('快速广告拦截'),
 			'luci-app-pushbot': _('全能推送PushBot'),
 			'luci-app-poweroff': _('关机'),
 			'luci-app-plex': _('Plex影院'),
