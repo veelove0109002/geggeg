@@ -179,8 +179,12 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
+          make_latest: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for release to be ready
+        run: sleep 3
 
       - name: Upload IPKs to Release
         uses: softprops/action-gh-release@v2
@@ -188,7 +192,8 @@ jobs:
           tag_name: ${{ github.event.inputs.app_version != '' && format('luci-app-uninstall_{0}_{1}_{2}', matrix.release, matrix.short, github.event.inputs.app_version) || format('luci-app-uninstall_{0}_{1}', matrix.release, matrix.short) }}
           files: |
             artifacts/${{ matrix.release }}/${{ matrix.short }}/*.ipk
-          token: ${{ secrets.GITHUB_TOKEN }}
+          overwrite: true
+          make_latest: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -266,42 +271,26 @@ jobs:
           fi
 
       - name: Upload .run installer artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: luci-app-uninstall_run_${{ matrix.release }}_${{ matrix.short }}_${{ github.run_id }}
-          path: ${{ steps.makeself.outputs.run_path }}
-          if-no-files-found: error
-
-      - name: Upload .run to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.event.inputs.app_version != '' && format('luci-app-uninstall_{0}_{1}_{2}', matrix.release, matrix.short, github.event.inputs.app_version) || format('luci-app-uninstall_{0}_{1}', matrix.release, matrix.short) }}
-          files: |
-            ${{ steps.makeself.outputs.run_path }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: List artifacts after .run
-        run: |
-          set -euxo pipefail
-          ls -al artifacts/${{ matrix.release }}/${{ matrix.short }} || true
-
-      - name: Upload .run installer (artifact)
-        if: ${{ steps.makeself.outputs.run_exists == '1' }}
+        if: steps.makeself.outputs.run_exists == '1'
         uses: actions/upload-artifact@v4
         with:
           name: luci-app-uninstall_run_${{ matrix.release }}_${{ matrix.short }}
           path: ${{ steps.makeself.outputs.run_path }}
           if-no-files-found: error
 
+      - name: List artifacts after .run
+        run: |
+          set -euxo pipefail
+          ls -al artifacts/${{ matrix.release }}/${{ matrix.short }} || true
+
       - name: Upload .run to Release
-        if: ${{ steps.makeself.outputs.run_exists == '1' }}
+        if: steps.makeself.outputs.run_exists == '1'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: luci-app-uninstall_${{ matrix.release }}_${{ matrix.short }}
+          tag_name: ${{ github.event.inputs.app_version != '' && format('luci-app-uninstall_{0}_{1}_{2}', matrix.release, matrix.short, github.event.inputs.app_version) || format('luci-app-uninstall_{0}_{1}', matrix.release, matrix.short) }}
           files: |
             ${{ steps.makeself.outputs.run_path }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          overwrite: true
+          make_latest: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
