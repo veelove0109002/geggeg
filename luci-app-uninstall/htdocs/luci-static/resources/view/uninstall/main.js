@@ -717,134 +717,69 @@ return view.extend({
 			}
 
 			/* ====================== */
-			/* 黑色主题（卸载页面专用） */
+			/* 黑色主题（卸载页面专用，**仅调整卡片与搜索区域**） */
 			/* ====================== */
-			body.luci-uninstall-dark {
-				background-color: #0b1120;
-				color: #e5e7eb;
-			}
-
-			body.luci-uninstall-dark .cbi-map,
-			body.luci-uninstall-dark .cbi-section,
-			body.luci-uninstall-dark .cbi-section-node,
-			body.luci-uninstall-dark .cbi-section-descr {
-				background: #020617;
-				color: #e5e7eb;
-				border-color: #1f2937;
-			}
-
+			/* 搜索框区域：略微提亮，做成胶囊玻璃感，背景色沿用全局 */
 			body.luci-uninstall-dark #batch-toolbar {
-				background: linear-gradient(135deg, #020617 0%, #020617 100%) !important;
-				border-color: #1f2937 !important;
-				box-shadow: 0 8px 24px rgba(0, 0, 0, 0.75) !important;
+				background: linear-gradient(135deg, rgba(15,23,42,0.92) 0%, rgba(15,23,42,0.96) 60%, rgba(30,64,175,0.85) 100%) !important;
+				border-color: rgba(59,130,246,0.45) !important;
+				box-shadow: 0 16px 40px rgba(15,23,42,0.9) !important;
 			}
 
 			body.luci-uninstall-dark #search-section {
-				background: #020617;
-				border-color: #1f2937;
+				background: radial-gradient(circle at left, rgba(59,130,246,0.22), transparent 60%), rgba(15,23,42,0.95);
+				border-color: rgba(148,163,184,0.7);
 			}
 
 			body.luci-uninstall-dark #filter {
-				background: #020617;
+				background: transparent;
 				color: #e5e7eb;
-				border-color: #1f2937;
+				border-color: transparent;
 			}
 
 			body.luci-uninstall-dark #filter::placeholder {
-				color: #6b7280;
-			}
-
-			body.luci-uninstall-dark table {
-				background: #020617;
-				color: #e5e7eb;
-				border-color: #111827;
-			}
-
-			body.luci-uninstall-dark table tr:nth-child(2n) {
-				background: #020617;
-			}
-
-			body.luci-uninstall-dark table tr:hover {
-				background: #030712;
-			}
-
-			body.luci-uninstall-dark .btn,
-			body.luci-uninstall-dark .cbi-button {
-				background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #0ea5e9 100%);
-				border-color: #4f46e5;
-				color: #f9fafb;
-				box-shadow: 0 6px 18px rgba(37, 99, 235, 0.65);
-			}
-
-			body.luci-uninstall-dark .btn:hover,
-			body.luci-uninstall-dark .cbi-button:hover {
-				filter: brightness(1.12);
-				transform: translateY(-1px);
-			}
-
-			body.luci-uninstall-dark input,
-			body.luci-uninstall-dark select,
-			body.luci-uninstall-dark textarea {
-				background: #020617;
-				color: #e5e7eb;
-				border-color: #1f2937;
-			}
-
-			body.luci-uninstall-dark .cbi-value-description,
-			body.luci-uninstall-dark .cbi-section-descr {
 				color: #9ca3af;
 			}
 
-			body.luci-uninstall-dark a {
-				color: #38bdf8;
+			/* 卡片：做成悬浮的深色卡片，整体协调 Argon 深色背景 */
+			body.luci-uninstall-dark .pkg-card {
+				background: radial-gradient(circle at top left, rgba(59,130,246,0.28), transparent 60%),
+				            radial-gradient(circle at bottom right, rgba(139,92,246,0.22), transparent 60%),
+				            linear-gradient(145deg, rgba(15,23,42,0.98), rgba(15,23,42,0.96));
+				border-color: rgba(30,64,175,0.8);
+				box-shadow: 0 18px 45px rgba(15,23,42,0.95);
 			}
 
-			body.luci-uninstall-dark a:hover {
-				color: #0ea5e9;
+			body.luci-uninstall-dark .pkg-card:hover {
+				box-shadow: 0 24px 60px rgba(15,23,42,1);
 			}
 
-			body.luci-uninstall-dark #announcement-panel {
-				background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.3), transparent 55%),
-				            radial-gradient(circle at top right, rgba(129, 140, 248, 0.28), transparent 55%),
-				            radial-gradient(circle at bottom, rgba(251, 113, 133, 0.2), transparent 60%),
-				            #020617;
-				border-color: rgba(56, 189, 248, 0.4);
+			/* 卡片内文字整体提亮 */
+			body.luci-uninstall-dark .pkg-card,
+			body.luci-uninstall-dark .pkg-card * {
 				color: #e5e7eb;
-				box-shadow: 0 20px 45px rgba(15, 23, 42, 0.95);
 			}
 
-			body.luci-uninstall-dark #announcement-panel h3 {
-				color: #f9fafb;
+			/* 版本角标在暗色下改为玻璃感浅灰 */
+			body.luci-uninstall-dark #uninstall-card-version,
+			body.luci-uninstall-dark .pkg-card div[style*='bottom:6px; font-size:12px;'] {
+				background: rgba(15,23,42,0.9) !important;
+				color: #e5e7eb !important;
+				border-color: rgba(148,163,184,0.55) !important;
 			}
 
-			body.luci-uninstall-dark #announcement-panel .badge {
-				background: rgba(34, 197, 94, 0.14);
-				color: #4ade80;
-				border-color: rgba(34, 197, 94, 0.45);
+			/* 卡片底部的报告按钮在暗色下做成轻微高亮 */
+			body.luci-uninstall-dark .pkg-card button[title='上报图标问题'] {
+				background: rgba(15,23,42,1) !important;
+				border-color: rgba(148,163,184,0.65) !important;
+				color: #e5e7eb !important;
+				box-shadow: 0 4px 12px rgba(15,23,42,0.8) !important;
 			}
 
-			body.luci-uninstall-dark #announcement-panel .highlight {
-				color: #f97316;
-			}
-
-			body.luci-uninstall-dark .file-upload-filename {
-				background: rgba(15, 23, 42, 0.8);
-				border-color: #1f2937;
-				color: #9ca3af;
-			}
-
-			body.luci-uninstall-dark .file-upload-filename[data-has-file="1"] {
-				border-color: #6366f1;
-				color: #e5e7eb;
-				background: rgba(76, 81, 191, 0.4);
-			}
-
-			body.luci-uninstall-dark #history-log-table tr {
-				background: #020617;
-			}
-
-			body.luci-uninstall-dark #history-log-table tr:nth-child(2n) {
-				background: #020617;
+			body.luci-uninstall-dark .pkg-card button[title='上报图标问题']:hover:not(:disabled) {
+				background: rgba(248,113,113,0.95) !important;
+				border-color: rgba(248,113,113,1) !important;
+				box-shadow: 0 6px 16px rgba(248,113,113,0.5) !important;
 			}
 		`);
 		document.head.appendChild(styleEl);
