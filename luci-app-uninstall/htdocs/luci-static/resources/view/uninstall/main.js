@@ -745,13 +745,13 @@ return view.extend({
 			body.luci-uninstall-dark .pkg-card {
 				background: radial-gradient(circle at top left, rgba(59,130,246,0.28), transparent 60%),
 				            radial-gradient(circle at bottom right, rgba(139,92,246,0.22), transparent 60%),
-				            linear-gradient(145deg, rgba(15,23,42,0.98), rgba(15,23,42,0.96));
-				border-color: rgba(30,64,175,0.8);
-				box-shadow: 0 18px 45px rgba(15,23,42,0.95);
+				            linear-gradient(145deg, rgba(15,23,42,0.98), rgba(15,23,42,0.96)) !important;
+				border-color: rgba(30,64,175,0.8) !important;
+				box-shadow: 0 18px 45px rgba(15,23,42,0.95) !important;
 			}
 
 			body.luci-uninstall-dark .pkg-card:hover {
-				box-shadow: 0 24px 60px rgba(15,23,42,1);
+				box-shadow: 0 24px 60px rgba(15,23,42,1) !important;
 			}
 
 			/* 卡片内文字整体提亮 */
