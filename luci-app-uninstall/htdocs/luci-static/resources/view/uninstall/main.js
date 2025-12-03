@@ -715,8 +715,156 @@ return view.extend({
 				flex: 1;
 				min-width: 0;
 			}
+
+			/* ====================== */
+			/* 黑色主题（卸载页面专用） */
+			/* ====================== */
+			body.luci-uninstall-dark {
+				background-color: #0b1120;
+				color: #e5e7eb;
+			}
+
+			body.luci-uninstall-dark .cbi-map,
+			body.luci-uninstall-dark .cbi-section,
+			body.luci-uninstall-dark .cbi-section-node,
+			body.luci-uninstall-dark .cbi-section-descr {
+				background: #020617;
+				color: #e5e7eb;
+				border-color: #1f2937;
+			}
+
+			body.luci-uninstall-dark #batch-toolbar {
+				background: linear-gradient(135deg, #020617 0%, #020617 100%) !important;
+				border-color: #1f2937 !important;
+				box-shadow: 0 8px 24px rgba(0, 0, 0, 0.75) !important;
+			}
+
+			body.luci-uninstall-dark #search-section {
+				background: #020617;
+				border-color: #1f2937;
+			}
+
+			body.luci-uninstall-dark #filter {
+				background: #020617;
+				color: #e5e7eb;
+				border-color: #1f2937;
+			}
+
+			body.luci-uninstall-dark #filter::placeholder {
+				color: #6b7280;
+			}
+
+			body.luci-uninstall-dark table {
+				background: #020617;
+				color: #e5e7eb;
+				border-color: #111827;
+			}
+
+			body.luci-uninstall-dark table tr:nth-child(2n) {
+				background: #020617;
+			}
+
+			body.luci-uninstall-dark table tr:hover {
+				background: #030712;
+			}
+
+			body.luci-uninstall-dark .btn,
+			body.luci-uninstall-dark .cbi-button {
+				background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #0ea5e9 100%);
+				border-color: #4f46e5;
+				color: #f9fafb;
+				box-shadow: 0 6px 18px rgba(37, 99, 235, 0.65);
+			}
+
+			body.luci-uninstall-dark .btn:hover,
+			body.luci-uninstall-dark .cbi-button:hover {
+				filter: brightness(1.12);
+				transform: translateY(-1px);
+			}
+
+			body.luci-uninstall-dark input,
+			body.luci-uninstall-dark select,
+			body.luci-uninstall-dark textarea {
+				background: #020617;
+				color: #e5e7eb;
+				border-color: #1f2937;
+			}
+
+			body.luci-uninstall-dark .cbi-value-description,
+			body.luci-uninstall-dark .cbi-section-descr {
+				color: #9ca3af;
+			}
+
+			body.luci-uninstall-dark a {
+				color: #38bdf8;
+			}
+
+			body.luci-uninstall-dark a:hover {
+				color: #0ea5e9;
+			}
+
+			body.luci-uninstall-dark #announcement-panel {
+				background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.3), transparent 55%),
+				            radial-gradient(circle at top right, rgba(129, 140, 248, 0.28), transparent 55%),
+				            radial-gradient(circle at bottom, rgba(251, 113, 133, 0.2), transparent 60%),
+				            #020617;
+				border-color: rgba(56, 189, 248, 0.4);
+				color: #e5e7eb;
+				box-shadow: 0 20px 45px rgba(15, 23, 42, 0.95);
+			}
+
+			body.luci-uninstall-dark #announcement-panel h3 {
+				color: #f9fafb;
+			}
+
+			body.luci-uninstall-dark #announcement-panel .badge {
+				background: rgba(34, 197, 94, 0.14);
+				color: #4ade80;
+				border-color: rgba(34, 197, 94, 0.45);
+			}
+
+			body.luci-uninstall-dark #announcement-panel .highlight {
+				color: #f97316;
+			}
+
+			body.luci-uninstall-dark .file-upload-filename {
+				background: rgba(15, 23, 42, 0.8);
+				border-color: #1f2937;
+				color: #9ca3af;
+			}
+
+			body.luci-uninstall-dark .file-upload-filename[data-has-file="1"] {
+				border-color: #6366f1;
+				color: #e5e7eb;
+				background: rgba(76, 81, 191, 0.4);
+			}
+
+			body.luci-uninstall-dark #history-log-table tr {
+				background: #020617;
+			}
+
+			body.luci-uninstall-dark #history-log-table tr:nth-child(2n) {
+				background: #020617;
+			}
 		`);
 		document.head.appendChild(styleEl);
+
+		// 读取 / 初始化卸载页面黑色主题状态（只对本页面生效）
+		var darkKey = 'uninstallDarkTheme';
+		function applyDarkThemeFromStorage() {
+			if (!document || !document.body) return;
+			var val = null;
+			try {
+				val = window.localStorage ? window.localStorage.getItem(darkKey) : null;
+			} catch (e) {}
+			var enable = (val === '1');
+			if (enable) {
+				document.body.classList.add('luci-uninstall-dark');
+			} else {
+				document.body.classList.remove('luci-uninstall-dark');
+			}
+		}
+		applyDarkThemeFromStorage();
 		
 		var root = E('div', { 'class': 'cbi-map' }, [
 			E('h2', {}, _('高级卸载')),
@@ -1354,11 +1502,57 @@ return view.extend({
 					this.style.transform = 'translateY(0)';
 					this.style.boxShadow = '0 2px 8px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
 				});
+
+				// 深色模式切换按钮
+				var isDarkInitial = document.body && document.body.classList.contains('luci-uninstall-dark');
+				var darkToggle = E('button', {
+					id: 'uninstall-theme-toggle',
+					type: 'button',
+					'class': 'btn',
+					'style': 'margin-left:8px; background:rgba(15,23,42,0.9); color:#e5e7eb; border:1px solid rgba(148,163,184,0.8); border-radius:999px; padding:6px 12px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(15,23,42,0.7); transition:all 0.2s;'
+				}, [
+					E('span', { 'class': 'theme-toggle-dot', 'style': 'display:inline-block;width:8px;height:8px;border-radius:999px;background:' + (isDarkInitial ? '#22c55e' : '#9ca3af') + '; box-shadow:0 0 0 3px rgba(148,163,184,0.3);' }),
+					E('span', { 'class': 'theme-toggle-text' }, isDarkInitial ? _('深色模式: 开') : _('深色模式: 关'))
+				]);
+
+				function updateDarkToggleUI(isDark) {
+					if (!darkToggle) return;
+					var dot = darkToggle.querySelector('.theme-toggle-dot');
+					var text = darkToggle.querySelector('.theme-toggle-text');
+					if (dot) {
+						dot.style.background = isDark ? '#22c55e' : '#9ca3af';
+						dot.style.boxShadow = isDark ? '0 0 0 3px rgba(34,197,94,0.35)' : '0 0 0 3px rgba(148,163,184,0.3)';
+					}
+					if (text) {
+						text.textContent = isDark ? _('深色模式: 开') : _('深色模式: 关');
+					}
+				}
+
+				darkToggle.addEventListener('mouseenter', function() {
+					this.style.transform = 'translateY(-1px)';
+					this.style.boxShadow = '0 4px 10px rgba(15,23,42,0.75)';
+				});
+				darkToggle.addEventListener('mouseleave', function() {
+					this.style.transform = 'translateY(0)';
+					this.style.boxShadow = '0 2px 6px rgba(15,23,42,0.7)';
+				});
+
+				darkToggle.addEventListener('click', function() {
+					if (!document || !document.body) return;
+					var isDark = document.body.classList.toggle('luci-uninstall-dark');
+					try {
+						if (window.localStorage) {
+							window.localStorage.setItem(darkKey, isDark ? '1' : '0');
+						}
+					} catch (e) {}
+					updateDarkToggleUI(isDark);
+				});
 				
 				toolbar.appendChild(batchSection);
 				toolbar.appendChild(searchContainer);
 				toolbar.appendChild(announcementBellBtn);
 				toolbar.appendChild(installBtn);
+				toolbar.appendChild(darkToggle);
 				toolbar.appendChild(historyLogBtn);
 				
 				// 创建包装器，包含工具栏和公告面板
