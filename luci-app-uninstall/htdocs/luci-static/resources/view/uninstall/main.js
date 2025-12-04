@@ -741,6 +741,20 @@ return view.extend({
 				color: rgba(203,213,225,0.85);
 			}
 
+			body.luci-uninstall-dark .category-chip-title {
+				color: #e0f2fe !important;
+				background: linear-gradient(120deg, rgba(8,47,73,0.7) 0%, rgba(13,148,136,0.65) 55%, rgba(14,165,233,0.6) 100%) !important;
+				border-color: rgba(45,212,191,0.45) !important;
+				box-shadow: 0 6px 20px rgba(2,10,16,0.65), inset 0 1px 0 rgba(255,255,255,0.08) !important;
+			}
+
+			body.luci-uninstall-dark .category-chip-badge {
+				background: linear-gradient(135deg, rgba(6,182,212,0.85) 0%, rgba(129,140,248,0.85) 100%) !important;
+				color: #ecfeff !important;
+				border-color: rgba(14,165,233,0.4) !important;
+				box-shadow: 0 4px 14px rgba(2,8,23,0.6) !important;
+			}
+
 			/* 卡片：做成悬浮的深色卡片，整体协调 Argon 深色背景 */
 			body.luci-uninstall-dark .pkg-card {
 				background: radial-gradient(circle at top left, rgba(45,212,191,0.32), transparent 60%),
@@ -2828,12 +2842,12 @@ return view.extend({
 						// 统一使用 iStoreOS 插件类的渐变色（半透明果冻玻璃效果）
 						var grad = 'linear-gradient(90deg, rgba(240,245,255,0.6) 0%, rgba(230,240,255,0.6) 50%, rgba(219,228,255,0.6) 100%)';
 						var style = 'margin:0; font-size:20px; color:rgba(17,24,39,0.72); font-weight:800; display:inline-block; padding:8px 16px; border-radius:14px; background: ' + grad + '; backdrop-filter: saturate(160%) blur(10px); -webkit-backdrop-filter: saturate(160%) blur(10px); border:1px solid rgba(255,255,255,0.45); box-shadow: 0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.25)';
-						return E('h3', { 'style': style }, title);
+						return E('h3', { 'style': style, 'class': 'category-chip-title' }, title);
 					})(),
 					(function(){
 						// 标题右侧的计数徽标
 						var badgeStyle = 'display:inline-flex; align-items:center; justify-content:center; height:26px; padding:0 10px; font-size:12px; font-weight:700; color:#0f172a; background:linear-gradient(135deg, #dbeafe 0%, #e9d5ff 100%); border:1px solid rgba(15,23,42,0.08); border-radius:999px; box-shadow:0 2px 6px rgba(99,102,241,0.18);';
-						return E('span', { 'style': badgeStyle }, String(count));
+						return E('span', { 'style': badgeStyle, 'class': 'category-chip-badge' }, String(count));
 					})()
 				]),
 				collapseBtn
