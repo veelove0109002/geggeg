@@ -742,17 +742,19 @@ return view.extend({
 			}
 
 			body.luci-uninstall-dark .category-chip-title {
-				color: #e0f2fe !important;
-				background: linear-gradient(120deg, rgba(8,47,73,0.7) 0%, rgba(13,148,136,0.65) 55%, rgba(14,165,233,0.6) 100%) !important;
-				border-color: rgba(45,212,191,0.45) !important;
-				box-shadow: 0 6px 20px rgba(2,10,16,0.65), inset 0 1px 0 rgba(255,255,255,0.08) !important;
+				color: #e5e7eb !important;
+				/* 标题用偏蓝紫玻璃质感，与卡片的青绿色做区分但仍然同色系 */
+				background: linear-gradient(120deg, rgba(15,23,42,0.9) 0%, rgba(37,99,235,0.9) 55%, rgba(124,58,237,0.9) 100%) !important;
+				border-color: rgba(129,140,248,0.6) !important;
+				box-shadow: 0 6px 20px rgba(15,23,42,0.7), inset 0 1px 0 rgba(255,255,255,0.08) !important;
 			}
 
 			body.luci-uninstall-dark .category-chip-badge {
-				background: linear-gradient(135deg, rgba(6,182,212,0.85) 0%, rgba(129,140,248,0.85) 100%) !important;
+				/* 徽标保持蓝青渐变，作为标题右侧的小亮点 */
+				background: linear-gradient(135deg, rgba(56,189,248,0.9) 0%, rgba(129,140,248,0.9) 100%) !important;
 				color: #ecfeff !important;
-				border-color: rgba(14,165,233,0.4) !important;
-				box-shadow: 0 4px 14px rgba(2,8,23,0.6) !important;
+				border-color: rgba(59,130,246,0.5) !important;
+				box-shadow: 0 4px 14px rgba(15,23,42,0.65) !important;
 			}
 
 			/* 卡片：做成悬浮的深色卡片，整体协调 Argon 深色背景 */
