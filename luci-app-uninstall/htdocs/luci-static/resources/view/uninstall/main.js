@@ -2322,7 +2322,7 @@ return view.extend({
 				alt: 'report', 
 				width: 16, 
 				height: 16,
-				'style': 'display:block; object-fit:contain;filter:brightness(0) saturate(100%) invert(0.6);'
+				'style': 'display:block; object-fit:contain;filter:brightness(0) saturate(100%) invert(0.3);'
 			})
 		]);
 		if (isLocked) {
@@ -2369,7 +2369,7 @@ return view.extend({
 				alt: 'report uninstall', 
 				width: 16, 
 				height: 16,
-				'style': 'display:block; object-fit:contain;filter:brightness(0) saturate(100%) invert(0.6);'
+				'style': 'display:block; object-fit:contain;filter:brightness(0) saturate(100%) invert(0.3);'
 			})
 		]);
 		if (isLocked) {
