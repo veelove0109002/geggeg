@@ -4350,6 +4350,7 @@ return view.extend({
 			// 为特定应用添加特殊提示（这些应用在iStore商店中安装后会自动显示图标）
 			var isDark = document.body && document.body.classList.contains('luci-uninstall-dark');
 			var textColor = isDark ? '#e5e7eb' : '#111827';
+			var labelColor = isDark ? '#9ca3af' : '#374151';
 			var titleText = _('上报图标问题');
 			var titleExtra = null;
 			var noReportApps = ['luci-app-linkease', 'luci-app-ddnsto', 'luci-app-lucky', 'luci-app-msd_lite', 'luci-app-zerotier', 'luci-app-smartdns'];
@@ -4381,9 +4382,9 @@ return view.extend({
 			}, '');
 			
 			var inputSection = E('div', { 'style': 'margin-bottom:12px;' }, [
-				E('label', { 'style': 'display:block; font-size:13px; color:#374151; margin-bottom:6px; font-weight:500;' }, _('问题描述')),
+				E('label', { 'style': 'display:block; font-size:13px; color:' + labelColor + '; margin-bottom:6px; font-weight:500;' }, _('问题描述')),
 				inputComment,
-				E('label', { 'style': 'display:block; font-size:13px; color:#374151; margin-top:12px; margin-bottom:6px; font-weight:500;' }, _('软件下载地址') + ' <span style="color: #ef4444;">*</span>'),
+				E('label', { 'style': 'display:block; font-size:13px; color:' + labelColor + '; margin-top:12px; margin-bottom:6px; font-weight:500;' }, _('软件下载地址') + ' <span style="color: #ef4444;">*</span>'),
 				inputDownloadUrl
 			]);
 			
@@ -4576,6 +4577,7 @@ return view.extend({
 			
 			var isDark = document.body && document.body.classList.contains('luci-uninstall-dark');
 			var textColor = isDark ? '#e5e7eb' : '#111827';
+			var labelColor = isDark ? '#9ca3af' : '#374151';
 			var titleRow = E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin-bottom:12px;' }, [
 				E('span', { 'style': 'display:inline-flex;width:28px;height:28px;background:#fef3c7;color:#92400e;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '!'),
 				E('span', { 'style': 'font-weight:600;font-size:16px;color:' + textColor + ';' }, _('上报卸载问题'))
@@ -4600,9 +4602,9 @@ return view.extend({
 			}, '');
 			
 			var inputSection = E('div', { 'style': 'margin-bottom:12px;' }, [
-				E('label', { 'style': 'display:block; font-size:13px; color:#374151; margin-bottom:6px; font-weight:500;' }, _('问题描述')),
+				E('label', { 'style': 'display:block; font-size:13px; color:' + labelColor + '; margin-bottom:6px; font-weight:500;' }, _('问题描述')),
 				inputComment,
-				E('label', { 'style': 'display:block; font-size:13px; color:#374151; margin-top:12px; margin-bottom:6px; font-weight:500;' }, _('软件下载地址') + ' <span style="color: #ef4444;">*</span>'),
+				E('label', { 'style': 'display:block; font-size:13px; color:' + labelColor + '; margin-top:12px; margin-bottom:6px; font-weight:500;' }, _('软件下载地址') + ' <span style="color: #ef4444;">*</span>'),
 				inputDownloadUrl
 			]);
 			
