@@ -872,11 +872,13 @@ return view.extend({
 					if (checked) {
 						var totalCount = Array.from(document.querySelectorAll('.pkg-checkbox')).filter(function(cb) { return !cb.disabled; }).length;
 						if (totalCount > 0) {
+							var isDark = document.body && document.body.classList.contains('luci-uninstall-dark');
+							var textColor = isDark ? '#e5e7eb' : '#111827';
 							var warnModal = ui.showModal(_('风险警告'), [
 								E('div', { 'style': 'display:flex; align-items:center; gap:12px; margin-bottom:16px;' }, [
 									E('span', { 'style': 'display:inline-flex;width:48px;height:48px;background:#fee2e2;color:#dc2626;border-radius:999px;align-items:center;justify-content:center;font-weight:700;font-size:24px;' }, '!'),
 									E('div', { 'style': 'flex:1;' }, [
-										E('div', { 'style': 'font-weight:600;font-size:16px;color:#111827;margin-bottom:4px;' }, _('全部卸载可能导致系统崩溃')),
+										E('div', { 'style': 'font-weight:600;font-size:16px;color:' + textColor + ';margin-bottom:4px;' }, _('全部卸载可能导致系统崩溃')),
 										E('div', { 'style': 'font-size:14px;color:#6b7280;' }, _('您即将卸载所有 ') + totalCount + _(' 个软件包'))
 									])
 								]),
@@ -3762,10 +3764,12 @@ return view.extend({
 				if (badge) { badge.textContent = latest || ''; badge.style.display = latest ? 'inline-block' : 'none'; }
 				if (has) {
 					// 有新版本，弹出确认后再升级
+					var isDark = document.body && document.body.classList.contains('luci-uninstall-dark');
+					var textColor = isDark ? '#e5e7eb' : '#111827';
 					var msg = E('div', { 'style': 'max-width:520px;' }, [
 						E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin:0 0 8px 0;' }, [
 							E('img', { src: packageIcon('luci-app-uninstall'), 'style': 'width:28px; height:28px; border-radius:6px; background:#f3f4f6; border:1px solid #e5e7eb; object-fit:contain;' }),
-							E('span', { 'style': 'font-weight:600;color:#111827;' }, _('高级卸载'))
+							E('span', { 'style': 'font-weight:600;color:' + textColor + ';' }, _('高级卸载'))
 						]),
 						E('p', { 'style': 'margin:0 0 8px 0;' }, _('检测到新版本：') + (latest || '')),
 						E('p', { 'style': 'margin:0 0 8px 0; color:#6b7280;' }, _('当前版本：') + (cur || '')),
@@ -3851,10 +3855,12 @@ return view.extend({
 				var badge = document.getElementById('remote-version');
 				if (badge) { badge.textContent = latest || ''; badge.style.display = latest ? 'inline-block' : 'none'; }
 				if (has) {
+					var isDark = document.body && document.body.classList.contains('luci-uninstall-dark');
+					var textColor = isDark ? '#e5e7eb' : '#111827';
 					var msg = E('div', { 'style': 'max-width:520px;' }, [
 						E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin:0 0 8px 0;' }, [
 							E('img', { src: packageIcon('luci-app-uninstall'), 'style': 'width:28px; height:28px; border-radius:6px; background:#f3f4f6; border:1px solid #e5e7eb; object-fit:contain;' }),
-							E('span', { 'style': 'font-weight:600;color:#111827;' }, _('高级卸载'))
+							E('span', { 'style': 'font-weight:600;color:' + textColor + ';' }, _('高级卸载'))
 						]),
 						E('p', { 'style': 'margin:0 0 8px 0;' }, _('检测到新版本：') + (latest || '')),
 						E('p', { 'style': 'margin:0 0 8px 0; color:#6b7280;' }, _('当前版本：') + (cur || '')),
@@ -4175,7 +4181,9 @@ return view.extend({
 				var failCount = 0;
 				
 				// 创建进度弹窗
-				var progressText = E('div', { 'style': 'font-size:15px; font-weight:600; color:#111827; margin-bottom:8px;' }, _('正在批量卸载...'));
+				var isDark = document.body && document.body.classList.contains('luci-uninstall-dark');
+				var textColor = isDark ? '#e5e7eb' : '#111827';
+				var progressText = E('div', { 'style': 'font-size:15px; font-weight:600; color:' + textColor + '; margin-bottom:8px;' }, _('正在批量卸载...'));
 				var progressBar = E('div', { 'style': 'height:8px; background:#e5e7eb; border-radius:999px; overflow:hidden; margin-bottom:12px;' }, [
 					E('div', { id: 'batch-progress-bar', 'style': 'height:100%; width:0%; background:linear-gradient(90deg, #10b981 0%, #22c55e 50%, #34d399 100%); transition:width .3s ease; box-shadow:0 0 8px rgba(34,197,94,.4);' })
 				]);
@@ -4340,6 +4348,8 @@ return view.extend({
 			}, '');
 			
 			// 为特定应用添加特殊提示（这些应用在iStore商店中安装后会自动显示图标）
+			var isDark = document.body && document.body.classList.contains('luci-uninstall-dark');
+			var textColor = isDark ? '#e5e7eb' : '#111827';
 			var titleText = _('上报图标问题');
 			var titleExtra = null;
 			var noReportApps = ['luci-app-linkease', 'luci-app-ddnsto', 'luci-app-lucky', 'luci-app-msd_lite', 'luci-app-zerotier', 'luci-app-smartdns'];
@@ -4348,7 +4358,7 @@ return view.extend({
 			}
 			var titleRow = E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap;' }, [
 				E('span', { 'style': 'display:inline-flex;width:28px;height:28px;background:#fff3cd;color:#856404;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '!'),
-				E('span', { 'style': 'font-weight:600;font-size:16px;color:#111827;' }, titleText),
+				E('span', { 'style': 'font-weight:600;font-size:16px;color:' + textColor + ';' }, titleText),
 				titleExtra
 			].filter(function(item) { return item !== null; }));
 			
@@ -4356,7 +4366,7 @@ return view.extend({
 				E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin-bottom:6px;' }, [
 					E('img', { src: packageIcon(pkgName), 'style': 'width:32px; height:32px; border-radius:6px; background:#f3f4f6; border:1px solid #e5e7eb; object-fit:contain;' }),
 					E('div', {}, [
-						E('div', { 'style': 'font-weight:600; color:#111827;' }, fullName),
+						E('div', { 'style': 'font-weight:600; color:' + textColor + ';' }, fullName),
 						E('div', { 'style': 'font-size:12px; color:#6b7280;' }, pkgName)
 					])
 				]),
@@ -4461,11 +4471,13 @@ return view.extend({
 					
 					if (res && res.ok) {
 						// 成功：创建新弹窗显示成功提示
+						var isDark = document.body && document.body.classList.contains('luci-uninstall-dark');
+						var textColor = isDark ? '#e5e7eb' : '#111827';
 						var content = E('div', { 'style': 'text-align:center; padding:30px 20px;' }, [
 							E('div', { 'style': 'width:60px; height:60px; margin:0 auto 16px; background:#10b981; border-radius:50%; display:flex; align-items:center; justify-content:center;' }, [
 								E('span', { 'style': 'color:#fff; font-size:32px; font-weight:bold;' }, '✓')
 							]),
-							E('div', { 'style': 'font-size:18px; font-weight:600; color:#111827; margin-bottom:8px;' }, _('上报成功')),
+							E('div', { 'style': 'font-size:18px; font-weight:600; color:' + textColor + '; margin-bottom:8px;' }, _('上报成功')),
 							E('div', { 'style': 'font-size:14px; color:#6b7280;' }, _('感谢您的反馈！'))
 						]);
 						
@@ -4483,11 +4495,13 @@ return view.extend({
 						setTimeout(function(){ ui.hideModal(resultModal); }, 2000);
 					} else {
 						// 失败：创建新弹窗显示错误
+						var isDark = document.body && document.body.classList.contains('luci-uninstall-dark');
+						var textColor = isDark ? '#e5e7eb' : '#111827';
 						var content = E('div', { 'style': 'text-align:center; padding:30px 20px;' }, [
 							E('div', { 'style': 'width:60px; height:60px; margin:0 auto 16px; background:#ef4444; border-radius:50%; display:flex; align-items:center; justify-content:center;' }, [
 								E('span', { 'style': 'color:#fff; font-size:32px; font-weight:bold;' }, '✕')
 							]),
-							E('div', { 'style': 'font-size:18px; font-weight:600; color:#111827; margin-bottom:8px;' }, _('上报失败')),
+							E('div', { 'style': 'font-size:18px; font-weight:600; color:' + textColor + '; margin-bottom:8px;' }, _('上报失败')),
 							E('div', { 'style': 'font-size:14px; color:#6b7280;' }, (res && res.message) || _('未知错误')),
 							E('button', { 
 								'class': 'btn cbi-button-apply',
@@ -4516,11 +4530,13 @@ return view.extend({
 					ui.hideModal(modal);
 					
 					// 网络错误：创建新弹窗显示错误
+					var isDark = document.body && document.body.classList.contains('luci-uninstall-dark');
+					var textColor = isDark ? '#e5e7eb' : '#111827';
 					var content = E('div', { 'style': 'text-align:center; padding:30px 20px;' }, [
 						E('div', { 'style': 'width:60px; height:60px; margin:0 auto 16px; background:#ef4444; border-radius:50%; display:flex; align-items:center; justify-content:center;' }, [
 							E('span', { 'style': 'color:#fff; font-size:32px; font-weight:bold;' }, '✕')
 						]),
-						E('div', { 'style': 'font-size:18px; font-weight:600; color:#111827; margin-bottom:8px;' }, _('上报失败')),
+						E('div', { 'style': 'font-size:18px; font-weight:600; color:' + textColor + '; margin-bottom:8px;' }, _('上报失败')),
 						E('div', { 'style': 'font-size:14px; color:#6b7280;' }, _('请检查网络连接')),
 						E('button', { 
 							'class': 'btn cbi-button-apply',
@@ -4558,16 +4574,18 @@ return view.extend({
 				'style': 'width:100%; min-height:80px; padding:8px; border:1px solid #e5e7eb; border-radius:6px; font-size:13px; resize:vertical; font-family:inherit;'
 			}, '');
 			
+			var isDark = document.body && document.body.classList.contains('luci-uninstall-dark');
+			var textColor = isDark ? '#e5e7eb' : '#111827';
 			var titleRow = E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin-bottom:12px;' }, [
 				E('span', { 'style': 'display:inline-flex;width:28px;height:28px;background:#fef3c7;color:#92400e;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '!'),
-				E('span', { 'style': 'font-weight:600;font-size:16px;color:#111827;' }, _('上报卸载问题'))
+				E('span', { 'style': 'font-weight:600;font-size:16px;color:' + textColor + ';' }, _('上报卸载问题'))
 			]);
 			
 			var pkgInfo = E('div', { 'style': 'margin-bottom:12px; padding:10px; background:#f8f9fa; border:1px solid #e5e7eb; border-radius:8px;' }, [
 				E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin-bottom:6px;' }, [
 					E('img', { src: packageIcon(pkgName), 'style': 'width:32px; height:32px; border-radius:6px; background:#f3f4f6; border:1px solid #e5e7eb; object-fit:contain;' }),
 					E('div', {}, [
-						E('div', { 'style': 'font-weight:600; color:#111827;' }, fullName),
+						E('div', { 'style': 'font-weight:600; color:' + textColor + ';' }, fullName),
 						E('div', { 'style': 'font-size:12px; color:#6b7280;' }, pkgName)
 					])
 				]),
@@ -4672,11 +4690,13 @@ return view.extend({
 					
 					if (res && res.ok) {
 						// 成功：创建新弹窗显示成功提示
+						var isDark = document.body && document.body.classList.contains('luci-uninstall-dark');
+						var textColor = isDark ? '#e5e7eb' : '#111827';
 						var content = E('div', { 'style': 'text-align:center; padding:30px 20px;' }, [
 							E('div', { 'style': 'width:60px; height:60px; margin:0 auto 16px; background:#10b981; border-radius:50%; display:flex; align-items:center; justify-content:center;' }, [
 								E('span', { 'style': 'color:#fff; font-size:32px; font-weight:bold;' }, '✓')
 							]),
-							E('div', { 'style': 'font-size:18px; font-weight:600; color:#111827; margin-bottom:8px;' }, _('上报成功')),
+							E('div', { 'style': 'font-size:18px; font-weight:600; color:' + textColor + '; margin-bottom:8px;' }, _('上报成功')),
 							E('div', { 'style': 'font-size:14px; color:#6b7280;' }, _('感谢您的反馈！'))
 						]);
 						
@@ -4694,11 +4714,13 @@ return view.extend({
 						setTimeout(function(){ ui.hideModal(resultModal); }, 2000);
 					} else {
 						// 失败：创建新弹窗显示错误
+						var isDark = document.body && document.body.classList.contains('luci-uninstall-dark');
+						var textColor = isDark ? '#e5e7eb' : '#111827';
 						var content = E('div', { 'style': 'text-align:center; padding:30px 20px;' }, [
 							E('div', { 'style': 'width:60px; height:60px; margin:0 auto 16px; background:#ef4444; border-radius:50%; display:flex; align-items:center; justify-content:center;' }, [
 								E('span', { 'style': 'color:#fff; font-size:32px; font-weight:bold;' }, '✕')
 							]),
-							E('div', { 'style': 'font-size:18px; font-weight:600; color:#111827; margin-bottom:8px;' }, _('上报失败')),
+							E('div', { 'style': 'font-size:18px; font-weight:600; color:' + textColor + '; margin-bottom:8px;' }, _('上报失败')),
 							E('div', { 'style': 'font-size:14px; color:#6b7280;' }, (res && res.message) || _('未知错误')),
 							E('button', { 
 								'class': 'btn cbi-button-apply',
@@ -4727,11 +4749,13 @@ return view.extend({
 					ui.hideModal(modal);
 					
 					// 网络错误：创建新弹窗显示错误
+					var isDark = document.body && document.body.classList.contains('luci-uninstall-dark');
+					var textColor = isDark ? '#e5e7eb' : '#111827';
 					var content = E('div', { 'style': 'text-align:center; padding:30px 20px;' }, [
 						E('div', { 'style': 'width:60px; height:60px; margin:0 auto 16px; background:#ef4444; border-radius:50%; display:flex; align-items:center; justify-content:center;' }, [
 							E('span', { 'style': 'color:#fff; font-size:32px; font-weight:bold;' }, '✕')
 						]),
-						E('div', { 'style': 'font-size:18px; font-weight:600; color:#111827; margin-bottom:8px;' }, _('上报失败')),
+						E('div', { 'style': 'font-size:18px; font-weight:600; color:' + textColor + '; margin-bottom:8px;' }, _('上报失败')),
 						E('div', { 'style': 'font-size:14px; color:#6b7280;' }, _('请检查网络连接')),
 						E('button', { 
 							'class': 'btn cbi-button-apply',
@@ -5018,11 +5042,13 @@ return view.extend({
 				if (checked) {
 					var totalCount = Array.from(document.querySelectorAll('.pkg-checkbox')).filter(function(cb) { return !cb.disabled; }).length;
 					if (totalCount > 0) {
+						var isDark = document.body && document.body.classList.contains('luci-uninstall-dark');
+						var textColor = isDark ? '#e5e7eb' : '#111827';
 						var warnModal = ui.showModal(_('风险警告'), [
 							E('div', { 'style': 'display:flex; align-items:center; gap:12px; margin-bottom:16px;' }, [
 								E('span', { 'style': 'display:inline-flex;width:48px;height:48px;background:#fee2e2;color:#dc2626;border-radius:999px;align-items:center;justify-content:center;font-weight:700;font-size:24px;' }, '!'),
 								E('div', { 'style': 'flex:1;' }, [
-									E('div', { 'style': 'font-weight:600;font-size:16px;color:#111827;margin-bottom:4px;' }, _('全部卸载可能导致系统崩溃')),
+									E('div', { 'style': 'font-weight:600;font-size:16px;color:' + textColor + ';margin-bottom:4px;' }, _('全部卸载可能导致系统崩溃')),
 									E('div', { 'style': 'font-size:14px;color:#6b7280;' }, _('您即将卸载所有 ') + totalCount + _(' 个软件包'))
 								])
 							]),
@@ -5133,6 +5159,8 @@ return view.extend({
 					var logContent = E('div', { 'style': 'max-width:800px; max-height:70vh; overflow-y:auto;' }, []);
 					
 					// 添加标题和说明
+					var isDark = document.body && document.body.classList.contains('luci-uninstall-dark');
+					var textColor = isDark ? '#e5e7eb' : '#111827';
 					var header = E('div', { 'style': 'margin-bottom:16px; padding-bottom:12px; border-bottom:2px solid #e5e7eb;' }, [
 						E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin-bottom:8px;' }, [
 							E('img', { 
@@ -5140,7 +5168,7 @@ return view.extend({
 								'style': 'width:32px; height:32px; border-radius:6px; background:#f3f4f6; border:1px solid #e5e7eb; object-fit:contain;' 
 							}),
 							E('div', { 'style': 'flex:1;' }, [
-								E('div', { 'style': 'font-size:18px; font-weight:700; color:#111827;' }, _('高级卸载')),
+								E('div', { 'style': 'font-size:18px; font-weight:700; color:' + textColor + ';' }, _('高级卸载')),
 								E('div', { 'style': 'font-size:13px; color:#6b7280;' }, _('历史更新日志'))
 							])
 						])
@@ -5208,11 +5236,13 @@ return view.extend({
 					}
 				} else {
 					// 没有日志或加载失败
+					var isDarkEmpty = document.body && document.body.classList.contains('luci-uninstall-dark');
+					var textColorEmpty = isDarkEmpty ? '#e5e7eb' : '#111827';
 					var emptyContent = E('div', { 'style': 'text-align:center; padding:40px 20px;' }, [
 						E('div', { 'style': 'width:64px; height:64px; margin:0 auto 16px; background:#f3f4f6; border-radius:50%; display:flex; align-items:center; justify-content:center;' }, [
 							E('span', { 'style': 'font-size:32px; color:#9ca3af;' }, '📋')
 						]),
-						E('div', { 'style': 'font-size:16px; font-weight:600; color:#111827; margin-bottom:8px;' }, _('暂无历史更新日志')),
+						E('div', { 'style': 'font-size:16px; font-weight:600; color:' + textColorEmpty + '; margin-bottom:8px;' }, _('暂无历史更新日志')),
 						E('div', { 'style': 'font-size:14px; color:#6b7280;' }, res && res.message ? res.message : _('无法获取历史更新日志，请稍后重试'))
 					]);
 					
@@ -5239,11 +5269,13 @@ return view.extend({
 				document.head.removeChild(styleEl);
 				
 				// 显示错误
+				var isDarkError = document.body && document.body.classList.contains('luci-uninstall-dark');
+				var textColorError = isDarkError ? '#e5e7eb' : '#111827';
 				var errorContent = E('div', { 'style': 'text-align:center; padding:40px 20px;' }, [
 					E('div', { 'style': 'width:64px; height:64px; margin:0 auto 16px; background:#fee2e2; border-radius:50%; display:flex; align-items:center; justify-content:center;' }, [
 						E('span', { 'style': 'font-size:32px; color:#dc2626;' }, '✕')
 					]),
-					E('div', { 'style': 'font-size:16px; font-weight:600; color:#111827; margin-bottom:8px;' }, _('加载失败')),
+					E('div', { 'style': 'font-size:16px; font-weight:600; color:' + textColorError + '; margin-bottom:8px;' }, _('加载失败')),
 					E('div', { 'style': 'font-size:14px; color:#6b7280;' }, _('无法获取历史更新日志，请检查网络连接'))
 				]);
 				
