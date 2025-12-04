@@ -834,22 +834,69 @@ return view.extend({
 		`);
 		document.head.appendChild(styleEl);
 
-		// 读取 / 初始化卸载页面黑色主题状态（只对本页面生效）
-		var darkKey = 'uninstallDarkTheme';
-		function applyDarkThemeFromStorage() {
+		// 深色模式状态缓存（从服务器加载）
+		window.darkThemeStateCache = null;
+		
+		// 从服务器加载深色模式状态
+		function loadDarkThemeStateFromServer() {
+			return self._httpJson(L.url('admin/vum/uninstall/get_dark_theme_state'), { 
+				headers: { 'Accept': 'application/json' } 
+			}).then(function(res) {
+				if (res && res.ok) {
+					window.darkThemeStateCache = res.enabled === true || res.enabled === 'true' || res.enabled === '1';
+				} else {
+					window.darkThemeStateCache = false;
+				}
+				return window.darkThemeStateCache;
+			}).catch(function(err) {
+				// 如果加载失败，使用默认值（浅色模式）
+				window.darkThemeStateCache = false;
+				return window.darkThemeStateCache;
+			});
+		}
+		
+		// 保存深色模式状态到服务器
+		function saveDarkThemeStateToServer(enabled) {
+			// 更新本地缓存
+			window.darkThemeStateCache = enabled;
+			
+			// 保存到服务器（使用 URL 编码的表单方式，更兼容 LuCI）
+			var formData = 'enabled=' + (enabled ? 'true' : 'false');
+			
+			// 使用表单方式发送
+			self._httpJson(L.url('admin/vum/uninstall/save_dark_theme_state'), {
+				method: 'POST',
+				headers: { 
+					'Content-Type': 'application/x-www-form-urlencoded',
+					'Accept': 'application/json'
+				},
+				body: formData
+			}).then(function(res) {
+				// 保存成功，无需操作
+				if (res && !res.ok) {
+					console.warn('保存深色模式状态失败:', res.message || '未知错误', res.debug || '');
+				}
+			}).catch(function(err) {
+				// 保存失败，输出错误信息便于调试
+				console.error('保存深色模式状态到服务器失败:', err);
+			});
+		}
+		
+		// 应用深色模式状态
+		function applyDarkThemeState(enabled) {
 			if (!document || !document.body) return;
-			var val = null;
-			try {
-				val = window.localStorage ? window.localStorage.getItem(darkKey) : null;
-			} catch (e) {}
-			var enable = (val === '1');
-			if (enable) {
+			if (enabled) {
 				document.body.classList.add('luci-uninstall-dark');
 			} else {
 				document.body.classList.remove('luci-uninstall-dark');
 			}
 		}
-		applyDarkThemeFromStorage();
+		
+		// 从服务器加载并应用深色模式状态
+		var darkThemeLoadedPromise = loadDarkThemeStateFromServer().then(function(enabled) {
+			applyDarkThemeState(enabled);
+			return enabled;
+		});
 		
 		var root = E('div', { 'class': 'cbi-map' }, [
 			E('h2', {}, _('高级卸载')),
@@ -1491,6 +1538,7 @@ return view.extend({
 				});
 
 				// 深色模式切换按钮
+				// 初始状态使用当前DOM状态（可能还未从服务器加载完成）
 				var isDarkInitial = document.body && document.body.classList.contains('luci-uninstall-dark');
 				var darkToggle = E('button', {
 					id: 'uninstall-theme-toggle',
@@ -1501,6 +1549,16 @@ return view.extend({
 					E('span', { 'class': 'theme-toggle-dot', 'style': 'display:inline-block;width:8px;height:8px;border-radius:999px;background:' + (isDarkInitial ? '#22c55e' : '#9ca3af') + '; box-shadow:0 0 0 3px rgba(148,163,184,0.3);' }),
 					E('span', { 'class': 'theme-toggle-text' }, isDarkInitial ? _('深色模式: 开') : _('深色模式: 关'))
 				]);
+				
+				// 等待深色模式状态从服务器加载完成后，更新按钮UI
+				if (darkThemeLoadedPromise) {
+					darkThemeLoadedPromise.then(function(enabled) {
+						// 确保DOM状态与服务器状态一致
+						applyDarkThemeState(enabled);
+						// 更新按钮UI
+						updateDarkToggleUI(enabled);
+					});
+				}
 
 				function updateDarkToggleUI(isDark) {
 					if (!darkToggle) return;
@@ -1527,11 +1585,8 @@ return view.extend({
 				darkToggle.addEventListener('click', function() {
 					if (!document || !document.body) return;
 					var isDark = document.body.classList.toggle('luci-uninstall-dark');
-					try {
-						if (window.localStorage) {
-							window.localStorage.setItem(darkKey, isDark ? '1' : '0');
-						}
-					} catch (e) {}
+					// 保存状态到服务器（系统级别，跨浏览器）
+					saveDarkThemeStateToServer(isDark);
 					updateDarkToggleUI(isDark);
 				});
 				

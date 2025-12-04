@@ -68,6 +68,14 @@ function index()
 	e.leaf = true
 	e.acl_depends = { 'luci-app-uninstall' }
 
+	e = entry({ 'admin', 'vum', 'uninstall', 'save_dark_theme_state' }, call('action_save_dark_theme_state'))
+	e.leaf = true
+	e.acl_depends = { 'luci-app-uninstall' }
+
+	e = entry({ 'admin', 'vum', 'uninstall', 'get_dark_theme_state' }, call('action_get_dark_theme_state'))
+	e.leaf = true
+	e.acl_depends = { 'luci-app-uninstall' }
+
 	e = entry({ 'admin', 'vum', 'uninstall', 'install_from_url' }, call('action_install_from_url'))
 	e.leaf = true
 	e.acl_depends = { 'luci-app-uninstall' }
@@ -3453,5 +3461,121 @@ function action_get_lock_state()
 	return json_response({ 
 		ok = true, 
 		state = state
+	})
+end
+
+-- 保存深色模式状态到系统文件（系统级别，跨浏览器）
+function action_save_dark_theme_state()
+	-- 使用 /etc 目录，持久化存储，重启后不会丢失
+	local state_dir = '/etc/luci-app-uninstall'
+	local state_file = state_dir .. '/dark-theme-state.json'
+	
+	-- 确保目录存在（使用 sys.call 更可靠）
+	if not fs.stat(state_dir) then
+		local mkdir_result = sys.call(string.format("mkdir -p %q", state_dir))
+		if mkdir_result ~= 0 then
+			return json_response({ 
+				ok = false, 
+				message = '创建目录失败: ' .. state_dir
+			}, 500)
+		end
+	end
+	
+	local enabled = false
+	local body = http.content() or ''
+	local content_type = http.getenv('CONTENT_TYPE') or ''
+	
+	-- 方法1: 优先从表单获取（LuCI 对表单支持更好）
+	local form_enabled = http.formvalue('enabled') or 'false'
+	if form_enabled and #form_enabled > 0 then
+		enabled = (form_enabled == 'true' or form_enabled == '1')
+	end
+	
+	-- 方法2: 如果表单为空，尝试从请求体解析数据
+	if not enabled and body and #body > 0 then
+		-- 检查 Content-Type
+		if content_type:match('application/x%-www%-form%-urlencoded') then
+			-- 解析 URL 编码的表单数据
+			for key, val in body:gmatch('([^&=]+)=([^&]*)') do
+				-- URL 解码
+				key = key:gsub('+', ' '):gsub('%%(%x%x)', function(h) return string.char(tonumber(h, 16)) end)
+				val = val:gsub('+', ' '):gsub('%%(%x%x)', function(h) return string.char(tonumber(h, 16)) end)
+				if key == 'enabled' then
+					enabled = (val == 'true' or val == '1')
+					break
+				end
+			end
+		elseif content_type:match('application/json') then
+			-- 尝试解析 JSON
+			local ok, data = pcall(json.parse, body)
+			if ok and data and type(data) == 'table' then
+				enabled = (data.enabled == true or data.enabled == 'true' or data.enabled == '1')
+			end
+		end
+	end
+	
+	-- 保存状态到文件（使用临时文件方式，更可靠）
+	local content = json.stringify({ enabled = enabled })
+	local tmp_file = state_file .. '.tmp'
+	
+	-- 先写入临时文件
+	local write_ok, write_err = pcall(function()
+		fs.writefile(tmp_file, content)
+	end)
+	
+	if write_ok then
+		-- 移动临时文件到目标位置
+		local mv_ok = sys.call(string.format("mv -f %q %q >/dev/null 2>&1", tmp_file, state_file))
+		if mv_ok == 0 then
+			-- 设置文件权限
+			sys.call(string.format("chmod 644 %q >/dev/null 2>&1", state_file))
+			return json_response({ 
+				ok = true, 
+				message = '深色模式状态已保存'
+			})
+		else
+			-- 如果移动失败，尝试直接写入
+			local direct_ok, direct_err = pcall(function()
+				fs.writefile(state_file, content)
+			end)
+			if direct_ok then
+				sys.call(string.format("chmod 644 %q >/dev/null 2>&1", state_file))
+				return json_response({ 
+					ok = true, 
+					message = '深色模式状态已保存'
+				})
+			else
+				return json_response({ 
+					ok = false, 
+					message = '保存失败: ' .. tostring(direct_err)
+				}, 500)
+			end
+		end
+	else
+		return json_response({ 
+			ok = false, 
+			message = '保存失败: ' .. tostring(write_err)
+		}, 500)
+	end
+end
+
+-- 从系统文件读取深色模式状态（系统级别，跨浏览器）
+function action_get_dark_theme_state()
+	-- 使用 /etc 目录，持久化存储，重启后不会丢失
+	local state_dir = '/etc/luci-app-uninstall'
+	local state_file = state_dir .. '/dark-theme-state.json'
+	local enabled = false
+	
+	if fs.stat(state_file) then
+		local content = fs.readfile(state_file) or '{}'
+		local ok, parsed = pcall(json.parse, content)
+		if ok and parsed and type(parsed) == 'table' then
+			enabled = (parsed.enabled == true or parsed.enabled == 'true' or parsed.enabled == '1')
+		end
+	end
+	
+	return json_response({ 
+		ok = true, 
+		enabled = enabled
 	})
 end
