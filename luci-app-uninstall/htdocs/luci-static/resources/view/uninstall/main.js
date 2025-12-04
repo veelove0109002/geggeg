@@ -816,6 +816,21 @@ return view.extend({
 			body.luci-uninstall-dark .cbi-modal div[style*='color: #111827'] {
 				color: #e5e7eb !important;
 			}
+
+			/* 移动端：深色模式开关只显示图标 */
+			@media (max-width: 768px) {
+				#uninstall-theme-toggle .theme-toggle-text {
+					display: none !important;
+				}
+				#uninstall-theme-toggle {
+					padding: 6px !important;
+					min-width: 32px !important;
+					justify-content: center !important;
+				}
+				#uninstall-theme-toggle .theme-toggle-dot {
+					margin: 0 !important;
+				}
+			}
 		`);
 		document.head.appendChild(styleEl);
 
