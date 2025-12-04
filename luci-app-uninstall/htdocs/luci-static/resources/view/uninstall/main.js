@@ -805,13 +805,15 @@ return view.extend({
 				filter: brightness(0) saturate(100%) invert(0.7) !important;
 			}
 
-			/* 深色模式下弹窗中的"卸载确认"和"批量卸载确认"文本 */
-			body.luci-uninstall-dark .cbi-modal span[style*='color:#111827'] {
+			/* 深色模式下弹窗中的"卸载确认"和"批量卸载确认"文本 - 备用方案 */
+			body.luci-uninstall-dark .cbi-modal span[style*='color:#111827'],
+			body.luci-uninstall-dark .cbi-modal span[style*='color: #111827'] {
 				color: #e5e7eb !important;
 			}
 
-			/* 深色模式下弹窗中的软件标题 */
-			body.luci-uninstall-dark .cbi-modal div[style*='color:#111827'] {
+			/* 深色模式下弹窗中的软件标题 - 备用方案 */
+			body.luci-uninstall-dark .cbi-modal div[style*='color:#111827'],
+			body.luci-uninstall-dark .cbi-modal div[style*='color: #111827'] {
 				color: #e5e7eb !important;
 			}
 		`);
@@ -4117,9 +4119,11 @@ return view.extend({
 			// 确认对话框
 			var confirmFn = function(){
 				return new Promise(function(resolve){
+					var isDark = document.body && document.body.classList.contains('luci-uninstall-dark');
+					var textColor = isDark ? '#e5e7eb' : '#111827';
 					var titleRow = E('div', { 'style': 'display:flex; align-items:center; gap:8px;' }, [
 						E('span', { 'style': 'display:inline-flex;width:28px;height:28px;background:#fee2e2;color:#b91c1c;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '!'),
-						E('span', { 'style': 'font-weight:600;font-size:16px;color:#111827;' }, _('批量卸载确认'))
+						E('span', { 'style': 'font-weight:600;font-size:16px;color:' + textColor + ';' }, _('批量卸载确认'))
 					]);
 					
 					var pkgList = E('div', { 'style': 'max-height:200px; overflow:auto; margin:12px 0; padding:12px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px;' }, []);
@@ -4757,14 +4761,16 @@ return view.extend({
 		function uninstall(name, purge, removeDeps, version, clearCache) {
 			var confirmFn = function(msg, desc){
 				return new Promise(function(resolve){
+					var isDark = document.body && document.body.classList.contains('luci-uninstall-dark');
+					var textColor = isDark ? '#e5e7eb' : '#111827';
 					var titleRow = E('div', { 'style': 'display:flex; align-items:center; gap:8px;' }, [
 						E('span', { 'style': 'display:inline-flex;width:28px;height:28px;background:#fee2e2;color:#b91c1c;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '!'),
-						E('span', { 'style': 'font-weight:600;font-size:16px;color:#111827;' }, _('卸载确认'))
+						E('span', { 'style': 'font-weight:600;font-size:16px;color:' + textColor + ';' }, _('卸载确认'))
 					]);
 					var zhHeader = displayName(name);
 					var headerName = zhHeader && zhHeader !== name ? (zhHeader + ' (' + name + ')') : name;
 					var headerInfo = E('div', { 'style': 'margin-top:8px; display:flex; align-items:center; justify-content:space-between;' }, [
-						E('div', { 'style': 'font-size:18px; font-weight:700; color:#111827;' }, headerName),
+						E('div', { 'style': 'font-size:18px; font-weight:700; color:' + textColor + ';' }, headerName),
 						E('div', { 'style': 'display:flex; align-items:center; gap:10px;' }, [
 							E('span', { 'style': 'font-size:12px; color:#6b7280; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:999px; padding:2px 8px;' }, (version || '')),
 							E('img', { src: packageIcon(name), 'style': 'width:32px; height:32px; border-radius:6px; background:#f3f4f6; border:1px solid #e5e7eb; object-fit:contain;' })
