@@ -804,6 +804,16 @@ return view.extend({
 			body.luci-uninstall-dark .pkg-card .pkg-meta label img {
 				filter: brightness(0) saturate(100%) invert(0.7) !important;
 			}
+
+			/* 深色模式下弹窗中的"卸载确认"和"批量卸载确认"文本 */
+			body.luci-uninstall-dark .cbi-modal span[style*='color:#111827'] {
+				color: #e5e7eb !important;
+			}
+
+			/* 深色模式下弹窗中的软件标题 */
+			body.luci-uninstall-dark .cbi-modal div[style*='color:#111827'] {
+				color: #e5e7eb !important;
+			}
 		`);
 		document.head.appendChild(styleEl);
 
