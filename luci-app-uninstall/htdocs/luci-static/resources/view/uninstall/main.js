@@ -723,7 +723,6 @@ return view.extend({
 			body.luci-uninstall-dark #batch-toolbar {
 				background: linear-gradient(135deg, rgba(4,17,27,0.95) 0%, rgba(6,33,46,0.97) 45%, rgba(13,148,136,0.9) 100%) !important;
 				border-color: rgba(13,148,136,0.65) !important;
-				box-shadow: 0 18px 42px rgba(2,8,20,0.85) !important;
 			}
 
 			body.luci-uninstall-dark #search-section {
@@ -746,7 +745,6 @@ return view.extend({
 				/* 标题用偏蓝紫玻璃质感，与卡片的青绿色做区分但仍然同色系 */
 				background: linear-gradient(120deg, rgba(15,23,42,0.9) 0%, rgba(37,99,235,0.9) 55%, rgba(124,58,237,0.9) 100%) !important;
 				border-color: rgba(129,140,248,0.6) !important;
-				box-shadow: 0 6px 20px rgba(15,23,42,0.7), inset 0 1px 0 rgba(255,255,255,0.08) !important;
 			}
 
 			body.luci-uninstall-dark .category-chip-badge {
@@ -754,7 +752,6 @@ return view.extend({
 				background: linear-gradient(135deg, rgba(56,189,248,0.9) 0%, rgba(129,140,248,0.9) 100%) !important;
 				color: #ecfeff !important;
 				border-color: rgba(59,130,246,0.5) !important;
-				box-shadow: 0 4px 14px rgba(15,23,42,0.65) !important;
 			}
 
 			/* 卡片：做成悬浮的深色卡片，整体协调 Argon 深色背景 */
@@ -763,11 +760,9 @@ return view.extend({
 				            radial-gradient(circle at bottom right, rgba(147,197,253,0.22), transparent 65%),
 				            linear-gradient(150deg, rgba(3,12,20,0.98), rgba(4,22,34,0.95)) !important;
 				border-color: rgba(13,148,136,0.7) !important;
-				box-shadow: 0 20px 46px rgba(2,6,14,0.9) !important;
 			}
 
 			body.luci-uninstall-dark .pkg-card:hover {
-				box-shadow: 0 26px 64px rgba(2,6,14,0.95) !important;
 			}
 
 			/* 卡片内文字整体提亮 */
@@ -795,19 +790,16 @@ return view.extend({
 				background: rgba(3,15,23,0.98) !important;
 				border-color: rgba(94,234,212,0.4) !important;
 				color: #ecfeff !important;
-				box-shadow: 0 4px 14px rgba(2,12,19,0.85) !important;
 			}
 
 			body.luci-uninstall-dark .pkg-card button[title='上报图标问题']:hover:not(:disabled) {
 				background: rgba(14,165,233,0.95) !important;
 				border-color: rgba(14,165,233,1) !important;
-				box-shadow: 0 6px 18px rgba(14,165,233,0.45) !important;
 			}
 
 			body.luci-uninstall-dark .pkg-card button[title='上报卸载问题']:hover:not(:disabled) {
 				background: rgba(192,132,252,0.95) !important;
 				border-color: rgba(192,132,252,1) !important;
-				box-shadow: 0 6px 18px rgba(192,132,252,0.45) !important;
 			}
 
 			/* 深色模式下上报按钮图标为灰白色 */
