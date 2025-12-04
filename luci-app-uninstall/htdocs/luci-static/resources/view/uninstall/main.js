@@ -2318,7 +2318,7 @@ return view.extend({
 			'style': 'position:absolute; left:' + (pkg.vum_plugin ? '100px' : '12px') + '; bottom:6px; width:28px; height:28px; padding:0; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:' + (isLocked ? 'not-allowed' : 'pointer') + '; box-shadow:0 1px 3px rgba(0,0,0,0.1); transition:all .15s ease; color:#6b7280; overflow:hidden; opacity:' + (isLocked ? '0.5' : '1') + ';'
 		}, [
 			E('img', { 
-				src: L.resource('icons/copy.png'), 
+				src: L.resource('icons/sbtp.png'), 
 				alt: 'report', 
 				width: 16, 
 				height: 16,
