@@ -793,6 +793,17 @@ return view.extend({
 				border-color: rgba(245,158,11,1) !important;
 				box-shadow: 0 6px 16px rgba(245,158,11,0.5) !important;
 			}
+
+			/* 深色模式下上报按钮图标为灰白色 */
+			body.luci-uninstall-dark .pkg-card button[title='上报图标问题'] img,
+			body.luci-uninstall-dark .pkg-card button[title='上报卸载问题'] img {
+				filter: brightness(0) saturate(100%) invert(0.7) !important;
+			}
+
+			/* 深色模式下选项图标为灰白色 */
+			body.luci-uninstall-dark .pkg-card .pkg-meta label img {
+				filter: brightness(0) saturate(100%) invert(0.7) !important;
+			}
 		`);
 		document.head.appendChild(styleEl);
 
@@ -2204,10 +2215,10 @@ return view.extend({
 			// small inline icons for options
 			var ICON_PURGE = L.resource('app-icons/pz.png');
 			var ICON_CACHE = L.resource('app-icons/qk.png');
-			var ICON_DEP = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 1 7.07 0l1.41 1.41a5 5 0 1 1-7.07 7.07l-1.41-1.41"/><path d="M14 11a5 5 0 0 1-7.07 0L5.52 9.59a5 5 0 1 1 7.07-7.07L14 3.93"/></svg>');
+			var ICON_DEP = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 1 7.07 0l1.41 1.41a5 5 0 1 1-7.07 7.07l-1.41-1.41"/><path d="M14 11a5 5 0 0 1-7.07 0L5.52 9.59a5 5 0 1 1 7.07-7.07L14 3.93"/></svg>');
 			function optionIcon(src){
 				return E('span', { 'style': 'display:inline-flex;width:18px;height:18px;align-items:center;justify-content:center;' }, [
-					E('img', { src: src, width: 16, height: 16, 'style': 'display:inline-block;object-fit:contain;filter:opacity(0.7) brightness(0.85);' })
+					E('img', { src: src, width: 16, height: 16, 'style': 'display:inline-block;object-fit:contain;filter:brightness(0) saturate(100%) invert(0.6);' })
 				]);
 			}
 			
@@ -2311,7 +2322,7 @@ return view.extend({
 				alt: 'report', 
 				width: 16, 
 				height: 16,
-				'style': 'display:block; object-fit:contain;'
+				'style': 'display:block; object-fit:contain;filter:brightness(0) saturate(100%) invert(0.6);'
 			})
 		]);
 		if (isLocked) {
@@ -2358,7 +2369,7 @@ return view.extend({
 				alt: 'report uninstall', 
 				width: 16, 
 				height: 16,
-				'style': 'display:block; object-fit:contain;'
+				'style': 'display:block; object-fit:contain;filter:brightness(0) saturate(100%) invert(0.6);'
 			})
 		]);
 		if (isLocked) {
