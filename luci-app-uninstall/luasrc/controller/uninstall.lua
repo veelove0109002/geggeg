@@ -3485,14 +3485,20 @@ function action_save_dark_theme_state()
 	local body = http.content() or ''
 	local content_type = http.getenv('CONTENT_TYPE') or ''
 	
+	local manual_override = false
+	
 	-- 方法1: 优先从表单获取（LuCI 对表单支持更好）
 	local form_enabled = http.formvalue('enabled') or 'false'
+	local form_manual_override = http.formvalue('manual_override') or 'false'
 	if form_enabled and #form_enabled > 0 then
 		enabled = (form_enabled == 'true' or form_enabled == '1')
 	end
+	if form_manual_override and #form_manual_override > 0 then
+		manual_override = (form_manual_override == 'true' or form_manual_override == '1')
+	end
 	
 	-- 方法2: 如果表单为空，尝试从请求体解析数据
-	if not enabled and body and #body > 0 then
+	if body and #body > 0 then
 		-- 检查 Content-Type
 		if content_type:match('application/x%-www%-form%-urlencoded') then
 			-- 解析 URL 编码的表单数据
@@ -3502,20 +3508,26 @@ function action_save_dark_theme_state()
 				val = val:gsub('+', ' '):gsub('%%(%x%x)', function(h) return string.char(tonumber(h, 16)) end)
 				if key == 'enabled' then
 					enabled = (val == 'true' or val == '1')
-					break
+				elseif key == 'manual_override' then
+					manual_override = (val == 'true' or val == '1')
 				end
 			end
 		elseif content_type:match('application/json') then
 			-- 尝试解析 JSON
 			local ok, data = pcall(json.parse, body)
 			if ok and data and type(data) == 'table' then
-				enabled = (data.enabled == true or data.enabled == 'true' or data.enabled == '1')
+				if data.enabled ~= nil then
+					enabled = (data.enabled == true or data.enabled == 'true' or data.enabled == '1')
+				end
+				if data.manual_override ~= nil then
+					manual_override = (data.manual_override == true or data.manual_override == 'true' or data.manual_override == '1')
+				end
 			end
 		end
 	end
 	
 	-- 保存状态到文件（使用临时文件方式，更可靠）
-	local content = json.stringify({ enabled = enabled })
+	local content = json.stringify({ enabled = enabled, manual_override = manual_override })
 	local tmp_file = state_file .. '.tmp'
 	
 	-- 先写入临时文件
@@ -3561,10 +3573,33 @@ end
 
 -- 从系统文件读取深色模式状态（系统级别，跨浏览器）
 function action_get_dark_theme_state()
-	-- 优先从 argon-config 主题设置获取
-	local argon_config_file = '/etc/config/argon'
+	local state_dir = '/etc/luci-app-uninstall'
+	local state_file = state_dir .. '/dark-theme-state.json'
 	local enabled = false
 	local from_argon = false
+	local manual_override = false
+	
+	-- 先检查是否有手动覆盖标志
+	if fs.stat(state_file) then
+		local content = fs.readfile(state_file) or '{}'
+		local ok, parsed = pcall(json.parse, content)
+		if ok and parsed and type(parsed) == 'table' then
+			manual_override = (parsed.manual_override == true or parsed.manual_override == 'true' or parsed.manual_override == '1')
+			-- 如果有手动覆盖，直接使用手动设置
+			if manual_override then
+				enabled = (parsed.enabled == true or parsed.enabled == 'true' or parsed.enabled == '1')
+				return json_response({ 
+					ok = true, 
+					enabled = enabled,
+					from_argon = false,
+					manual_override = true
+				})
+			end
+		end
+	end
+	
+	-- 如果没有手动覆盖，则从 argon-config 主题设置获取
+	local argon_config_file = '/etc/config/argon'
 	
 	-- 尝试读取 argon 配置
 	if fs.stat(argon_config_file) then
@@ -3599,9 +3634,6 @@ function action_get_dark_theme_state()
 	
 	-- 如果 argon 配置不存在或 mode 为 'normal'，使用原来的逻辑
 	if not from_argon then
-		local state_dir = '/etc/luci-app-uninstall'
-		local state_file = state_dir .. '/dark-theme-state.json'
-		
 		if fs.stat(state_file) then
 			local content = fs.readfile(state_file) or '{}'
 			local ok, parsed = pcall(json.parse, content)
@@ -3614,6 +3646,7 @@ function action_get_dark_theme_state()
 	return json_response({ 
 		ok = true, 
 		enabled = enabled,
-		from_argon = from_argon
+		from_argon = from_argon,
+		manual_override = manual_override
 	})
 end

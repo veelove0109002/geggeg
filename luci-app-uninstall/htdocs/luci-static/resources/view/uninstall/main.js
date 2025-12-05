@@ -845,6 +845,7 @@ return view.extend({
 		// 深色模式状态缓存（从服务器加载）
 		window.darkThemeStateCache = null;
 		window.darkThemeFromArgon = false;
+		window.darkThemeManualOverride = false;
 		
 		// 从服务器加载深色模式状态
 		function loadDarkThemeStateFromServer() {
@@ -854,26 +855,34 @@ return view.extend({
 				if (res && res.ok) {
 					window.darkThemeStateCache = res.enabled === true || res.enabled === 'true' || res.enabled === '1';
 					window.darkThemeFromArgon = res.from_argon === true;
+					window.darkThemeManualOverride = res.manual_override === true;
 				} else {
 					window.darkThemeStateCache = false;
 					window.darkThemeFromArgon = false;
+					window.darkThemeManualOverride = false;
 				}
 				return window.darkThemeStateCache;
 			}).catch(function(err) {
 				// 如果加载失败，使用默认值（浅色模式）
 				window.darkThemeStateCache = false;
 				window.darkThemeFromArgon = false;
+				window.darkThemeManualOverride = false;
 				return window.darkThemeStateCache;
 			});
 		}
 		
 		// 保存深色模式状态到服务器
-		function saveDarkThemeStateToServer(enabled) {
+		function saveDarkThemeStateToServer(enabled, manualOverride) {
 			// 更新本地缓存
 			window.darkThemeStateCache = enabled;
+			// 如果手动切换，设置手动覆盖标志
+			if (manualOverride !== undefined) {
+				window.darkThemeManualOverride = manualOverride;
+			}
 			
 			// 保存到服务器（使用 URL 编码的表单方式，更兼容 LuCI）
-			var formData = 'enabled=' + (enabled ? 'true' : 'false');
+			var formData = 'enabled=' + (enabled ? 'true' : 'false') + 
+			               '&manual_override=' + (window.darkThemeManualOverride ? 'true' : 'false');
 			
 			// 使用表单方式发送
 			self._httpJson(L.url('admin/vum/uninstall/save_dark_theme_state'), {
@@ -884,7 +893,10 @@ return view.extend({
 				},
 				body: formData
 			}).then(function(res) {
-				// 保存成功，无需操作
+				// 保存成功，更新 from_argon 标志（手动覆盖后不再跟随 argon）
+				if (window.darkThemeManualOverride) {
+					window.darkThemeFromArgon = false;
+				}
 				if (res && !res.ok) {
 					console.warn('保存深色模式状态失败:', res.message || '未知错误', res.debug || '');
 				}
@@ -1583,63 +1595,69 @@ return view.extend({
 						dot.style.boxShadow = isDark ? '0 0 0 3px rgba(34,197,94,0.35)' : '0 0 0 3px rgba(148,163,184,0.3)';
 					}
 					if (text) {
-						if (window.darkThemeFromArgon) {
+						if (window.darkThemeManualOverride) {
+							// 手动覆盖模式
+							text.textContent = isDark ? _('深色模式: 开 (手动)') : _('深色模式: 关 (手动)');
+						} else if (window.darkThemeFromArgon) {
+							// 跟随 argon 模式
 							text.textContent = isDark ? _('深色模式: 开 (跟随Argon)') : _('深色模式: 关 (跟随Argon)');
 						} else {
+							// 独立模式
 							text.textContent = isDark ? _('深色模式: 开') : _('深色模式: 关');
 						}
 					}
-					// 如果来自 argon，禁用按钮或添加提示
-					if (window.darkThemeFromArgon) {
-						darkToggle.style.opacity = '0.7';
-						darkToggle.style.cursor = 'not-allowed';
-						darkToggle.title = _('当前跟随 Argon 主题设置，请在 Argon 配置中修改');
+					// 按钮始终可用，但显示不同的提示
+					darkToggle.style.opacity = '1';
+					darkToggle.style.cursor = 'pointer';
+					if (window.darkThemeFromArgon && !window.darkThemeManualOverride) {
+						darkToggle.title = _('当前跟随 Argon 主题设置，点击可手动覆盖');
+					} else if (window.darkThemeManualOverride) {
+						darkToggle.title = _('当前为手动设置，已覆盖 Argon 主题设置');
 					} else {
-						darkToggle.style.opacity = '1';
-						darkToggle.style.cursor = 'pointer';
 						darkToggle.title = '';
 					}
 				}
 
 				darkToggle.addEventListener('mouseenter', function() {
-					if (!window.darkThemeFromArgon) {
-						this.style.transform = 'translateY(-1px)';
-						this.style.boxShadow = '0 4px 10px rgba(15,23,42,0.75)';
-					}
+					this.style.transform = 'translateY(-1px)';
+					this.style.boxShadow = '0 4px 10px rgba(15,23,42,0.75)';
 				});
 				darkToggle.addEventListener('mouseleave', function() {
-					if (!window.darkThemeFromArgon) {
-						this.style.transform = 'translateY(0)';
-						this.style.boxShadow = '0 2px 6px rgba(15,23,42,0.7)';
-					}
+					this.style.transform = 'translateY(0)';
+					this.style.boxShadow = '0 2px 6px rgba(15,23,42,0.7)';
 				});
 
 				darkToggle.addEventListener('click', function() {
 					if (!document || !document.body) return;
-					// 如果来自 argon，提示用户去 argon-config 修改
-					if (window.darkThemeFromArgon) {
-						// 可以显示提示或跳转到 argon-config
-						if (confirm(_('当前深色模式跟随 Argon 主题设置。是否前往 Argon 配置页面修改？'))) {
-							window.location.href = L.url('admin/system/argon-config');
-						}
-						return;
-					}
 					var isDark = document.body.classList.toggle('luci-uninstall-dark');
-					// 保存状态到服务器（系统级别，跨浏览器）
-					saveDarkThemeStateToServer(isDark);
+					// 如果当前跟随 argon 且未手动覆盖，则设置手动覆盖标志
+					var shouldOverride = window.darkThemeFromArgon && !window.darkThemeManualOverride;
+					// 如果手动切换，设置手动覆盖标志
+					if (shouldOverride) {
+						window.darkThemeManualOverride = true;
+						window.darkThemeFromArgon = false;
+					}
+					// 保存状态到服务器（系统级别，跨浏览器），如果跟随 argon 则设置手动覆盖
+					saveDarkThemeStateToServer(isDark, shouldOverride);
+					// 更新UI
 					updateDarkToggleUI(isDark);
 				});
 				
 				// 定期检查 argon 主题设置变化（每5秒检查一次）
+				// 只有在未手动覆盖时才自动跟随 argon
 				var argonCheckInterval = setInterval(function() {
 					loadDarkThemeStateFromServer().then(function(enabled) {
+						// 如果已手动覆盖，不自动跟随 argon
+						if (window.darkThemeManualOverride) {
+							return;
+						}
 						var currentIsDark = document.body && document.body.classList.contains('luci-uninstall-dark');
 						// 如果状态发生变化，更新UI
 						if (currentIsDark !== enabled) {
 							applyDarkThemeState(enabled);
 							updateDarkToggleUI(enabled);
-						} else if (window.darkThemeFromArgon) {
-							// 即使状态没变，也要更新UI（可能从非argon切换到argon）
+						} else {
+							// 即使状态没变，也要更新UI（可能从非argon切换到argon，或从argon切换到手动）
 							updateDarkToggleUI(enabled);
 						}
 					});
