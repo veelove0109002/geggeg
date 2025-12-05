@@ -1745,7 +1745,7 @@ return view.extend({
 			return L.resource('app-icons/' + short + '.png');
 		}
 
-		var grid = E('div', { 'class': 'card-grid', 'style': 'display:block;margin-top:8px;' });
+		var grid = E('div', { 'class': 'card-grid', 'style': 'display:block;margin-top:8px;padding-top:3px;' });
 		root.appendChild(grid);
 
 		// 兜底：根据锁状态强制同步复选框可交互性，避免意外禁用导致无法选择
@@ -2848,7 +2848,7 @@ return view.extend({
 			].filter(function(item) { return item !== null; }));
 			
 			var groupGrid = E('div', { 
-				'style': 'display:grid; grid-template-columns:repeat(auto-fill,minmax(380px,1fr)); gap:12px; margin-top:8px; transition:max-height 0.3s ease, margin-top 0.3s ease, opacity 0.3s ease; overflow:hidden;'
+				'style': 'display:grid; grid-template-columns:repeat(auto-fill,minmax(380px,1fr)); gap:12px; margin-top:8px; padding-top:3px; transition:max-height 0.3s ease, margin-top 0.3s ease, opacity 0.3s ease; overflow:hidden;'
 			});
 			items.forEach(function(p){ groupGrid.appendChild(renderCard(p)); });
 			
