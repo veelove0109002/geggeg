@@ -3561,21 +3561,59 @@ end
 
 -- 从系统文件读取深色模式状态（系统级别，跨浏览器）
 function action_get_dark_theme_state()
-	-- 使用 /etc 目录，持久化存储，重启后不会丢失
-	local state_dir = '/etc/luci-app-uninstall'
-	local state_file = state_dir .. '/dark-theme-state.json'
+	-- 优先从 argon-config 主题设置获取
+	local argon_config_file = '/etc/config/argon'
 	local enabled = false
+	local from_argon = false
 	
-	if fs.stat(state_file) then
-		local content = fs.readfile(state_file) or '{}'
-		local ok, parsed = pcall(json.parse, content)
-		if ok and parsed and type(parsed) == 'table' then
-			enabled = (parsed.enabled == true or parsed.enabled == 'true' or parsed.enabled == '1')
+	-- 尝试读取 argon 配置
+	if fs.stat(argon_config_file) then
+		local argon_content = fs.readfile(argon_config_file) or ''
+		-- 解析 UCI 配置文件，查找 mode 选项
+		for line in argon_content:gmatch('[^\r\n]+') do
+			-- 跳过注释行和空行
+			local trimmed = line:match('^%s*(.-)%s*$')
+			if trimmed and not trimmed:match('^#') and #trimmed > 0 then
+				-- 匹配 option mode 'dark' 或 option mode "dark" 或 option mode dark
+				local mode = trimmed:match("option%s+mode%s+['\"]([^'\"]+)['\"]") or 
+				            trimmed:match("option%s+mode%s+(%S+)")
+				if mode then
+					if mode == 'dark' then
+						enabled = true
+						from_argon = true
+						break
+					elseif mode == 'light' then
+						enabled = false
+						from_argon = true
+						break
+					elseif mode == 'normal' then
+						-- 跟随系统模式，需要检测系统主题
+						-- 这里先回退到原来的逻辑，后续可以增强系统主题检测
+						from_argon = false
+						break
+					end
+				end
+			end
+		end
+	end
+	
+	-- 如果 argon 配置不存在或 mode 为 'normal'，使用原来的逻辑
+	if not from_argon then
+		local state_dir = '/etc/luci-app-uninstall'
+		local state_file = state_dir .. '/dark-theme-state.json'
+		
+		if fs.stat(state_file) then
+			local content = fs.readfile(state_file) or '{}'
+			local ok, parsed = pcall(json.parse, content)
+			if ok and parsed and type(parsed) == 'table' then
+				enabled = (parsed.enabled == true or parsed.enabled == 'true' or parsed.enabled == '1')
+			end
 		end
 	end
 	
 	return json_response({ 
 		ok = true, 
-		enabled = enabled
+		enabled = enabled,
+		from_argon = from_argon
 	})
 end
