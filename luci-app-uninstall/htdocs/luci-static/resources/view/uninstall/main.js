@@ -3185,7 +3185,7 @@ return view.extend({
 				var progressBar = E('div', { 'style': 'height:6px;width:0%;background:linear-gradient(90deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%);box-shadow:0 0 8px rgba(59,130,246,.6);transition: width .25s ease;' });
 				progressTrack.appendChild(progressBar);
 
-				var subtitleEl = E('div', { 'style': 'font-size:15px;font-weight:700;color:#e5e7eb;' }, subtitleText);
+				var subtitleEl = E('div', { 'style': 'font-size:15px;font-weight:700;color:#e5e7eb;word-break:break-all;overflow-wrap:anywhere;white-space:normal;max-width:100%;line-height:1.35;' }, subtitleText);
 
 				var statusBar = E('div', { 'style': 'display:flex; flex-direction:column; gap:8px; margin-bottom:8px;' }, [
 					E('div', { 'style': 'display:flex; align-items:center; justify-content:space-between; gap:8px;' }, [
