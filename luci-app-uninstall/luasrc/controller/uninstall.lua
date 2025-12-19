@@ -1632,6 +1632,24 @@ local function purge_everything(app)
 	-- configs
 	rm('/etc/config/' .. app)
 	rm('/etc/config/luci-app-' .. app)
+	-- 额外：清理形如 /etc/config/<app>.* 或 luci-app-<app>.* 的配置文件，例如 lucky.daji
+	do
+		local cfgdir = '/etc/config'
+		local itcfg = fs.dir(cfgdir)
+		if itcfg then
+			for n in itcfg do
+				if n == app or n:match('^' .. app .. '[%._%-]') or n == ('luci-app-' .. app) or n:match('^luci%-app%-' .. app .. '[%._%-]') then
+					rm(cfgdir .. '/' .. n)
+				end
+			end
+		end
+		-- 个别应用的特殊文件名
+		local special = {
+			lucky = { '/etc/config/lucky.daji' }
+		}
+		local sp = special[app]
+		if sp then for _, p in ipairs(sp) do rm(p) end end
+	end
 	-- init scripts and rc.d links
 	rm('/etc/init.d/' .. app)
 	local rd = '/etc/rc.d'
