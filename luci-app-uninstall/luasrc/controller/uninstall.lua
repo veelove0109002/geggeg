@@ -211,9 +211,10 @@ function action_upgrade()
 		-- 清理旧文件
 		sys.call(string.format("rm -f %q >/dev/null 2>&1", runf))
 		-- 优先 uclient-fetch，再尝试 wget，最后尝试 curl（若存在）
-		local rc = sys.call(string.format("uclient-fetch -L -O %q '%s' >/dev/null 2>&1", runf, url))
-		if rc ~= 0 then rc = sys.call(string.format("wget --no-check-certificate -O %q '%s' >/dev/null 2>&1", runf, url)) end
-		if rc ~= 0 then rc = sys.call(string.format("command -v curl >/dev/null 2>&1 && curl -L -o %q '%s' >/dev/null 2>&1 || true", runf, url)) end
+		-- 使用 string.format 的 %q 来安全转义 URL，避免 shell 解释特殊字符
+		local rc = sys.call(string.format("uclient-fetch -L -O %q %q >/dev/null 2>&1", runf, url))
+		if rc ~= 0 then rc = sys.call(string.format("wget --no-check-certificate -O %q %q >/dev/null 2>&1", runf, url)) end
+		if rc ~= 0 then rc = sys.call(string.format("command -v curl >/dev/null 2>&1 && curl -L -o %q %q >/dev/null 2>&1 || true", runf, url)) end
 		local ok, reason = validate_run(runf)
 		if not ok then
 			append('! 下载内容无效：' .. (reason or ''))
@@ -295,12 +296,13 @@ function action_install_from_url()
 
 	-- 下载文件（优先 uclient-fetch，其次 wget，最后 curl）
 	append('> Download: ' .. url)
-	local rc = sys.call(string.format("uclient-fetch -L -O %q '%s' >/dev/null 2>&1", tmp_path, url))
+	-- 使用 string.format 的 %q 来安全转义 URL，避免 shell 解释特殊字符
+	local rc = sys.call(string.format("uclient-fetch -L -O %q %q >/dev/null 2>&1", tmp_path, url))
 	if rc ~= 0 then
-		rc = sys.call(string.format("wget --no-check-certificate -O %q '%s' >/dev/null 2>&1", tmp_path, url))
+		rc = sys.call(string.format("wget --no-check-certificate -O %q %q >/dev/null 2>&1", tmp_path, url))
 	end
 	if rc ~= 0 then
-		rc = sys.call(string.format("command -v curl >/dev/null 2>&1 && curl -L -o %q '%s' >/dev/null 2>&1 || true", tmp_path, url))
+		rc = sys.call(string.format("command -v curl >/dev/null 2>&1 && curl -L -o %q %q >/dev/null 2>&1 || true", tmp_path, url))
 	end
 
 	local st = fs.stat(tmp_path)
