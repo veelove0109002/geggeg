@@ -1233,11 +1233,14 @@ return view.extend({
 					'style': 'display:none; background:#f3f4f6; border:1px solid #e5e7eb; color:#6b7280; border-radius:999px; padding:2px 8px; font-size:12px; cursor:pointer;' 
 				}, _('清除'));
 				searchSection.appendChild(searchIcon);
-				searchSection.appendChild(searchInput);
-				searchSection.appendChild(clearBtn);
-				
-				// 公告面板
-				var announcementContent = E('div', {
+					searchSection.appendChild(searchInput);
+					searchSection.appendChild(clearBtn);
+					
+					// 将搜索框添加到搜索容器中
+					searchContainer.appendChild(searchSection);
+					
+					// 公告面板
+					var announcementContent = E('div', {
 					id: 'announcement-content'
 				}, _('正在加载公告...'));
 				
