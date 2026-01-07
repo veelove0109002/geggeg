@@ -3977,16 +3977,19 @@ return view.extend({
 					});
 					progressUI.println('=== Install from URL ===');
 					progressUI.println('> GET ' + reqUrl);
-					progressUI.setProgress(10);
+					progressUI.setProgress(5);
 					progressUI.setStatus(_('正在请求远程安装…'));
-					var autoTimer = progressUI.startAutoAdvance(92, 1, 600);
+					// 启动缓慢的自动进度推进，模拟下载准备阶段
+					var autoTimer = progressUI.startAutoAdvance(30, 0.5, 800);
 
-					self._httpJson(reqUrl, {
+					self._httpJson(reqUrl, { 
 						method: 'GET',
 						headers: { 'Accept': 'application/json' }
 					}).then(function(res){
 						if (autoTimer) progressUI.stopAutoAdvance(autoTimer);
-						progressUI.setProgress(100);
+						// 不要立即设置为100%，让handleInstallResponse根据实际状态调整
+						progressUI.setProgress(40);
+						progressUI.setStatus(_('远程安装已启动…'));
 						handleInstallResponse(progressUI, res, _('安装完成'));
 					}).catch(function(err){
 						if (autoTimer) progressUI.stopAutoAdvance(autoTimer);
