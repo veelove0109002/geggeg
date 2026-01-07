@@ -3638,12 +3638,34 @@ return view.extend({
 							}
 						} else if (res && res.status === 'running') {
 							// 仍在运行，继续轮询
-							// 确保进度条不会回退，基于当前进度和轮询次数计算新进度
-							var currentProgress = progressUI.getProgress();
-							var calculatedProgress = Math.min(90, 50 + Math.floor((retryCount / maxRetries) * 40));
-							// 使用较大的值，确保进度条只增加不减少
-							var progress = Math.max(currentProgress, calculatedProgress);
-							progressUI.setProgress(progress);
+					// 优化进度计算：基于安装阶段调整进度
+					var currentProgress = progressUI.getProgress();
+					var calculatedProgress;
+					
+					// 分析日志内容，判断安装阶段
+					var isDownloading = false;
+					var isInstalling = false;
+					if (res && res.log) {
+						var logText = res.log.toLowerCase();
+						isDownloading = logText.includes('download') || logText.includes('fetch');
+						isInstalling = logText.includes('install') || logText.includes('opkg') || logText.includes('sh ');
+					}
+					
+					// 根据不同阶段调整进度增长速率
+					if (isDownloading) {
+						// 下载阶段：缓慢增长，占总进度的 0-40%
+						calculatedProgress = Math.min(40, 10 + Math.floor((retryCount / (maxRetries / 2)) * 30));
+					} else if (isInstalling) {
+						// 安装阶段：快速增长，占总进度的 40-90%
+						calculatedProgress = Math.min(90, 40 + Math.floor((retryCount / (maxRetries / 2)) * 50));
+					} else {
+						// 未知阶段：基于时间的平稳增长
+						calculatedProgress = Math.min(90, 10 + Math.floor((retryCount / maxRetries) * 80));
+					}
+					
+					// 使用较大的值，确保进度条只增加不减少
+					var progress = Math.max(currentProgress, calculatedProgress);
+					progressUI.setProgress(progress);
 							var statusMsg = _('正在安装…') + ' (' + retryCount + 's)';
 							// 如果等待时间较长，显示提示信息
 							if (retryCount > 60) {
