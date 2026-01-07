@@ -369,6 +369,30 @@ return view.extend({
 					}
 				}
 				
+				@media screen and (max-width: 900px) {
+					/* 优化搜索框和按钮的布局 */
+					#search-section {
+						min-width: 150px;
+					}
+					
+					/* 调整右侧按钮组的布局 */
+					#announcement-bell-btn,
+					#install-local-btn,
+					#uninstall-theme-toggle,
+					#history-log-btn {
+						flex-shrink: 0;
+						white-space: nowrap;
+					}
+				}
+				
+				@media screen and (max-width: 768px) {
+					/* 确保搜索框容器正确换行 */
+					#search-container {
+						flex: 1 1 100%;
+						margin: 8px 0 0 0;
+					}
+				}
+				
 				/* 移动端响应式样式 */
 				@media screen and (max-width: 768px) {
 				#batch-toolbar {
@@ -1189,18 +1213,18 @@ return view.extend({
 				// 搜索框
 				var searchSection = E('div', { 
 					id: 'search-section',
-					'style': 'flex:1; display:flex; align-items:center; gap:8px; background:#ffffff; border:1px solid #bae6fd; border-radius:999px; padding:6px 12px; transition:all 0.3s ease;'
+					'style': 'flex:1; min-width:120px; display:flex; align-items:center; gap:8px; background:#ffffff; border:1px solid #bae6fd; border-radius:999px; padding:6px 12px; transition:all 0.3s ease;'
 				}, []);
 				var searchIcon = E('img', { 
 					src: L.resource('icons/ss.svg'), 
 					'class': 'search-icon',
-					'style': 'display:inline-block; width:18px; height:18px; object-fit:contain; opacity:0.6;'
+					'style': 'display:inline-block; width:18px; height:18px; object-fit:contain; opacity:0.6; flex-shrink:0;'
 				});
 				var searchInput = E('input', { 
 					id: 'filter', 
 					type: 'text', 
 					placeholder: _('按包名或文件名搜索…'), 
-					'style': 'flex:1; border:none; outline:none; box-shadow:none; -webkit-appearance:none; appearance:none; font-size:14px; color:#111827; background:transparent;'
+					'style': 'flex:1; min-width:0; border:none; outline:none; box-shadow:none; -webkit-appearance:none; appearance:none; font-size:14px; color:#111827; background:transparent; text-overflow:ellipsis; white-space:nowrap; overflow:hidden;' 
 				});
 				var clearBtn = E('button', { 
 					id: 'filter-clear', 
