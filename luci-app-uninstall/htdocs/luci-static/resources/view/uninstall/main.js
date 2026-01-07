@@ -342,8 +342,35 @@ return view.extend({
 				display: none;
 			}
 			
-			/* 移动端响应式样式 */
-			@media screen and (max-width: 768px) {
+			/* 大屏幕响应式样式 */
+				@media screen and (max-width: 1200px) {
+					#batch-toolbar {
+						gap: 8px;
+					}
+					
+					#install-local-btn,
+					#history-log-btn,
+					#uninstall-theme-toggle {
+						padding: 6px 10px;
+						font-size: 12px;
+					}
+				}
+				
+				@media screen and (max-width: 1024px) {
+					#batch-toolbar {
+						flex-wrap: wrap;
+					}
+					
+					/* 调整元素顺序，优化空间利用 */
+					#search-container {
+						order: 1;
+						flex: 1 1 100%;
+						margin: 8px 0 0 0;
+					}
+				}
+				
+				/* 移动端响应式样式 */
+				@media screen and (max-width: 768px) {
 				#batch-toolbar {
 					flex-wrap: wrap;
 					padding: 8px 12px;
@@ -434,63 +461,69 @@ return view.extend({
 				}
 				
 				#filter::placeholder {
-					overflow: hidden;
-					text-overflow: ellipsis;
-					white-space: nowrap;
-				}
-				
-			#announcement-bell-btn {
-				margin-left: 0;
-				flex: 0 0 auto;
-				padding: 6px 12px;
-				min-width: 36px;
-			}
-				
-			#install-local-btn {
-				margin-left: 0;
-				flex: 0 0 auto;
-				padding: 6px 12px;
-				font-size: 13px;
-				white-space: nowrap;
-			}
-				
-			#install-local-btn span {
-				display: none;
-			}
-				
-			#install-local-btn img {
-				margin: 0;
-			}
-				
-			#history-log-btn {
-				margin-left: 0;
-				flex: 0 0 auto;
-				padding: 6px 12px;
-				font-size: 13px;
-				white-space: nowrap;
-			}
-				
-			#history-log-btn span {
-				display: none;
-			}
-				
-			#history-log-btn img {
-				margin: 0;
-			}
-				
-				#announcement-panel {
-					width: 100%;
-					margin-left: 0;
-					margin-right: 0;
-					border-radius: 0 0 8px 8px;
-				}
-				
-				#announcement-panel.show {
-					margin-top: 6px;
-					padding: 14px;
-					border-top: 1px solid #bae6fd;
-					border-radius: 12px;
-				}
+						overflow: hidden;
+						text-overflow: ellipsis;
+						white-space: nowrap;
+					}
+					
+					#announcement-bell-btn {
+						margin-left: 0;
+						flex: 0 0 auto;
+						padding: 6px 12px;
+						min-width: 36px;
+					}
+					
+					#install-local-btn {
+						margin-left: 6px;
+						flex: 0 0 auto;
+						padding: 6px 10px;
+						font-size: 12px;
+						white-space: nowrap;
+					}
+					
+					#install-local-btn span {
+						display: none;
+					}
+					
+					#install-local-btn img {
+						margin: 0;
+					}
+					
+					#uninstall-theme-toggle {
+						margin-left: 6px;
+						padding: 6px 8px;
+						font-size: 11px;
+					}
+					
+					#history-log-btn {
+						margin-left: 6px;
+						flex: 0 0 auto;
+						padding: 6px 10px;
+						font-size: 12px;
+						white-space: nowrap;
+					}
+					
+					#history-log-btn span {
+						display: none;
+					}
+					
+					#history-log-btn img {
+						margin: 0;
+					}
+					
+					#announcement-panel {
+						width: 100%;
+						margin-left: 0;
+						margin-right: 0;
+						border-radius: 0 0 8px 8px;
+					}
+					
+					#announcement-panel.show {
+						margin-top: 6px;
+						padding: 14px;
+						border-top: 1px solid #bae6fd;
+						border-radius: 12px;
+					}
 			}
 			
 			@media screen and (max-width: 480px) {
@@ -560,43 +593,49 @@ return view.extend({
 				}
 				
 				#filter-clear {
-					font-size: 11px;
-					padding: 2px 6px;
-				}
-				
-			#announcement-bell-btn {
-				padding: 5px 10px;
-				min-width: 36px;
-			}
-				
-			#install-local-btn {
-				padding: 5px 10px;
-				min-width: 36px;
-			}
-				
-			#history-log-btn {
-				padding: 5px 10px;
-				min-width: 36px;
-			}
-				
-				#announcement-panel {
-					width: 100%;
-					font-size: 13px;
-					margin-left: 0;
-					margin-right: 0;
-					border-radius: 0 0 8px 8px;
-				}
-				
-				#announcement-panel.show {
-					margin-top: 6px;
-					padding: 12px;
-					border-top: 1px solid #bae6fd;
-					border-radius: 12px;
-				}
-				
-				#announcement-content {
-					font-size: 13px;
-				}
+						font-size: 11px;
+						padding: 2px 6px;
+					}
+					
+					#announcement-bell-btn {
+						padding: 5px 10px;
+						min-width: 36px;
+					}
+					
+					#install-local-btn {
+						padding: 5px 10px;
+						min-width: 36px;
+					}
+					
+					#uninstall-theme-toggle {
+						padding: 5px 8px;
+						min-width: auto;
+						font-size: 11px;
+					}
+					
+					#history-log-btn {
+						padding: 5px 10px;
+						min-width: 36px;
+					}
+					
+					#announcement-panel {
+						width: 100%;
+						font-size: 13px;
+						margin-left: 0;
+						margin-right: 0;
+						border-radius: 0 0 8px 8px;
+					}
+					
+					#announcement-panel.show {
+						margin-top: 6px;
+						padding: 12px;
+						border-top: 1px solid #bae6fd;
+						border-radius: 12px;
+					}
+					
+					#announcement-content {
+						font-size: 13px;
+					}
 			}
 			
 			/* 公告面板样式 - 在工具栏外部下拉 */
@@ -929,7 +968,7 @@ return view.extend({
 			(function(){
 				var toolbar = E('div', { 
 					id: 'batch-toolbar',
-					'style': 'margin:0; display:flex; align-items:center; gap:12px; padding:10px 16px; background:linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border:1px solid #bae6fd; border-radius:12px; box-shadow:0 2px 4px rgba(0,0,0,0.05); backdrop-filter:saturate(160%) blur(6px); -webkit-backdrop-filter:saturate(160%) blur(6px); flex-wrap:nowrap;'
+					'style': 'margin:0; display:flex; align-items:center; gap:12px; padding:10px 16px; background:linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border:1px solid #bae6fd; border-radius:12px; box-shadow:0 2px 4px rgba(0,0,0,0.05); backdrop-filter:saturate(160%) blur(6px); -webkit-backdrop-filter:saturate(160%) blur(6px); flex-wrap:wrap;'
 				}, []);
 				
 				// 左侧：批量操作区域（缩短）
