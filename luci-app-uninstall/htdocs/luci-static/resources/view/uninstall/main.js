@@ -1432,24 +1432,33 @@ return view.extend({
 				});
 				
 				// 根据屏幕宽度动态调整 placeholder 文字
-				function updatePlaceholder() {
-					var width = window.innerWidth || document.documentElement.clientWidth;
-					if (width <= 480) {
-						searchInput.placeholder = _('搜索…');
-					} else if (width <= 768) {
-						searchInput.placeholder = _('搜索包名或文件名…');
-					} else {
-						searchInput.placeholder = _('按包名或文件名搜索…');
+					function updatePlaceholder() {
+						var width = window.innerWidth || document.documentElement.clientWidth;
+						if (width <= 480) {
+							searchInput.placeholder = _('搜索…');
+						} else if (width <= 600) {
+							searchInput.placeholder = _('搜索包名…');
+						} else if (width <= 768) {
+							searchInput.placeholder = _('搜索包名或文件名…');
+						} else if (width <= 900) {
+							searchInput.placeholder = _('搜索包名/文件名…');
+						} else {
+							searchInput.placeholder = _('按包名或文件名搜索…');
+						}
 					}
-				}
-				// 初始化
-				updatePlaceholder();
-				// 监听窗口大小变化
-				var resizeTimer;
-				window.addEventListener('resize', function() {
-					clearTimeout(resizeTimer);
-					resizeTimer = setTimeout(updatePlaceholder, 100);
-				});
+					// 初始化
+					updatePlaceholder();
+					// 监听窗口大小变化
+					var resizeTimer;
+					window.addEventListener('resize', function() {
+						clearTimeout(resizeTimer);
+						resizeTimer = setTimeout(updatePlaceholder, 100);
+					});
+					
+					// 确保搜索框占位符不会超出
+					searchInput.style.textOverflow = 'ellipsis';
+					searchInput.style.whiteSpace = 'nowrap';
+					searchInput.style.overflow = 'hidden';
 				
 				// 公告铃铛按钮 - 使用渐变色图标
 				// 生成唯一的ID以避免多个实例冲突
