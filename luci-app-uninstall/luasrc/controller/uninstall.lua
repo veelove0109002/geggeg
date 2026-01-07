@@ -284,73 +284,146 @@ function action_install_from_url()
 	end
 
 	local tmp_path = is_ipk and '/tmp/uninstall-install.ipk' or '/tmp/uninstall-install.run'
-	local tmp_log = '/tmp/uninstall-install.log'
 	local log = {}
 	local function append(s) log[#log+1] = s end
 
 	append('=== Install from URL ===')
 	append('URL: ' .. url)
 
+	-- 异步安装所需的文件
+	local status_file = '/tmp/uninstall-install-status.txt'
+	local stdout_log = '/tmp/uninstall-install.stdout'
+	local stderr_log = '/tmp/uninstall-install.stderr'
+	
 	-- 清理旧文件
-	sys.call(string.format("rm -f %q %q >/dev/null 2>&1", tmp_path, tmp_log))
+	sys.call(string.format("rm -f %q %q %q %q >/dev/null 2>&1", tmp_path, status_file, stdout_log, stderr_log))
 
-	-- 下载文件（优先 uclient-fetch，其次 wget，最后 curl）
-	append('> Download: ' .. url)
-	-- 使用 string.format 的 %q 来安全转义 URL，避免 shell 解释特殊字符
-	local rc = sys.call(string.format("uclient-fetch -L -O %q %q >/dev/null 2>&1", tmp_path, url))
-	if rc ~= 0 then
-		rc = sys.call(string.format("wget --no-check-certificate -O %q %q >/dev/null 2>&1", tmp_path, url))
-	end
-	if rc ~= 0 then
-		rc = sys.call(string.format("command -v curl >/dev/null 2>&1 && curl -L -o %q %q >/dev/null 2>&1 || true", tmp_path, url))
+	-- 写入初始状态
+	local status_fp = io.open(status_file, 'w')
+	if status_fp then
+		status_fp:write('running\n')
+		status_fp:close()
 	end
 
-	local st = fs.stat(tmp_path)
-	if not st or st.size <= 0 then
-		append('! 下载失败或文件为空')
-		return json_response({ ok = false, message = '下载失败或文件为空', log = table.concat(log, "\n") }, 500)
-	end
+	-- 创建包装脚本，在后台执行安装过程
+	local wrapper_script = '/tmp/uninstall-install-wrapper.sh'
+	local wrapper_content = string.format(
+		'#!/bin/sh\n' ..
+		'# 下载文件\n' ..
+		'echo "Downloading: %s" > %q\n' ..
+		'uclient-fetch -L -O %q %q >/dev/null 2>&1\n' ..
+		'DOWNLOAD_RC=$?\n' ..
+		'if [ $DOWNLOAD_RC -ne 0 ]; then\n' ..
+		'    wget --no-check-certificate -O %q %q >/dev/null 2>&1\n' ..
+		'    DOWNLOAD_RC=$?\n' ..
+		'    if [ $DOWNLOAD_RC -ne 0 ]; then\n' ..
+		'        command -v curl >/dev/null 2>&1 && curl -L -o %q %q >/dev/null 2>&1 || true\n' ..
+		'        DOWNLOAD_RC=$?\n' ..
+		'    fi\n' ..
+		'fi\n' ..
+		'\n' ..
+		'if [ $DOWNLOAD_RC -ne 0 ]; then\n' ..
+		'    echo "Download failed" > %q\n' ..
+		'    echo "$DOWNLOAD_RC" > %q\n' ..
+		'    echo "done" >> %q\n' ..
+		'    rm -f %q\n' ..
+		'    exit $DOWNLOAD_RC\n' ..
+		'fi\n' ..
+		'\n' ..
+		'# 检查文件大小\n' ..
+		'if [ ! -s %q ]; then\n' ..
+		'    echo "Downloaded file is empty" > %q\n' ..
+		'    echo "1" > %q\n' ..
+		'    echo "done" >> %q\n' ..
+		'    rm -f %q\n' ..
+		'    exit 1\n' ..
+		'fi\n' ..
+		'\n' ..
+		'# 执行安装\n' ..
+		'if %s; then\n' ..
+		'    opkg install %q >%q 2>%q\n' ..
+		'else\n' ..
+		'    # 校验 .run 文件的 shebang\n' ..
+		'    head -c 2 %q | grep -q "^#!" || {\n' ..
+		'        echo "Invalid script: missing shebang" > %q\n' ..
+		'        echo "2" > %q\n' ..
+		'        echo "done" >> %q\n' ..
+		'        rm -f %q\n' ..
+		'        exit 2\n' ..
+		'    }\n' ..
+		'    # 执行 .run 文件\n' ..
+		'chmod +x %q\n' ..
+		'%q >%q 2>%q\n' ..
+		'fi\n' ..
+		'\n' ..
+		'EXIT_CODE=$?\n' ..
+		'echo "$EXIT_CODE" > %q\n' ..
+		'echo "done" >> %q\n' ..
+		'rm -f %q\n' ..
+		'rm -f %q\n',
+		url, stdout_log,
+		tmp_path, url,
+		tmp_path, url,
+		tmp_path, url,
+		stdout_log,
+		status_file, status_file,
+		wrapper_script,
+		tmp_path,
+		stdout_log,
+		status_file, status_file,
+		wrapper_script,
+		(is_ipk and 'true' or 'false'),
+		tmp_path, stdout_log, stderr_log,
+		tmp_path,
+		stdout_log,
+		status_file, status_file,
+		wrapper_script,
+		tmp_path,
+		tmp_path, stdout_log, stderr_log,
+		status_file, status_file,
+		wrapper_script,
+		tmp_path
+	)
 
-	if is_run then
-		-- 简单校验 .run：检查 shebang
-		local f = io.open(tmp_path, 'rb')
-		if not f then
-			append('! 无法读取 .run 文件')
-			return json_response({ ok = false, message = '无法读取 .run 文件', log = table.concat(log, "\n") }, 500)
-		end
-		local header = f:read(2) or ''
-		f:close()
-		if header ~= '#!' then
-			append('! 非有效安装脚本（缺少 shebang）')
-			return json_response({ ok = false, message = '非有效安装脚本（缺少 shebang）', log = table.concat(log, "\n") }, 400)
-		end
-	end
-
-	-- 执行安装
-	local ok
-	if is_ipk then
-		append('+ opkg install ' .. tmp_path)
-		rc = sys.call(string.format("opkg install %q >%s 2>&1", tmp_path, tmp_log))
-		ok = (rc == 0)
+	local wrapper_fp = io.open(wrapper_script, 'w')
+	if wrapper_fp then
+		wrapper_fp:write(wrapper_content)
+		wrapper_fp:close()
+		sys.call(string.format('chmod +x %q >/dev/null 2>&1', wrapper_script))
 	else
-		append('+ sh ' .. tmp_path)
-		sys.call(string.format('chmod +x %q >/dev/null 2>&1', tmp_path))
-		rc = sys.call(string.format("/bin/sh %q >%s 2>&1", tmp_path, tmp_log))
-		ok = (rc == 0)
+		return json_response({ ok = false, message = '无法创建包装脚本', log = table.concat(log, "\n") }, 500)
 	end
 
-	local out = fs.readfile(tmp_log) or ''
-	if out and #out > 0 then append(out) end
+	-- 检查是否有 tasks 系统可用
+	local has_tasks = fs.stat('/etc/init.d/tasks') ~= nil
+	local async_cmd
 
-	-- 刷新 LuCI 缓存，便于新插件菜单立即生效
-	if ok then
-		sys.call('rm -f /tmp/luci-indexcache >/dev/null 2>&1')
-		sys.call('rm -rf /tmp/luci-modulecache/* >/dev/null 2>&1')
-		sys.call('[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd reload >/dev/null 2>&1')
-		sys.call('[ -x /etc/init.d/nginx ] && /etc/init.d/nginx reload >/dev/null 2>&1')
+	if has_tasks then
+		-- 使用 tasks 系统异步执行
+		async_cmd = string.format("/etc/init.d/tasks task_add uninstall %s", util.shellquote(wrapper_script))
+		append('> 使用 tasks 系统异步执行安装')
+	else
+		-- 使用 nohup 在后台执行
+		async_cmd = string.format("nohup sh %q >/dev/null 2>&1 &", wrapper_script)
+		append('> 使用 nohup 在后台执行安装')
 	end
 
-	return json_response({ ok = ok, log = table.concat(log, "\n") })
+	-- 执行命令
+	sys.call(async_cmd)
+
+	-- 异步执行，返回状态让前端轮询
+	append('> 安装已在后台启动，正在执行中...')
+	append('> 请等待安装完成，前端将自动检查安装状态')
+	return json_response({ 
+		ok = true, 
+		async = true,  -- 标记为异步安装
+		message = '安装已开始，正在后台执行',
+		log = table.concat(log, "\n"),
+		status_file = status_file,
+		log_file = stdout_log,
+		stderr_file = stderr_log,
+		has_tasks = has_tasks
+	})
 end
 
 -- 上传并安装本地 .ipk 或 .run 包
