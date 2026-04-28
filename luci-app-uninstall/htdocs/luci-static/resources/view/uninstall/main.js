@@ -5029,7 +5029,7 @@ return view.extend({
 			});
 		}
 		
-		function uninstall(name, purge, removeDeps, version, clearCache) {
+		function uninstall(name, purge, removeDeps, version, clearCache, cleanupDocker) {
 			var confirmFn = function(msg, desc){
 				return new Promise(function(resolve){
 					var isDark = document.body && document.body.classList.contains('luci-uninstall-dark');
@@ -5190,8 +5190,8 @@ return view.extend({
 				}
 
 				var token = (L.env && (L.env.token || L.env.csrf_token)) || '';
-				var removeUrl = L.url('admin/vum/uninstall/remove') + (token ? ('?token=' + encodeURIComponent(token)) : '');
-				var formBody = 'package=' + encodeURIComponent(name) + '&purge=' + (purge ? '1' : '0') + '&removeDeps=' + (removeDeps ? '1' : '0') + '&clearCache=' + (clearCache ? '1' : '0');
+			var removeUrl = L.url('admin/vum/uninstall/remove') + (token ? ('?token=' + encodeURIComponent(token)) : '');
+			var formBody = 'package=' + encodeURIComponent(name) + '&purge=' + (purge ? '1' : '0') + '&removeDeps=' + (removeDeps ? '1' : '0') + '&clearCache=' + (clearCache ? '1' : '0') + '&cleanupDocker=' + (cleanupDocker ? '1' : '0');
 
 				println('> POST ' + removeUrl);
 				println('> body: ' + formBody);

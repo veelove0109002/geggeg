@@ -87,6 +87,10 @@ function index()
 	e = entry({ 'admin', 'vum', 'uninstall', 'check_install_status' }, call('action_check_install_status'))
 	e.leaf = true
 	e.acl_depends = { 'luci-app-uninstall' }
+
+	e = entry({ 'admin', 'vum', 'uninstall', 'check_docker' }, call('action_check_docker'))
+	e.leaf = true
+	e.acl_depends = { 'luci-app-uninstall' }
 end
 
 	local http = require 'luci.http'
@@ -106,6 +110,126 @@ local function json_response(tbl, code)
 	http.header('Expires', '0')
 	http.prepare_content('application/json')
 	http.write(json.stringify(tbl or {}))
+end
+
+-- Docker 容器映射表：软件包 -> Docker 容器名称
+local DOCKER_CONTAINER_MAP = {
+	['luci-app-istorepanel'] = {'1panel'},
+	['luci-app-alist'] = {'alist'},
+	['luci-app-qbittorrent'] = {'qbittorrent', 'qbittorrent-ee'},
+	['luci-app-emby'] = {'emby', 'embyserver'},
+	['luci-app-jellyfin'] = {'jellyfin'},
+	['luci-app-homeassistant'] = {'homeassistant'},
+	['luci-app-nextcloud'] = {'nextcloud'},
+	['luci-app-syncthing'] = {'syncthing'},
+	['luci-app-transmission'] = {'transmission'},
+	['luci-app-aria2'] = {'aria2'},
+	['luci-app-docker'] = {},  -- Docker 本身不需要清理
+}
+
+-- 检查是否有 Docker 环境
+local function has_docker()
+	return os.execute('command -v docker >/dev/null 2>&1') == 0
+end
+
+-- 获取软件包相关的 Docker 容器
+local function get_docker_containers(pkg)
+	if not has_docker() then
+		return {}
+	end
+	
+	local containers = {}
+	local pkg_containers = DOCKER_CONTAINER_MAP[pkg]
+	if not pkg_containers then
+		return {}
+	end
+	
+	for _, container_name in ipairs(pkg_containers) do
+		local output = sys.exec(string.format("docker ps -a --format '{{.Names}}' 2>/dev/null | grep -w '%s' || true", container_name))
+		if output and output ~= '' then
+			for line in output:gmatch('[^\r\n]+') do
+				if line and line ~= '' then
+					table.insert(containers, line)
+				end
+			end
+		end
+	end
+	
+	return containers
+end
+
+-- 获取所有 Docker 容器（用于检测）
+local function get_all_docker_containers()
+	if not has_docker() then
+		return {}
+	end
+	
+	local containers = {}
+	local output = sys.exec("docker ps -a --format '{{.Names}}' 2>/dev/null || true")
+	if output and output ~= '' then
+		for line in output:gmatch('[^\r\n]+') do
+			if line and line ~= '' then
+				table.insert(containers, line)
+			end
+		end
+	end
+	
+	return containers
+end
+
+-- 检查多个软件包是否有相关的 Docker 容器
+local function check_docker_containers_for_packages(packages)
+	if not has_docker() then
+		return {}
+	end
+	
+	local result = {}
+	for _, pkg in ipairs(packages) do
+		local containers = get_docker_containers(pkg)
+		if #containers > 0 then
+			result[pkg] = containers
+		end
+	end
+	
+	return result
+end
+
+-- 清理软件包相关的 Docker 容器
+local function cleanup_docker_containers(pkg, log)
+	local function append(s)
+		if log then
+			log[#log+1] = s
+		end
+	end
+	
+	if not has_docker() then
+		append('# Docker 未安装，跳过容器清理')
+		return true
+	end
+	
+	local containers = get_docker_containers(pkg)
+	if #containers == 0 then
+		append('# 未发现相关 Docker 容器')
+		return true
+	end
+	
+	local success = true
+	for _, container_name in ipairs(containers) do
+		append('+ docker stop ' .. container_name)
+		local rc = os.execute(string.format('docker stop %s 2>/dev/null', container_name))
+		
+		append('+ docker rm ' .. container_name)
+		rc = os.execute(string.format('docker rm %s 2>/dev/null', container_name))
+		
+		if rc ~= 0 then
+			success = false
+			append('! Docker 容器 ' .. container_name .. ' 清理失败')
+		else
+			append('# Docker 容器 ' .. container_name .. ' 已清理')
+		end
+	end
+	
+	return success
 end
 
 -- 查询 luci-app-uninstall 当前已安装版本
@@ -184,6 +308,55 @@ function action_check_update()
 	url = 'https://plugin.vumstar.com/download/luci-app-uninstall.ipk'
 	-- 若无法获取 latest，也不影响在线更新；为了前端确认，标记 available=true
 	json_response({ current = cur or '', latest = latest or '', available = true, changelog = changelog or '' })
+end
+
+-- 检查 Docker 容器
+function action_check_docker()
+	local packages_json = http.formvalue('packages') or ''
+	local packages = {}
+	
+	-- 解析包列表
+	if packages_json and #packages_json > 0 then
+		local ok, data = pcall(json.parse, packages_json)
+		if ok and type(data) == 'table' then
+			packages = data
+		else
+			-- 尝试解析为逗号分隔的字符串
+			for pkg in packages_json:gmatch('([^,]+)') do
+				pkg = pkg:gsub('^%s+', ''):gsub('%s+$', '')
+				if pkg and #pkg > 0 then
+					table.insert(packages, pkg)
+				end
+			end
+		end
+	end
+	
+	-- 检查 Docker 环境
+	local docker_available = has_docker()
+	if not docker_available then
+		json_response({
+			ok = true,
+			docker_available = false,
+			containers = {}
+		})
+		return
+	end
+	
+	-- 获取所有 Docker 容器
+	local all_containers = get_all_docker_containers()
+	
+	-- 检查指定软件包的 Docker 容器
+	local relevant_containers = {}
+	if #packages > 0 then
+		relevant_containers = check_docker_containers_for_packages(packages)
+	end
+	
+	json_response({
+		ok = true,
+		docker_available = true,
+		all_containers = all_containers,
+		relevant_containers = relevant_containers
+	})
 end
 
 -- 在线升级 luci-app-uninstall（来源：plugin.vumstar.com/download）
@@ -1958,6 +2131,7 @@ function action_remove()
 	local purge = (http.formvalue('purge') == '1')
 	local remove_deps = (http.formvalue('removeDeps') == '1')
 	local clear_cache = (http.formvalue('clearCache') == '1')
+	local cleanup_docker = (http.formvalue('cleanupDocker') == '1')
 	
 	-- 如果表单中没有 package，尝试从 URL 查询参数获取
 	if (not pkg or pkg == '') then
@@ -2571,13 +2745,22 @@ if (not success) and not no_packages_removed then
 		removed_force = purge_everything(appname)
 	end
 
+	-- Docker 容器清理
+	local docker_cleanup_log = {}
+	if cleanup_docker and success then
+		append_log(docker_cleanup_log, '=== Docker 容器清理开始 ===')
+		cleanup_docker_containers(pkg, docker_cleanup_log)
+		append_log(docker_cleanup_log, '=== Docker 容器清理结束 ===')
+	end
+
 	json_response({
 		ok = success,
 		message = output or '',
 		removed_configs = removed_confs,
 		removed_caches = removed_caches,
 		removed_force = removed_force,
-		removed_istore = removed_istore
+		removed_istore = removed_istore,
+		docker_cleanup = (cleanup_docker and success) and docker_cleanup_log or nil
 	})
 end
 
