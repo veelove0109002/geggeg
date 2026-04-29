@@ -5220,20 +5220,68 @@ return view.extend({
 					}
 				}).catch(function(err){
 					println('! Error: ' + String(err));
-					setProgress(100);
-					clearInterval(timer);
-					progressBar.style.background = 'linear-gradient(90deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
-					progressBar.style.boxShadow = '0 0 8px rgba(239,68,68,.6)';
-					statusIconEl.textContent = '✕';
-					statusIconEl.setAttribute('style', 'display:inline-flex;width:22px;height:22px;background:#fee2e2;color:#7f1d1d;border-radius:999px;align-items:center;justify-content:center;font-weight:700;');
-					statusTextEl.textContent = _('卸载失败');
-					statusTextEl.setAttribute('style', 'font-weight:600;color:#7f1d1d;');
-					var statusFail2 = E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin:8px 0 0 0;' }, [
-						E('span', { 'style': 'display:inline-flex;width:22px;height:22px;background:#fee2e2;color:#7f1d1d;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '✕'),
-						E('span', { 'style': 'font-weight:600;color:#7f1d1d;' }, _('卸载失败'))
-					]);
-					log.parentNode.insertBefore(statusFail2, log.nextSibling);
-					enableClose();
+					// JSON解析错误时，尝试检查包是否真的被卸载了
+					var checkUrl = L.url('admin/vum/uninstall/list') + '?_=' + Date.now();
+					self._httpJson(checkUrl, { 
+						method: 'GET', 
+						headers: { 'Accept': 'application/json', 'X-CSRF-Token': token } 
+					}).then(function(listRes){
+						// 检查包是否还在列表中
+						var stillExists = listRes && Array.isArray(listRes.packages) && 
+							listRes.packages.some(function(p){ return p.name === name; });
+						
+						if (!stillExists) {
+							// 包已经不在列表中，说明卸载成功了
+							println(_('⚠️ 检测到包已卸载成功（但服务器响应异常）'));
+							setProgress(100);
+							clearInterval(timer);
+							statusIconEl.textContent = '✓';
+							statusIconEl.setAttribute('style', 'display:inline-flex;width:22px;height:22px;background:#dcfce7;color:#065f46;border-radius:999px;align-items:center;justify-content:center;font-weight:700;');
+							statusTextEl.textContent = _('卸载完成（已确认）');
+							statusTextEl.setAttribute('style', 'font-weight:600;color:#065f46;');
+							var statusDone = E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin:8px 0 0 0;' }, [
+								E('span', { 'style': 'display:inline-flex;width:22px;height:22px;background:#dcfce7;color:#065f46;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '✓'),
+								E('span', { 'style': 'font-weight:600;color:#065f46;' }, _('卸载完成（已确认）'))
+							]);
+							log.parentNode.insertBefore(statusDone, log.nextSibling);
+							opSuccess = true;
+							enableClose();
+							refresh();
+						} else {
+							// 包还在列表中，说明卸载失败了
+							setProgress(100);
+							clearInterval(timer);
+							progressBar.style.background = 'linear-gradient(90deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
+							progressBar.style.boxShadow = '0 0 8px rgba(239,68,68,.6)';
+							println(_('卸载失败'));
+							statusIconEl.textContent = '✕';
+							statusIconEl.setAttribute('style', 'display:inline-flex;width:22px;height:22px;background:#fee2e2;color:#7f1d1d;border-radius:999px;align-items:center;justify-content:center;font-weight:700;');
+							statusTextEl.textContent = _('卸载失败');
+							statusTextEl.setAttribute('style', 'font-weight:600;color:#7f1d1d;');
+							var statusFail2 = E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin:8px 0 0 0;' }, [
+								E('span', { 'style': 'display:inline-flex;width:22px;height:22px;background:#fee2e2;color:#7f1d1d;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '✕'),
+								E('span', { 'style': 'font-weight:600;color:#7f1d1d;' }, _('卸载失败'))
+							]);
+							log.parentNode.insertBefore(statusFail2, log.nextSibling);
+							enableClose();
+						}
+					}).catch(function(){
+						// 无法检查，默认显示失败
+						setProgress(100);
+						clearInterval(timer);
+						progressBar.style.background = 'linear-gradient(90deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
+						progressBar.style.boxShadow = '0 0 8px rgba(239,68,68,.6)';
+						statusIconEl.textContent = '✕';
+						statusIconEl.setAttribute('style', 'display:inline-flex;width:22px;height:22px;background:#fee2e2;color:#7f1d1d;border-radius:999px;align-items:center;justify-content:center;font-weight:700;');
+						statusTextEl.textContent = _('卸载失败');
+						statusTextEl.setAttribute('style', 'font-weight:600;color:#7f1d1d;');
+						var statusFail2 = E('div', { 'style': 'display:flex; align-items:center; gap:8px; margin:8px 0 0 0;' }, [
+							E('span', { 'style': 'display:inline-flex;width:22px;height:22px;background:#fee2e2;color:#7f1d1d;border-radius:999px;align-items:center;justify-content:center;font-weight:700;' }, '✕'),
+							E('span', { 'style': 'font-weight:600;color:#7f1d1d;' }, _('卸载失败'))
+						]);
+						log.parentNode.insertBefore(statusFail2, log.nextSibling);
+						enableClose();
+					});
 				});
 			});
 		}
