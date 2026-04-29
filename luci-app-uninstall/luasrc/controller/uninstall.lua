@@ -434,11 +434,11 @@ function action_upgrade()
 	local out = fs.readfile(tmpout) or ''
 	append(out)
 
-	-- 清理并重载 LuCI
+	-- 清理并重载 LuCI（后台延迟执行，不阻塞响应）
 	sys.call('rm -f /tmp/luci-indexcache >/dev/null 2>&1')
 	sys.call('rm -rf /tmp/luci-modulecache/* >/dev/null 2>&1')
-	sys.call('[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd reload >/dev/null 2>&1')
-	sys.call('[ -x /etc/init.d/nginx ] && /etc/init.d/nginx reload >/dev/null 2>&1')
+	sys.call('(sleep 2 && [ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd reload >/dev/null 2>&1) &')
+	sys.call('(sleep 2 && [ -x /etc/init.d/nginx ] && /etc/init.d/nginx reload >/dev/null 2>&1) &')
 	return json_response({ ok = (rc == 0), log = table.concat(log, "\n") })
 end
 
@@ -2253,12 +2253,12 @@ function action_remove()
 		-- [5/6] 刷新 LuCI 缓存并重载 Web/防火墙
 		rm('rm -f /tmp/luci-indexcache')
 		rm('rm -rf /tmp/luci-modulecache/*')
-		-- luci-reload 如果可用
-		sys.call('command -v luci-reload >/dev/null 2>&1 && luci-reload')
-		-- 重载常见服务
-		sys.call('[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd reload >/dev/null 2>&1')
-		sys.call('[ -x /etc/init.d/nginx ] && /etc/init.d/nginx reload >/dev/null 2>&1')
-		sys.call('[ -x /etc/init.d/firewall ] && /etc/init.d/firewall reload >/dev/null 2>&1')
+		-- luci-reload 如果可用（后台延迟执行，不阻塞响应）
+		sys.call('(sleep 2 && command -v luci-reload >/dev/null 2>&1 && luci-reload) &')
+		-- 重载常见服务（后台延迟执行）
+		sys.call('(sleep 2 && [ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd reload >/dev/null 2>&1) &')
+		sys.call('(sleep 2 && [ -x /etc/init.d/nginx ] && /etc/init.d/nginx reload >/dev/null 2>&1) &')
+		sys.call('(sleep 2 && [ -x /etc/init.d/firewall ] && /etc/init.d/firewall reload >/dev/null 2>&1) &')
 
 		-- [6/6] sync
 		append_log(log, '+ sync')
@@ -2325,13 +2325,13 @@ function action_remove()
 			sys.call('/etc/init.d/cron reload >/dev/null 2>&1')
 		end
 
-		-- [5/6] 刷新 LuCI 缓存并重载 Web/防火墙
+		-- [5/6] 刷新 LuCI 缓存并重载 Web/防火墙（后台延迟执行）
 		rm('rm -f /tmp/luci-indexcache')
 		rm('rm -rf /tmp/luci-modulecache/*')
-		sys.call('command -v luci-reload >/dev/null 2>&1 && luci-reload')
-		sys.call('[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd reload >/dev/null 2>&1')
-		sys.call('[ -x /etc/init.d/nginx ] && /etc/init.d/nginx reload >/dev/null 2>&1')
-		sys.call('[ -x /etc/init.d/firewall ] && /etc/init.d/firewall reload >/dev/null 2>&1')
+		sys.call('(sleep 2 && command -v luci-reload >/dev/null 2>&1 && luci-reload) &')
+		sys.call('(sleep 2 && [ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd reload >/dev/null 2>&1) &')
+		sys.call('(sleep 2 && [ -x /etc/init.d/nginx ] && /etc/init.d/nginx reload >/dev/null 2>&1) &')
+		sys.call('(sleep 2 && [ -x /etc/init.d/firewall ] && /etc/init.d/firewall reload >/dev/null 2>&1) &')
 
 		-- [6/6] sync
 		append_log(log, '+ sync')
@@ -2419,13 +2419,13 @@ if pkg == 'luci-app-adguardhome' or pkg == 'adguardhome' then
 		sys.call('/etc/init.d/cron reload >/dev/null 2>&1')
 	end
 
-	-- [5/6] 刷新 LuCI 缓存并重载 Web/防火墙
+	-- [5/6] 刷新 LuCI 缓存并重载 Web/防火墙（后台延迟执行）
 	rm('rm -f /tmp/luci-indexcache')
 	rm('rm -rf /tmp/luci-modulecache/*')
-	sys.call('command -v luci-reload >/dev/null 2>&1 && luci-reload')
-	sys.call('[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd reload >/dev/null 2>&1')
-	sys.call('[ -x /etc/init.d/nginx ] && /etc/init.d/nginx reload >/dev/null 2>&1')
-	sys.call('[ -x /etc/init.d/firewall ] && /etc/init.d/firewall reload >/dev/null 2>&1')
+	sys.call('(sleep 2 && command -v luci-reload >/dev/null 2>&1 && luci-reload) &')
+	sys.call('(sleep 2 && [ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd reload >/dev/null 2>&1) &')
+	sys.call('(sleep 2 && [ -x /etc/init.d/nginx ] && /etc/init.d/nginx reload >/dev/null 2>&1) &')
+	sys.call('(sleep 2 && [ -x /etc/init.d/firewall ] && /etc/init.d/firewall reload >/dev/null 2>&1) &')
 
 	-- [6/6] sync
 	append_log(log, '+ sync')
