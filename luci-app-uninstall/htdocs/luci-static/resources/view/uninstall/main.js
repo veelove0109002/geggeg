@@ -2505,7 +2505,12 @@ return view.extend({
 			var dockerEl = E('input', { type: 'checkbox', checked: true, 'style': 'display:none;' });
 			var dockerSwitch = makeSwitch(dockerEl, isLocked);
 			var dockerLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px auto auto; align-items:center; column-gap:6px; line-height:20px; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_DOCKER), _('清理Docker容器'), dockerSwitch ]);
-			var optionsRow = E('div', { 'style': 'display:flex; gap:12px; align-items:center; flex-wrap:wrap;' }, [ purgeLabel, depsLabel, cacheLabel, dockerLabel ]);
+			// 只在检测到有Docker容器时才显示该选项
+			var optionsArray = [ purgeLabel, depsLabel, cacheLabel ];
+			if (pkg && pkg.has_docker_containers) {
+				optionsArray.push(dockerLabel);
+			}
+			var optionsRow = E('div', { 'style': 'display:flex; gap:12px; align-items:center; flex-wrap:wrap;' }, optionsArray);
 			// 卸载按钮使用红色渐变
 			var uninstallGradient = 'linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
 			var uninstallGradientHover = 'linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #ef4444 100%)';

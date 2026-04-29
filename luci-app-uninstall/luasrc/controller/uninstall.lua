@@ -119,12 +119,190 @@ local DOCKER_CONTAINER_MAP = {
 	['luci-app-qbittorrent'] = {'qbittorrent', 'qbittorrent-ee'},
 	['luci-app-emby'] = {'emby', 'embyserver'},
 	['luci-app-jellyfin'] = {'jellyfin'},
-	['luci-app-homeassistant'] = {'homeassistant'},
+	['luci-app-homeassistant'] = {'homeassistant', 'home-assistant'},
 	['luci-app-nextcloud'] = {'nextcloud'},
 	['luci-app-syncthing'] = {'syncthing'},
 	['luci-app-transmission'] = {'transmission'},
 	['luci-app-aria2'] = {'aria2'},
 	['luci-app-docker'] = {},  -- Docker 本身不需要清理
+	['luci-app-dockerman'] = {},
+	['luci-app-portainer'] = {'portainer'},
+	['luci-app-plex'] = {'plex'},
+	['luci-app-adguardhome'] = {'adguardhome', 'adguard-home', 'adguard'},
+	['luci-app-nas-tools'] = {'nas-tools', 'nastools', 'nastool'},
+	['luci-app-qinglong'] = {'qinglong', 'ql'},
+	['luci-app-ddnsto'] = {'ddnsto'},
+	['luci-app-zerotier'] = {},
+	['luci-app-frps'] = {'frps'},
+	['luci-app-frpc'] = {'frpc'},
+	['luci-app-nps'] = {'nps'},
+	['luci-app-npc'] = {'npc'},
+	['luci-app-openclash'] = {},
+	['luci-app-passwall'] = {},
+	['luci-app-passwall2'] = {},
+	['luci-app-vssr'] = {},
+	['luci-app-clash'] = {},
+	['luci-app-samba4'] = {},
+	['luci-app-openvpn'] = {},
+	['luci-app-wireguard'] = {},
+	['luci-app-sonarr'] = {'sonarr'},
+	['luci-app-radarr'] = {'radarr'},
+	['luci-app-lidarr'] = {'lidarr'},
+	['luci-app-prowlarr'] = {'prowlarr'},
+	['luci-app-bazarr'] = {'bazarr'},
+	['luci-app-jackett'] = {'jackett'},
+	['luci-app-flare'] = {'flare'},
+	['luci-app-filebrowser'] = {'filebrowser'},
+	['luci-app-gitea'] = {'gitea'},
+	['luci-app-vaultwarden'] = {'vaultwarden'},
+	['luci-app-mosdns'] = {'mosdns'},
+	['luci-app-clash-verge'] = {},
+	['luci-app-mihomo'] = {},
+	['luci-app-mproxy'] = {},
+	['luci-app-unblockneteasemusic'] = {'unblockneteasemusic'},
+	['luci-app-subconverter'] = {'subconverter'},
+	['luci-app-aliyundrive-webdav'] = {'aliyundrive-webdav'},
+	['luci-app-gdrive-webdav'] = {'gdrive-webdav'},
+	['luci-app-onedrive-webdav'] = {'onedrive-webdav'},
+	['luci-app-webdav'] = {'webdav'},
+	['luci-app-cups'] = {},
+	['luci-app-usb-printer'] = {},
+	['luci-app-ttyd'] = {},
+	['luci-app-ttyd2'] = {},
+	['luci-app-wrtbwmon'] = {},
+	['luci-app-arpbind'] = {},
+	['luci-app-wol'] = {},
+	['luci-app-ddns'] = {},
+	['luci-app-ddns-go'] = {},
+	['luci-app-trojan'] = {},
+	['luci-app-trojan-go'] = {},
+	['luci-app-xray'] = {},
+	['luci-app-ssr-plus'] = {},
+	['luci-app-ssr-plus-jo'] = {},
+	['luci-app-ssr-plus-plus'] = {},
+	['luci-app-shadowsocks-libev'] = {},
+	['luci-app-shadowsocksr-libev'] = {},
+	['luci-app-v2ray'] = {},
+	['luci-app-v2raya'] = {},
+	['luci-app-trojan-plus'] = {},
+	['luci-app-brook'] = {},
+	['luci-app-privoxy'] = {},
+	['luci-app-squid'] = {},
+	['luci-app-nginx'] = {},
+	['luci-app-apache2'] = {},
+	['luci-app-php7'] = {},
+	['luci-app-php8'] = {},
+	['luci-app-mysql'] = {},
+	['luci-app-mariadb'] = {'mariadb'},
+	['luci-app-postgresql'] = {'postgresql'},
+	['luci-app-redis'] = {'redis'},
+	['luci-app-mongodb'] = {'mongodb'},
+	['luci-app-influxdb'] = {'influxdb'},
+	['luci-app-grafana'] = {'grafana'},
+	['luci-app-prometheus'] = {'prometheus'},
+	['luci-app-node-red'] = {'node-red'},
+	['luci-app-homekit'] = {},
+	['luci-app-mosquitto'] = {'mosquitto'},
+	['luci-app-zwave-js'] = {'zwave-js'},
+	['luci-app-bluetooth'] = {},
+	['luci-app-minidlna'] = {},
+	['luci-app-aria2ng'] = {},
+	['luci-app-rtorrent'] = {},
+	['luci-app-deluge'] = {'deluge'},
+	['luci-app-utorrent'] = {},
+	['luci-app-bittorrent'] = {},
+	['luci-app-freifunk-berlin'] = {},
+	['luci-app-sqm'] = {},
+	['luci-app-attendedsysupgrade'] = {},
+	['luci-app-advanced-reboot'] = {},
+	['luci-app-commands'] = {},
+	['luci-app-ksmbd'] = {},
+	['luci-app-ntfs-3g'] = {},
+	['luci-app-tailscale'] = {'tailscale'},
+	['luci-app-zerotier-one'] = {},
+	['luci-app-netdata'] = {'netdata'},
+	['luci-app-hd-idle'] = {},
+	['luci-app-simple-adblock'] = {},
+	['luci-app-adblock'] = {},
+	['luci-app-banip'] = {},
+	['luci-app-dawn'] = {},
+	['luci-app-https-dns-proxy'] = {},
+	['luci-app-odhcpd'] = {},
+	['luci-app-uhttpd'] = {},
+	['luci-app-ngrokc'] = {},
+	['luci-app-frpc-luci'] = {},
+	['luci-app-frps-luci'] = {},
+	['luci-app-nps-luci'] = {},
+	['luci-app-npc-luci'] = {},
+	['luci-app-openvpn-server'] = {},
+	['luci-app-ipsec-server'] = {},
+	['luci-app-ipsec-vpnserver'] = {},
+	['luci-app-softethervpn'] = {'softethervpn'},
+	['luci-app-p2ptunnel'] = {},
+	['luci-app-mwan3'] = {},
+	['luci-app-acl'] = {},
+	['luci-app-firewall'] = {},
+	['luci-app-nft-qos'] = {},
+	['luci-app-ipsec'] = {},
+	['luci-app-pptp-server'] = {},
+	['luci-app-pppoe-server'] = {},
+	['luci-app-babeld'] = {},
+	['luci-app-bird1-ipv4'] = {},
+	['luci-app-bird1-ipv6'] = {},
+	['luci-app-bird2'] = {},
+	['luci-app-olsr'] = {},
+	['luci-app-olsr-viz'] = {},
+	['luci-app-olsr6'] = {},
+	['luci-app-odhcpd'] = {},
+	['luci-app-adblock-fast'] = {},
+	['luci-app-https-dns-proxy'] = {},
+	['luci-app-udpxy'] = {},
+	['luci-app-igmpproxy'] = {},
+	['luci-app-p910nd'] = {},
+	['luci-app-minidlna'] = {},
+	['luci-app-upnp'] = {},
+	['luci-app-mjpg-streamer'] = {},
+	['luci-app-mjpg-streamer-lite'] = {},
+	['luci-app-rtty'] = {},
+	['luci-app-ttyd'] = {},
+	['luci-app-ttyd2'] = {},
+	['luci-app-wrtbwmon'] = {},
+	['luci-app-vnstat2'] = {},
+	['luci-app-nlbwmon'] = {},
+	['luci-app-wol'] = {},
+	['luci-app-ddns'] = {},
+	['luci-app-arpbind'] = {},
+	['luci-app-sshtunnel'] = {},
+	['luci-app-pptpd'] = {},
+	['luci-app-pptp'] = {},
+	['luci-app-ipsec-vpnd'] = {},
+	['luci-app-openvpn-server'] = {},
+	['luci-app-softethervpn-server'] = {},
+	['luci-app-zerotier'] = {},
+	['luci-app-frps'] = {},
+	['luci-app-frpc'] = {},
+	['luci-app-nps'] = {},
+	['luci-app-npc'] = {},
+	['luci-app-ngrokc'] = {},
+	['luci-app-openclash'] = {},
+	['luci-app-passwall'] = {},
+	['luci-app-passwall2'] = {},
+	['luci-app-vssr'] = {},
+	['luci-app-clash'] = {},
+	['luci-app-clash-verge'] = {},
+	['luci-app-mihomo'] = {},
+	['luci-app-mproxy'] = {},
+	['luci-app-xray'] = {},
+	['luci-app-trojan'] = {},
+	['luci-app-trojan-go'] = {},
+	['luci-app-brook'] = {},
+	['luci-app-v2ray'] = {},
+	['luci-app-v2raya'] = {},
+	['luci-app-shadowsocks-libev'] = {},
+	['luci-app-shadowsocksr-libev'] = {},
+	['luci-app-ssr-plus'] = {},
+	['luci-app-ssr-plus-jo'] = {},
+	['luci-app-ssr-plus-plus'] = {},
 }
 
 -- 检查是否有 Docker 环境
@@ -151,6 +329,140 @@ local function get_docker_containers(pkg)
 				if line and line ~= '' then
 					table.insert(containers, line)
 				end
+			end
+		end
+	end
+	
+	return containers
+end
+
+-- 检测包是否有相关的 Docker 容器（智能检测，包名模糊匹配）
+local function package_has_docker_containers(pkg)
+	if not has_docker() then
+		return false
+	end
+	
+	-- 首先检查映射表
+	local pkg_containers = DOCKER_CONTAINER_MAP[pkg]
+	if pkg_containers and #pkg_containers > 0 then
+		for _, container_name in ipairs(pkg_containers) do
+			local output = sys.exec(string.format("docker ps -a --format '{{.Names}}' 2>/dev/null | grep -w '%s' || true", container_name))
+			if output and output ~= '' then
+				return true
+			end
+		end
+	end
+	
+	-- 智能检测：从包名中提取关键词，在Docker容器中搜索
+	local search_terms = {}
+	
+	-- 提取包名中的关键词
+	if pkg:match('^luci%-app%-(.+)$') then
+		local app_name = pkg:match('^luci%-app%-(.+)$')
+		table.insert(search_terms, app_name)
+		
+		-- 进一步提取关键词，比如从 luci-app-alist 中提取 alist
+		-- 去除常见前缀，如 luci-app-，并分割关键词
+		if app_name then
+			-- 添加不带横杠的版本
+			local app_name_no_dash = app_name:gsub('-', '')
+			if app_name_no_dash ~= app_name then
+				table.insert(search_terms, app_name_no_dash)
+			end
+			
+			-- 按横杠分割，添加每个词作为关键词
+			for word in app_name:gmatch('[^-]+') do
+				if #word > 2 then  -- 太短的词可能无意义
+					table.insert(search_terms, word)
+				end
+			end
+			
+			-- 特别处理 istorepanel 和 1panel
+			if app_name:match('istore') or app_name:match('1panel') then
+				table.insert(search_terms, '1panel')
+				table.insert(search_terms, 'istore')
+			end
+		end
+	end
+	
+	-- 获取所有容器名称，然后检查每个容器是否包含这些关键词中的任何一个
+	local all_containers = get_all_docker_containers()
+	for _, container in ipairs(all_containers) do
+		local container_lower = container:lower()
+		for _, term in ipairs(search_terms) do
+			local term_lower = term:lower()
+			if container_lower:find(term_lower, 1, true) then
+				return true
+			end
+		end
+	end
+	
+	return false
+end
+
+-- 获取软件包对应的Docker容器（智能检测版本）
+local function get_docker_containers_for_package(pkg)
+	if not has_docker() then
+		return {}
+	end
+	
+	local containers = {}
+	local found = {}
+	
+	-- 首先检查映射表
+	local pkg_containers = DOCKER_CONTAINER_MAP[pkg]
+	if pkg_containers then
+		for _, container_name in ipairs(pkg_containers) do
+			local output = sys.exec(string.format("docker ps -a --format '{{.Names}}' 2>/dev/null | grep -w '%s' || true", container_name))
+			if output and output ~= '' then
+				for line in output:gmatch('[^\r\n]+') do
+					if line and line ~= '' and not found[line] then
+						table.insert(containers, line)
+						found[line] = true
+					end
+				end
+			end
+		end
+	end
+	
+	-- 智能检测：从包名中提取关键词，匹配所有容器
+	local search_terms = {}
+	if pkg:match('^luci%-app%-(.+)$') then
+		local app_name = pkg:match('^luci%-app%-(.+)$')
+		table.insert(search_terms, app_name)
+		
+		-- 进一步提取关键词
+		if app_name then
+			-- 添加不带横杠的版本
+			local app_name_no_dash = app_name:gsub('-', '')
+			if app_name_no_dash ~= app_name then
+				table.insert(search_terms, app_name_no_dash)
+			end
+			
+			-- 按横杠分割，添加每个词作为关键词
+			for word in app_name:gmatch('[^-]+') do
+				if #word > 2 then
+					table.insert(search_terms, word)
+				end
+			end
+			
+			-- 特别处理 istorepanel 和 1panel
+			if app_name:match('istore') or app_name:match('1panel') then
+				table.insert(search_terms, '1panel')
+				table.insert(search_terms, 'istore')
+			end
+		end
+	end
+	
+	-- 获取所有容器，检查匹配
+	local all_containers = get_all_docker_containers()
+	for _, container in ipairs(all_containers) do
+		local container_lower = container:lower()
+		for _, term in ipairs(search_terms) do
+			local term_lower = term:lower()
+			if container_lower:find(term_lower, 1, true) and not found[container] then
+				table.insert(containers, container)
+				found[container] = true
 			end
 		end
 	end
@@ -185,7 +497,7 @@ local function check_docker_containers_for_packages(packages)
 	
 	local result = {}
 	for _, pkg in ipairs(packages) do
-		local containers = get_docker_containers(pkg)
+		local containers = get_docker_containers_for_package(pkg)
 		if #containers > 0 then
 			result[pkg] = containers
 		end
@@ -207,7 +519,7 @@ local function cleanup_docker_containers(pkg, log)
 		return true
 	end
 	
-	local containers = get_docker_containers(pkg)
+	local containers = get_docker_containers_for_package(pkg)
 	if #containers == 0 then
 		append('# 未发现相关 Docker 容器')
 		return true
@@ -1615,7 +1927,9 @@ function action_list()
 						local zh = istore_list[name .. '|zh']
 						if zh and #zh > 0 then display_name = zh end
 					end
-					pkgs[#pkgs+1] = { name = name, version = ver or '', install_time = install_time, category = cat, vum_plugin = vp, display_name = display_name }
+					-- 检测是否有相关的Docker容器
+					local has_docker = package_has_docker_containers(name)
+					pkgs[#pkgs+1] = { name = name, version = ver or '', install_time = install_time, category = cat, vum_plugin = vp, display_name = display_name, has_docker_containers = has_docker }
 				end
 				name, ver, is_installed, install_time, vum_tag = n, nil, false, nil, nil
 			end
@@ -1653,7 +1967,9 @@ function action_list()
 				local zh = istore_list[name .. '|zh']
 				if zh and #zh > 0 then display_name = zh end
 			end
-			pkgs[#pkgs+1] = { name = name, version = ver or '', install_time = install_time, category = cat, vum_plugin = vp, display_name = display_name }
+			-- 检测是否有相关的Docker容器
+			local has_docker = package_has_docker_containers(name)
+			pkgs[#pkgs+1] = { name = name, version = ver or '', install_time = install_time, category = cat, vum_plugin = vp, display_name = display_name, has_docker_containers = has_docker }
 		end
 	end
 
