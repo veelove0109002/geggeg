@@ -114,7 +114,7 @@ end
 
 -- Docker 容器映射表：软件包 -> Docker 容器名称
 local DOCKER_CONTAINER_MAP = {
-	['luci-app-istorepanel'] = {'1panel'},
+	['luci-app-istorepanel'] = {'1panel', 'istorepanel'},
 	['luci-app-alist'] = {'alist'},
 	['luci-app-qbittorrent'] = {'qbittorrent', 'qbittorrent-ee'},
 	['luci-app-emby'] = {'emby', 'embyserver'},
