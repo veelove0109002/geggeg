@@ -2723,9 +2723,9 @@ if (not success) and not no_packages_removed then
 			output = (output or '') .. "\n[note] Package was actually removed from system, updating status"
 		end
 		
-		-- 重载 web 服务器以确保 iStore 页面刷新
-		sys.call('[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd reload >/dev/null 2>&1')
-		sys.call('[ -x /etc/init.d/nginx ] && /etc/init.d/nginx reload >/dev/null 2>&1')
+		-- 延迟重载 web 服务器以确保 iStore 页面刷新（在后台执行，不阻塞响应）
+		sys.call('(sleep 2 && [ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd reload >/dev/null 2>&1) &')
+		sys.call('(sleep 2 && [ -x /etc/init.d/nginx ] && /etc/init.d/nginx reload >/dev/null 2>&1) &')
 		
 		-- 强制清理 iStore 可能使用的所有缓存
 		-- 包括可能的 opkg status 缓存
