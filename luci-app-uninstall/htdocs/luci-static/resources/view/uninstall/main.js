@@ -1091,17 +1091,18 @@ return view.extend({
 												var name = cb.getAttribute('data-pkg-name');
 												if (name) {
 													if (checked) {
-														// 默认选项值（与单项选择一致）
-														selectedPackages[name] = {
-															name: name,
-															version: '',
-															purge: true,
-															deps: true,
-															cache: true
-														};
-													} else {
-														delete selectedPackages[name];
-													}
+													// 默认选项值（与单项选择一致）
+													selectedPackages[name] = {
+														name: name,
+														version: '',
+														purge: true,
+														deps: true,
+														cache: true,
+														docker: true
+													};
+												} else {
+													delete selectedPackages[name];
+												}
 												}
 											} catch(e){}
 										}
@@ -1129,7 +1130,8 @@ return view.extend({
                                             version: '',
                                             purge: true,
                                             deps: true,
-                                            cache: true
+                                            cache: true,
+                                            docker: true
                                         };
                                     } else {
                                         delete selectedPackages[name];
@@ -2432,7 +2434,8 @@ return view.extend({
 						version: pkg.version || '',
 						purge: safeChecked(purgeEl, true),
 						deps: safeChecked(depsEl, true),
-						cache: safeChecked(cacheEl, true)
+						cache: safeChecked(cacheEl, true),
+						docker: safeChecked(dockerEl, true)
 					};
 				} else {
 					delete selectedPackages[pkg.name];
@@ -2450,6 +2453,7 @@ return view.extend({
 			var ICON_PURGE = L.resource('app-icons/pz.png');
 			var ICON_CACHE = L.resource('app-icons/qk.png');
 			var ICON_DEP = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 1 7.07 0l1.41 1.41a5 5 0 1 1-7.07 7.07l-1.41-1.41"/><path d="M14 11a5 5 0 0 1-7.07 0L5.52 9.59a5 5 0 1 1 7.07-7.07L14 3.93"/></svg>');
+			var ICON_DOCKER = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="22" height="18" rx="2" ry="2"/><circle cx="6" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="18" cy="12" r="2"/></svg>');
 			function optionIcon(src){
 				return E('span', { 'style': 'display:inline-flex;width:18px;height:18px;align-items:center;justify-content:center;' }, [
 					E('img', { src: src, width: 16, height: 16, 'style': 'display:inline-block;object-fit:contain;filter:brightness(0) saturate(100%) invert(0.6);' })
@@ -2498,7 +2502,10 @@ return view.extend({
 			var cacheEl = E('input', { type: 'checkbox', checked: true, 'style': 'display:none;' });
 			var cacheSwitch = makeSwitch(cacheEl, isLocked);
 			var cacheLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px auto auto; align-items:center; column-gap:6px; line-height:20px; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_CACHE), _('清空插件缓存'), cacheSwitch ]);
-			var optionsRow = E('div', { 'style': 'display:flex; gap:12px; align-items:center; flex-wrap:wrap;' }, [ purgeLabel, depsLabel, cacheLabel ]);
+			var dockerEl = E('input', { type: 'checkbox', checked: true, 'style': 'display:none;' });
+			var dockerSwitch = makeSwitch(dockerEl, isLocked);
+			var dockerLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px auto auto; align-items:center; column-gap:6px; line-height:20px; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_DOCKER), _('清理Docker容器'), dockerSwitch ]);
+			var optionsRow = E('div', { 'style': 'display:flex; gap:12px; align-items:center; flex-wrap:wrap;' }, [ purgeLabel, depsLabel, cacheLabel, dockerLabel ]);
 			// 卸载按钮使用红色渐变
 			var uninstallGradient = 'linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
 			var uninstallGradientHover = 'linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #ef4444 100%)';
@@ -2533,7 +2540,7 @@ return view.extend({
 				}
 				ev.preventDefault(); 
 				ev.stopPropagation(); 
-				uninstall(pkg.name, purgeEl.checked, depsEl.checked, pkg.version || '', cacheEl.checked); 
+				uninstall(pkg.name, purgeEl.checked, depsEl.checked, pkg.version || '', cacheEl.checked, dockerEl.checked); 
 			});
 			var metaTop = E('div', { 'style': 'display:flex; align-items:center; gap:8px; flex-wrap:wrap;' }, [ title ]);
 		var metaCol = E('div', { 'class': 'pkg-meta', 'style': 'flex:1; display:flex; flex-direction:column; gap:6px;' }, [ metaTop, optionsRow ]);
@@ -4527,7 +4534,7 @@ return view.extend({
 					
 					var token = (L.env && (L.env.token || L.env.csrf_token)) || '';
 					var removeUrl = L.url('admin/vum/uninstall/remove') + (token ? ('?token=' + encodeURIComponent(token)) : '');
-					var formBody = 'package=' + encodeURIComponent(pkg.name) + '&purge=' + (pkg.purge ? '1' : '0') + '&removeDeps=' + (pkg.deps ? '1' : '0') + '&clearCache=' + (pkg.cache ? '1' : '0');
+					var formBody = 'package=' + encodeURIComponent(pkg.name) + '&purge=' + (pkg.purge ? '1' : '0') + '&removeDeps=' + (pkg.deps ? '1' : '0') + '&clearCache=' + (pkg.cache ? '1' : '0') + '&cleanupDocker=' + (pkg.docker ? '1' : '0');
 					
 				println('> POST ' + removeUrl);
 				println('> body: ' + formBody);
@@ -4551,7 +4558,7 @@ return view.extend({
 					println('! POST 失败或返回非成功，尝试 GET…');
 					var getUrl = L.url('admin/vum/uninstall/remove') + '?' +
 						(token ? ('token=' + encodeURIComponent(token) + '&') : '') +
-						('package=' + encodeURIComponent(pkg.name) + '&purge=' + (pkg.purge ? '1' : '0') + '&removeDeps=' + (pkg.deps ? '1' : '0') + '&clearCache=' + (pkg.cache ? '1' : '0'));
+						('package=' + encodeURIComponent(pkg.name) + '&purge=' + (pkg.purge ? '1' : '0') + '&removeDeps=' + (pkg.deps ? '1' : '0') + '&clearCache=' + (pkg.cache ? '1' : '0') + '&cleanupDocker=' + (pkg.docker ? '1' : '0'));
 					println('> GET ' + getUrl);
 					return self._httpJson(getUrl, { method: 'GET', headers: { 'Accept': 'application/json' } }).then(function(r2){
 						println('< Response: ' + JSON.stringify(r2));
@@ -5086,6 +5093,7 @@ return view.extend({
 			if (purge) descParts.push(_('同时删除配置文件。'));
 			if (removeDeps) descParts.push(_('同时卸载相关依赖。'));
 			if (clearCache) descParts.push(_('同时清空插件缓存。'));
+			if (cleanupDocker) descParts.push(_('同时清理Docker容器。'));
 			return confirmFn((_('确定卸载包 %s ？').format ? _('确定卸载包 %s ？').format(fullName) : '确定卸载包 ' + fullName + ' ？'), descParts.join(' ')).then(function(ok) {
 				if (!ok) return;
 
@@ -5223,7 +5231,7 @@ return view.extend({
 					println('! POST 失败或返回非成功，尝试 GET…');
 					var q = L.url('admin/vum/uninstall/remove') + '?' +
 						(token ? ('token=' + encodeURIComponent(token) + '&') : '') +
-						('package=' + encodeURIComponent(name) + '&purge=' + (purge ? '1' : '0') + '&removeDeps=' + (removeDeps ? '1' : '0'));
+						('package=' + encodeURIComponent(name) + '&purge=' + (purge ? '1' : '0') + '&removeDeps=' + (removeDeps ? '1' : '0') + '&clearCache=' + (clearCache ? '1' : '0') + '&cleanupDocker=' + (cleanupDocker ? '1' : '0'));
 					println('> GET ' + q);
 					setProgress(60);
 					return self._httpJson(q, { method: 'GET', headers: { 'Accept': 'application/json' } }).then(function(r2){

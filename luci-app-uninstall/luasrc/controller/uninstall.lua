@@ -2147,6 +2147,8 @@ function action_remove()
 					remove_deps = (val == '1')
 				elseif key == 'clearCache' then
 					clear_cache = (val == '1')
+				elseif key == 'cleanupDocker' then
+					cleanup_docker = (val == '1')
 				end
 			end
 		end
@@ -2163,6 +2165,7 @@ function action_remove()
 				if data.purge ~= nil then purge = data.purge and true or false end
 				if data.removeDeps ~= nil then remove_deps = data.removeDeps and true or false end
 				if data.clearCache ~= nil then clear_cache = data.clearCache and true or false end
+				if data.cleanupDocker ~= nil then cleanup_docker = data.cleanupDocker and true or false end
 			else
 				-- 尝试解析 URL 编码的表单数据（application/x-www-form-urlencoded）
 				for key, val in body:gmatch('([^&=]+)=([^&]*)') do
@@ -2176,6 +2179,8 @@ function action_remove()
 						remove_deps = (val == '1')
 					elseif key == 'clearCache' then
 						clear_cache = (val == '1')
+					elseif key == 'cleanupDocker' then
+						cleanup_docker = (val == '1')
 					end
 				end
 			end
