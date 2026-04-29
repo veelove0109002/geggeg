@@ -115,6 +115,7 @@ end
 -- Docker 容器映射表：软件包 -> Docker 容器名称
 local DOCKER_CONTAINER_MAP = {
 	['luci-app-istorepanel'] = {'1panel', 'istorepanel'},
+	['luci-app-dpanel'] = {'dpanel'},
 	['luci-app-alist'] = {'alist'},
 	['luci-app-qbittorrent'] = {'qbittorrent', 'qbittorrent-ee'},
 	['luci-app-emby'] = {'emby', 'embyserver'},
@@ -125,6 +126,22 @@ local DOCKER_CONTAINER_MAP = {
 	['luci-app-transmission'] = {'transmission'},
 	['luci-app-aria2'] = {'aria2'},
 	['luci-app-docker'] = {},  -- Docker 本身不需要清理
+	-- 补充更多常见的 Docker 软件包
+	['luci-app-nginx'] = {'nginx'},
+	['luci-app-phpmyadmin'] = {'phpmyadmin'},
+	['luci-app-portainer'] = {'portainer'},
+	['luci-app-watchtower'] = {'watchtower'},
+	['luci-app-mysql'] = {'mysql', 'mariadb'},
+	['luci-app-mongodb'] = {'mongodb'},
+	['luci-app-redis'] = {'redis'},
+	['luci-app-gitea'] = {'gitea'},
+	['luci-app-zerotier'] = {'zerotier'},
+	['luci-app-trojan'] = {'trojan'},
+	['luci-app-v2ray'] = {'v2ray'},
+	['luci-app-clash'] = {'clash'},
+	['luci-app-ssr-plus'] = {'ssr-plus'},
+	['luci-app-passwall'] = {'passwall'},
+	['luci-app-openclash'] = {'openclash'},
 }
 
 -- 检查是否有 Docker 环境
