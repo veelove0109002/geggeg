@@ -4533,47 +4533,28 @@ return view.extend({
 					println('\n[' + (currentIndex + 1) + '/' + packages.length + '] ' + _('开始卸载: ') + fullName);
 					
 					var token = (L.env && (L.env.token || L.env.csrf_token)) || '';
-					var removeUrl = L.url('admin/vum/uninstall/remove') + (token ? ('?token=' + encodeURIComponent(token)) : '');
-					var formBody = 'package=' + encodeURIComponent(pkg.name) + '&purge=' + (pkg.purge ? '1' : '0') + '&removeDeps=' + (pkg.deps ? '1' : '0') + '&clearCache=' + (pkg.cache ? '1' : '0') + '&cleanupDocker=' + (pkg.docker ? '1' : '0');
+					var removeUrl = L.url('admin/vum/uninstall/remove') + '?' +
+						(token ? ('token=' + encodeURIComponent(token) + '&') : '') +
+						('package=' + encodeURIComponent(pkg.name) + '&purge=' + (pkg.purge ? '1' : '0') + '&removeDeps=' + (pkg.deps ? '1' : '0') + '&clearCache=' + (pkg.cache ? '1' : '0') + '&cleanupDocker=' + (pkg.docker ? '1' : '0'));
 					
-				println('> POST ' + removeUrl);
-				println('> body: ' + formBody);
+				println('> GET ' + removeUrl);
 				
 				self._httpJson(removeUrl, {
 					method: 'GET',
-					headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'Accept': 'application/json', 'X-CSRF-Token': token },
-					body: formBody
+					headers: { 'Accept': 'application/json', 'X-CSRF-Token': token }
 				}).then(function(res){
 					println('< Response: ' + JSON.stringify(res));
 					if (res && res.ok) {
 						println('✓ ' + _('卸载成功: ') + fullName);
 						successCount++;
-						currentIndex++;
-						var progressBarEl = document.getElementById('batch-progress-bar');
-						if (progressBarEl) progressBarEl.style.width = ((currentIndex / packages.length) * 100) + '%';
-						uninstallNext();
-						return;
+					} else {
+						println('✗ ' + _('卸载失败: ') + fullName);
+						failCount++;
 					}
-					// POST失败，尝试GET
-					println('! POST 失败或返回非成功，尝试 GET…');
-					var getUrl = L.url('admin/vum/uninstall/remove') + '?' +
-						(token ? ('token=' + encodeURIComponent(token) + '&') : '') +
-						('package=' + encodeURIComponent(pkg.name) + '&purge=' + (pkg.purge ? '1' : '0') + '&removeDeps=' + (pkg.deps ? '1' : '0') + '&clearCache=' + (pkg.cache ? '1' : '0') + '&cleanupDocker=' + (pkg.docker ? '1' : '0'));
-					println('> GET ' + getUrl);
-					return self._httpJson(getUrl, { method: 'GET', headers: { 'Accept': 'application/json' } }).then(function(r2){
-						println('< Response: ' + JSON.stringify(r2));
-						if (r2 && r2.ok) {
-							println('✓ ' + _('卸载成功: ') + fullName);
-							successCount++;
-						} else {
-							println('✗ ' + _('卸载失败: ') + fullName);
-							failCount++;
-						}
-						currentIndex++;
-						var progressBarEl = document.getElementById('batch-progress-bar');
-						if (progressBarEl) progressBarEl.style.width = ((currentIndex / packages.length) * 100) + '%';
-						uninstallNext();
-					});
+					currentIndex++;
+					var progressBarEl = document.getElementById('batch-progress-bar');
+					if (progressBarEl) progressBarEl.style.width = ((currentIndex / packages.length) * 100) + '%';
+					uninstallNext();
 				}).catch(function(err){
 					println('! Error: ' + String(err));
 					failCount++;
@@ -5198,16 +5179,15 @@ return view.extend({
 				}
 
 				var token = (L.env && (L.env.token || L.env.csrf_token)) || '';
-			var removeUrl = L.url('admin/vum/uninstall/remove') + (token ? ('?token=' + encodeURIComponent(token)) : '');
-			var formBody = 'package=' + encodeURIComponent(name) + '&purge=' + (purge ? '1' : '0') + '&removeDeps=' + (removeDeps ? '1' : '0') + '&clearCache=' + (clearCache ? '1' : '0') + '&cleanupDocker=' + (cleanupDocker ? '1' : '0');
+			var removeUrl = L.url('admin/vum/uninstall/remove') + '?' +
+				(token ? ('token=' + encodeURIComponent(token) + '&') : '') +
+				('package=' + encodeURIComponent(name) + '&purge=' + (purge ? '1' : '0') + '&removeDeps=' + (removeDeps ? '1' : '0') + '&clearCache=' + (clearCache ? '1' : '0') + '&cleanupDocker=' + (cleanupDocker ? '1' : '0'));
 
-				println('> POST ' + removeUrl);
-				println('> body: ' + formBody);
+				println('> GET ' + removeUrl);
 				setProgress(25);
 				return self._httpJson(removeUrl, {
 					method: 'GET',
-					headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'Accept': 'application/json', 'X-CSRF-Token': token },
-					body: formBody
+					headers: { 'Accept': 'application/json', 'X-CSRF-Token': token }
 				}).then(function(res){
 					println('< Response: ' + JSON.stringify(res));
 					if (res && res.ok) {
@@ -5226,39 +5206,18 @@ return view.extend({
 						opSuccess = true;
 						enableClose();
 						refresh();
-						return;
-					}
-					println('! POST 失败或返回非成功，尝试 GET…');
-					var q = L.url('admin/vum/uninstall/remove') + '?' +
-						(token ? ('token=' + encodeURIComponent(token) + '&') : '') +
-						('package=' + encodeURIComponent(name) + '&purge=' + (purge ? '1' : '0') + '&removeDeps=' + (removeDeps ? '1' : '0') + '&clearCache=' + (clearCache ? '1' : '0') + '&cleanupDocker=' + (cleanupDocker ? '1' : '0'));
-					println('> GET ' + q);
-					setProgress(60);
-					return self._httpJson(q, { method: 'GET', headers: { 'Accept': 'application/json' } }).then(function(r2){
-						println('< Response: ' + JSON.stringify(r2));
-						if (r2 && r2.ok) {
-							setProgress(100);
-							println(_('卸载成功'));
-							clearInterval(timer);
-							statusIconEl.textContent = '✓';
-							statusIconEl.setAttribute('style', 'display:inline-flex;width:22px;height:22px;background:#dcfce7;color:#065f46;border-radius:999px;align-items:center;justify-content:center;font-weight:700;');
-							statusTextEl.textContent = _('卸载完成');
-							statusTextEl.setAttribute('style', 'font-weight:600;color:#065f46;');
-							opSuccess = true;
-								refresh();
-						} else {
-							setProgress(100);
-							clearInterval(timer);
-							progressBar.style.background = 'linear-gradient(90deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
-							progressBar.style.boxShadow = '0 0 8px rgba(239,68,68,.6)';
-							println(_('卸载失败'));
-							statusIconEl.textContent = '✕';
-							statusIconEl.setAttribute('style', 'display:inline-flex;width:22px;height:22px;background:#fee2e2;color:#7f1d1d;border-radius:999px;align-items:center;justify-content:center;font-weight:700;');
-							statusTextEl.textContent = _('卸载失败');
-							statusTextEl.setAttribute('style', 'font-weight:600;color:#7f1d1d;');
-						}
+					} else {
+						setProgress(100);
+						clearInterval(timer);
+						progressBar.style.background = 'linear-gradient(90deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
+						progressBar.style.boxShadow = '0 0 8px rgba(239,68,68,.6)';
+						println(_('卸载失败'));
+						statusIconEl.textContent = '✕';
+						statusIconEl.setAttribute('style', 'display:inline-flex;width:22px;height:22px;background:#fee2e2;color:#7f1d1d;border-radius:999px;align-items:center;justify-content:center;font-weight:700;');
+						statusTextEl.textContent = _('卸载失败');
+						statusTextEl.setAttribute('style', 'font-weight:600;color:#7f1d1d;');
 						enableClose();
-					});
+					}
 				}).catch(function(err){
 					println('! Error: ' + String(err));
 					setProgress(100);
