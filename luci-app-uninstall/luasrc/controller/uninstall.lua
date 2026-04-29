@@ -161,13 +161,13 @@ local function get_docker_containers(pkg)
 	-- 1. 先检查预定义的映射
 	local pkg_containers = DOCKER_CONTAINER_MAP[pkg]
 	if pkg_containers then
+		local all_containers = get_all_docker_containers()
 		for _, container_name in ipairs(pkg_containers) do
-			local output = sys.exec(string.format("docker ps -a --format '{{.Names}}' 2>/dev/null | grep -w '%s' || true", container_name))
-			if output and output ~= '' then
-				for line in output:gmatch('[^\r\n]+') do
-					if line and line ~= '' and not seen[line] then
-						seen[line] = true
-						table.insert(containers, line)
+			for _, container in ipairs(all_containers) do
+				if not seen[container] then
+					if container:lower():find(container_name:lower()) or container_name:lower():find(container:lower()) then
+						seen[container] = true
+						table.insert(containers, container)
 					end
 				end
 			end
@@ -200,6 +200,7 @@ local function get_docker_containers(pkg)
 			if not match_found then
 				local aliases = {
 					['istorepanel'] = { '1panel', 'istore' },
+					['dpanel'] = { 'dpanel', 'd-panel' },
 					['homeassistant'] = { 'home-assistant', 'ha' },
 					['nextcloud'] = { 'nc', 'cloud' },
 					['qbittorrent'] = { 'qb', 'qbt' },
