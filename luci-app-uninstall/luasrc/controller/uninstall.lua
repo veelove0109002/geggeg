@@ -115,7 +115,6 @@ end
 -- Docker 容器映射表：软件包 -> Docker 容器名称
 local DOCKER_CONTAINER_MAP = {
 	['luci-app-istorepanel'] = {'1panel', 'istorepanel'},
-	['luci-app-dpanel'] = {'dpanel'},
 	['luci-app-alist'] = {'alist'},
 	['luci-app-qbittorrent'] = {'qbittorrent', 'qbittorrent-ee'},
 	['luci-app-emby'] = {'emby', 'embyserver'},
@@ -126,22 +125,6 @@ local DOCKER_CONTAINER_MAP = {
 	['luci-app-transmission'] = {'transmission'},
 	['luci-app-aria2'] = {'aria2'},
 	['luci-app-docker'] = {},  -- Docker 本身不需要清理
-	-- 补充更多常见的 Docker 软件包
-	['luci-app-nginx'] = {'nginx'},
-	['luci-app-phpmyadmin'] = {'phpmyadmin'},
-	['luci-app-portainer'] = {'portainer'},
-	['luci-app-watchtower'] = {'watchtower'},
-	['luci-app-mysql'] = {'mysql', 'mariadb'},
-	['luci-app-mongodb'] = {'mongodb'},
-	['luci-app-redis'] = {'redis'},
-	['luci-app-gitea'] = {'gitea'},
-	['luci-app-zerotier'] = {'zerotier'},
-	['luci-app-trojan'] = {'trojan'},
-	['luci-app-v2ray'] = {'v2ray'},
-	['luci-app-clash'] = {'clash'},
-	['luci-app-ssr-plus'] = {'ssr-plus'},
-	['luci-app-passwall'] = {'passwall'},
-	['luci-app-openclash'] = {'openclash'},
 }
 
 -- 检查是否有 Docker 环境
@@ -149,82 +132,25 @@ local function has_docker()
 	return os.execute('command -v docker >/dev/null 2>&1') == 0
 end
 
--- 获取软件包相关的 Docker 容器（智能匹配）
+-- 获取软件包相关的 Docker 容器
 local function get_docker_containers(pkg)
 	if not has_docker() then
 		return {}
 	end
 	
 	local containers = {}
-	local seen = {}
-	
-	-- 1. 先检查预定义的映射
 	local pkg_containers = DOCKER_CONTAINER_MAP[pkg]
-	if pkg_containers then
-		local all_containers = get_all_docker_containers()
-		for _, container_name in ipairs(pkg_containers) do
-			for _, container in ipairs(all_containers) do
-				if not seen[container] then
-					if container:lower():find(container_name:lower()) or container_name:lower():find(container:lower()) then
-						seen[container] = true
-						table.insert(containers, container)
-					end
-				end
-			end
-		end
+	if not pkg_containers then
+		return {}
 	end
 	
-	-- 2. 智能匹配：基于软件包名查找相关容器
-	-- 提取软件包的核心名称（去掉 luci-app- 前缀）
-	local core_name = pkg:gsub('^luci%-app%-', ''):gsub('^luci%-', '')
-	
-	-- 获取所有容器
-	local all_containers = get_all_docker_containers()
-	
-	-- 3. 智能匹配：
-	for _, container in ipairs(all_containers) do
-		if not seen[container] then
-			local match_found = false
-			
-			-- a. 容器名包含核心名称
-			if container:lower():find(core_name:lower()) then
-				match_found = true
-			end
-			
-			-- b. 核心名称包含容器名的一部分（反过来）
-			if not match_found and core_name:lower():find(container:lower()) then
-				match_found = true
-			end
-			
-			-- c. 常见别名匹配
-			if not match_found then
-				local aliases = {
-					['istorepanel'] = { '1panel', 'istore' },
-					['dpanel'] = { 'dpanel', 'd-panel' },
-					['homeassistant'] = { 'home-assistant', 'ha' },
-					['nextcloud'] = { 'nc', 'cloud' },
-					['qbittorrent'] = { 'qb', 'qbt' },
-					['transmission'] = { 'tr', 'trans' },
-					['syncthing'] = { 'syncthing', 'st' },
-					['jellyfin'] = { 'jf', 'media' },
-					['emby'] = { 'embyserver', 'media-server' },
-					['alist'] = { 'filelist', 'webdav' },
-					['aria2'] = { 'aria', 'download' },
-				}
-				
-				if aliases[core_name] then
-					for _, alias in ipairs(aliases[core_name]) do
-						if container:lower():find(alias:lower()) then
-							match_found = true
-							break
-						end
-					end
+	for _, container_name in ipairs(pkg_containers) do
+		local output = sys.exec(string.format("docker ps -a --format '{{.Names}}' 2>/dev/null | grep -w '%s' || true", container_name))
+		if output and output ~= '' then
+			for line in output:gmatch('[^\r\n]+') do
+				if line and line ~= '' then
+					table.insert(containers, line)
 				end
-			end
-			
-			if match_found then
-				seen[container] = true
-				table.insert(containers, container)
 			end
 		end
 	end
@@ -268,7 +194,7 @@ local function check_docker_containers_for_packages(packages)
 	return result
 end
 
--- 清理软件包相关的 Docker 容器、镜像、数据卷
+-- 清理软件包相关的 Docker 容器
 local function cleanup_docker_containers(pkg, log)
 	local function append(s)
 		if log then
@@ -281,108 +207,25 @@ local function cleanup_docker_containers(pkg, log)
 		return true
 	end
 	
-	local success = true
-	local core_name = pkg:gsub('^luci%-app%-', ''):gsub('^luci%-', '')
-	
-	-- 1. 清理容器
 	local containers = get_docker_containers(pkg)
-	if #containers > 0 then
-		for _, container_name in ipairs(containers) do
-			append('+ docker stop ' .. container_name)
-			os.execute(string.format('docker stop %s 2>/dev/null', container_name))
-			
-			append('+ docker rm ' .. container_name)
-			local rc = os.execute(string.format('docker rm %s 2>/dev/null', container_name))
-			
-			if rc ~= 0 then
-				success = false
-				append('! Docker 容器 ' .. container_name .. ' 清理失败')
-			else
-				append('# Docker 容器 ' .. container_name .. ' 已清理')
-			end
-		end
-	else
+	if #containers == 0 then
 		append('# 未发现相关 Docker 容器')
+		return true
 	end
 	
-	-- 2. 清理相关镜像（智能匹配）
-	append('+ 检查相关 Docker 镜像...')
-	local images_output = sys.exec("docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null || true")
-	if images_output and images_output ~= '' then
-		for image in images_output:gmatch('[^\r\n]+') do
-			if image:lower():find(core_name:lower()) then
-				append('+ docker rmi ' .. image)
-				local rc = os.execute(string.format('docker rmi -f %s 2>/dev/null', image))
-				if rc == 0 then
-					append('# Docker 镜像 ' .. image .. ' 已清理')
-				end
-			end
-		end
-	end
-	
-	-- 3. 清理相关数据卷（智能匹配）
-	append('+ 检查相关 Docker 数据卷...')
-	local volumes_output = sys.exec("docker volume ls --format '{{.Name}}' 2>/dev/null || true")
-	if volumes_output and volumes_output ~= '' then
-		for volume in volumes_output:gmatch('[^\r\n]+') do
-			if volume:lower():find(core_name:lower()) then
-				append('+ docker volume rm ' .. volume)
-				local rc = os.execute(string.format('docker volume rm -f %s 2>/dev/null', volume))
-				if rc == 0 then
-					append('# Docker 数据卷 ' .. volume .. ' 已清理')
-				end
-			end
-		end
-	end
-	
-	-- 4. 清理相关网络（智能匹配）
-	append('+ 检查相关 Docker 网络...')
-	local networks_output = sys.exec("docker network ls --format '{{.Name}}' 2>/dev/null || true")
-	if networks_output and networks_output ~= '' then
-		for network in networks_output:gmatch('[^\r\n]+') do
-			if network:lower():find(core_name:lower()) then
-				append('+ docker network rm ' .. network)
-				local rc = os.execute(string.format('docker network rm %s 2>/dev/null', network))
-				if rc == 0 then
-					append('# Docker 网络 ' .. network .. ' 已清理')
-				end
-			end
-		end
-	end
-	
-	-- 5. 清理 Docker 相关的配置文件和数据目录
-	append('+ 检查相关数据目录...')
-	local data_dirs = {
-		'/mnt/data/' .. core_name,
-		'/mnt/' .. core_name,
-		'/data/' .. core_name,
-		'/opt/' .. core_name,
-		'/root/' .. core_name,
-	}
-	for _, dir in ipairs(data_dirs) do
-		if fs.access(dir) then
-			append('+ rm -rf ' .. dir)
-			local rc = os.execute(string.format('rm -rf %s 2>/dev/null', dir))
-			if rc == 0 then
-				append('# 数据目录 ' .. dir .. ' 已清理')
-			end
-		end
-	end
-	
-	-- 6. 清理 Docker 相关的配置文件
-	append('+ 检查相关配置文件...')
-	local config_paths = {
-		'/etc/config/' .. core_name,
-		'/etc/' .. core_name,
-		'/root/.config/' .. core_name,
-	}
-	for _, path in ipairs(config_paths) do
-		if fs.access(path) then
-			append('+ rm -rf ' .. path)
-			local rc = os.execute(string.format('rm -rf %s 2>/dev/null', path))
-			if rc == 0 then
-				append('# 配置文件 ' .. path .. ' 已清理')
-			end
+	local success = true
+	for _, container_name in ipairs(containers) do
+		append('+ docker stop ' .. container_name)
+		local rc = os.execute(string.format('docker stop %s 2>/dev/null', container_name))
+		
+		append('+ docker rm ' .. container_name)
+		rc = os.execute(string.format('docker rm %s 2>/dev/null', container_name))
+		
+		if rc ~= 0 then
+			success = false
+			append('! Docker 容器 ' .. container_name .. ' 清理失败')
+		else
+			append('# Docker 容器 ' .. container_name .. ' 已清理')
 		end
 	end
 	
