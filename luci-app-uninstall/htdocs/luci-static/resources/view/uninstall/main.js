@@ -2495,16 +2495,16 @@ return view.extend({
 				return sw;
 			};
 			var purgeSwitch = makeSwitch(purgeEl, isLocked);
-			var purgeLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px auto auto; align-items:center; column-gap:6px; line-height:20px; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_PURGE), _('删除配置文件'), purgeSwitch ]);
+			var purgeLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px 90px auto; align-items:center; column-gap:6px; line-height:20px; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_PURGE), _('删除配置文件'), purgeSwitch ]);
 			var depsEl = E('input', { type: 'checkbox', checked: true, 'style': 'display:none;' });
 			var depsSwitch = makeSwitch(depsEl, isLocked);
-			var depsLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px auto auto; align-items:center; column-gap:6px; line-height:20px; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_DEP), _('卸载相关依赖'), depsSwitch ]);
+			var depsLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px 90px auto; align-items:center; column-gap:6px; line-height:20px; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_DEP), _('卸载相关依赖'), depsSwitch ]);
 			var cacheEl = E('input', { type: 'checkbox', checked: true, 'style': 'display:none;' });
 			var cacheSwitch = makeSwitch(cacheEl, isLocked);
-			var cacheLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px auto auto; align-items:center; column-gap:6px; line-height:20px; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_CACHE), _('清空插件缓存'), cacheSwitch ]);
+			var cacheLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px 90px auto; align-items:center; column-gap:6px; line-height:20px; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_CACHE), _('清空插件缓存'), cacheSwitch ]);
 			var dockerEl = E('input', { type: 'checkbox', checked: true, 'style': 'display:none;' });
 			var dockerSwitch = makeSwitch(dockerEl, isLocked);
-			var dockerLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px auto auto; align-items:center; column-gap:6px; line-height:20px; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_DOCKER), _('清理Docker容器'), dockerSwitch ]);
+			var dockerLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px 90px auto; align-items:center; column-gap:6px; line-height:20px; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_DOCKER), _('清理Docker容器'), dockerSwitch ]);
 			var optionsRow = E('div', { 'style': 'display:flex; gap:12px; align-items:center; flex-wrap:wrap;' }, [ purgeLabel, depsLabel, cacheLabel, dockerLabel ]);
 			// 卸载按钮使用红色渐变
 			var uninstallGradient = 'linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
