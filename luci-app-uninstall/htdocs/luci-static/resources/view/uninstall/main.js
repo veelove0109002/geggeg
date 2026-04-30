@@ -2429,13 +2429,21 @@ return view.extend({
 					return (el && typeof el.checked === 'boolean') ? el.checked : defVal;
 				}
 				if (this.checked) {
+					// 检查是否应该默认选中 docker 选项
+					var shouldEnableDocker = false;
+					if (window.dockerContainerMap && window.dockerContainerMap[pkg.name]) {
+						// 仅对 luci-app-dpanel 和 luci-app-istorepanel 启用
+						if (pkg.name === 'luci-app-dpanel' || pkg.name === 'luci-app-istorepanel') {
+							shouldEnableDocker = true;
+						}
+					}
 					selectedPackages[pkg.name] = { 
 						name: pkg.name, 
 						version: pkg.version || '',
 						purge: safeChecked(purgeEl, true),
 						deps: safeChecked(depsEl, true),
 						cache: safeChecked(cacheEl, true),
-						docker: safeChecked(dockerEl, true)
+						docker: shouldEnableDocker
 					};
 				} else {
 					delete selectedPackages[pkg.name];
@@ -2495,16 +2503,24 @@ return view.extend({
 				return sw;
 			};
 			var purgeSwitch = makeSwitch(purgeEl, isLocked);
-			var purgeLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px 90px auto; align-items:center; column-gap:6px; line-height:20px; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_PURGE), _('删除配置文件'), purgeSwitch ]);
+			var purgeLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px minmax(100px, max-content) 36px; align-items:center; column-gap:6px; line-height:20px; white-space:nowrap; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_PURGE), _('删除配置文件'), purgeSwitch ]);
 			var depsEl = E('input', { type: 'checkbox', checked: true, 'style': 'display:none;' });
 			var depsSwitch = makeSwitch(depsEl, isLocked);
-			var depsLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px 90px auto; align-items:center; column-gap:6px; line-height:20px; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_DEP), _('卸载相关依赖'), depsSwitch ]);
+			var depsLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px minmax(100px, max-content) 36px; align-items:center; column-gap:6px; line-height:20px; white-space:nowrap; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_DEP), _('卸载相关依赖'), depsSwitch ]);
 			var cacheEl = E('input', { type: 'checkbox', checked: true, 'style': 'display:none;' });
 			var cacheSwitch = makeSwitch(cacheEl, isLocked);
-			var cacheLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px 90px auto; align-items:center; column-gap:6px; line-height:20px; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_CACHE), _('清空插件缓存'), cacheSwitch ]);
-			var dockerEl = E('input', { type: 'checkbox', checked: true, 'style': 'display:none;' });
+			var cacheLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px minmax(100px, max-content) 36px; align-items:center; column-gap:6px; line-height:20px; white-space:nowrap; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_CACHE), _('清空插件缓存'), cacheSwitch ]);
+			// 默认不选中，仅在特定包有对应 Docker 容器时才选中
+			var shouldCheckDocker = false;
+			if (window.dockerContainerMap && window.dockerContainerMap[pkg.name]) {
+				// 仅对 luci-app-dpanel 和 luci-app-istorepanel 启用
+				if (pkg.name === 'luci-app-dpanel' || pkg.name === 'luci-app-istorepanel') {
+					shouldCheckDocker = true;
+				}
+			}
+			var dockerEl = E('input', { type: 'checkbox', checked: shouldCheckDocker, 'style': 'display:none;' });
 			var dockerSwitch = makeSwitch(dockerEl, isLocked);
-			var dockerLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px 90px auto; align-items:center; column-gap:6px; line-height:20px; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_DOCKER), _('清理Docker容器'), dockerSwitch ]);
+			var dockerLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px minmax(100px, max-content) 36px; align-items:center; column-gap:6px; line-height:20px; white-space:nowrap; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_DOCKER), _('清理Docker容器'), dockerSwitch ]);
 			var optionsRow = E('div', { 'style': 'display:flex; gap:12px; align-items:center; flex-wrap:wrap;' }, [ purgeLabel, depsLabel, cacheLabel, dockerLabel ]);
 			// 卸载按钮使用红色渐变
 			var uninstallGradient = 'linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%)';
@@ -4295,13 +4311,40 @@ return view.extend({
 		
 		function refresh() {
 			var curSeq = (++searchSeq);
+			
 			// 先加载折叠状态和锁状态（从服务器，系统级别，跨浏览器）
 			Promise.all([
 				loadCollapseStateFromServer(),
 				loadLockStateFromServer()
 			]).then(function() {
-				// 然后加载包列表并渲染
-				return self.pollList();
+				// 先加载包列表，再检测 Docker 容器
+				return self.pollList().then(function(data) {
+					var pkgs = (data && data.packages) || [];
+					var packageNames = pkgs.map(function(p) { return p.name; });
+					
+					// 检测 Docker 容器
+					var dockerUrl = L.url('admin/vum/uninstall/check_docker');
+					return self._httpJson(dockerUrl, {
+						method: 'POST',
+						headers: { 
+							'Content-Type': 'application/x-www-form-urlencoded',
+							'Accept': 'application/json' 
+						},
+						body: 'packages=' + encodeURIComponent(JSON.stringify(packageNames))
+					}).then(function(dockerData) {
+						// 构建容器映射，存储到全局作用域
+						if (dockerData && dockerData.relevant_containers) {
+							window.dockerContainerMap = dockerData.relevant_containers;
+						} else {
+							window.dockerContainerMap = {};
+						}
+						return data;
+					}).catch(function() {
+						// 如果检测失败，继续执行
+						window.dockerContainerMap = {};
+						return data;
+					});
+				});
 			}).then(function(data){
 				if (curSeq !== searchSeq) return; // 已过期
 				var pkgs = (data && data.packages) || [];
