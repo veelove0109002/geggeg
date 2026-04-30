@@ -2429,21 +2429,14 @@ return view.extend({
 					return (el && typeof el.checked === 'boolean') ? el.checked : defVal;
 				}
 				if (this.checked) {
-					// 检查是否应该默认选中 docker 选项
-					var shouldEnableDocker = false;
-					if (window.dockerContainerMap && window.dockerContainerMap[pkg.name]) {
-						// 仅对 luci-app-dpanel 和 luci-app-istorepanel 启用
-						if (pkg.name === 'luci-app-dpanel' || pkg.name === 'luci-app-istorepanel') {
-							shouldEnableDocker = true;
-						}
-					}
+					// 使用 dockerEl 的当前状态
 					selectedPackages[pkg.name] = { 
 						name: pkg.name, 
 						version: pkg.version || '',
 						purge: safeChecked(purgeEl, true),
 						deps: safeChecked(depsEl, true),
 						cache: safeChecked(cacheEl, true),
-						docker: shouldEnableDocker
+						docker: safeChecked(dockerEl, false)
 					};
 				} else {
 					delete selectedPackages[pkg.name];
@@ -2510,13 +2503,18 @@ return view.extend({
 			var cacheEl = E('input', { type: 'checkbox', checked: true, 'style': 'display:none;' });
 			var cacheSwitch = makeSwitch(cacheEl, isLocked);
 			var cacheLabel = E('label', { 'style': 'display:grid; grid-template-columns:18px minmax(100px, max-content) 36px; align-items:center; column-gap:6px; line-height:20px; white-space:nowrap; opacity:' + (isLocked ? '0.5' : '1') + '; cursor:' + (isLocked ? 'not-allowed' : 'default') + ';' }, [ optionIcon(ICON_CACHE), _('清空插件缓存'), cacheSwitch ]);
-			// 默认不选中，仅在特定包有对应 Docker 容器时才选中
+			// 默认不选中，仅在检测到对应 Docker 容器时才选中
 			var shouldCheckDocker = false;
-			if (window.dockerContainerMap && window.dockerContainerMap[pkg.name]) {
-				// 仅对 luci-app-dpanel 和 luci-app-istorepanel 启用
-				if (pkg.name === 'luci-app-dpanel' || pkg.name === 'luci-app-istorepanel') {
-					shouldCheckDocker = true;
+			try {
+				if (window.dockerContainerMap && typeof window.dockerContainerMap === 'object') {
+					var hasContainer = !!window.dockerContainerMap[pkg.name];
+					// 只有这两个包并且有对应容器时才启用
+					if (hasContainer && (pkg.name === 'luci-app-dpanel' || pkg.name === 'luci-app-istorepanel')) {
+						shouldCheckDocker = true;
+					}
 				}
+			} catch (e) {
+				// 出错时默认不选中
 			}
 			var dockerEl = E('input', { type: 'checkbox', checked: shouldCheckDocker, 'style': 'display:none;' });
 			var dockerSwitch = makeSwitch(dockerEl, isLocked);
@@ -4213,6 +4211,8 @@ return view.extend({
 		window.refreshUninstallList = null;
 		// 折叠状态缓存（从服务器加载）
 		window.collapseStateCache = {};
+		// Docker 容器映射，初始化为空对象
+		window.dockerContainerMap = {};
 		
 		// 从服务器加载折叠状态
 		function loadCollapseStateFromServer() {
